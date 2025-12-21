@@ -42,6 +42,17 @@ async def list_documents(
 ):
     return success_response(data=rag_service.list_documents(user_id=current_user.id, db=db))
 
+@router.delete("/documents/{document_id}", response_model=None)
+async def delete_document(
+    document_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    success = rag_service.delete_document(document_id=document_id, user_id=current_user.id, db=db)
+    if not success:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return success_response(message="Document deleted successfully")
+
 @router.post("/rag/process", response_model=None)
 async def start_rag_process(
     current_user: User = Depends(get_current_user),

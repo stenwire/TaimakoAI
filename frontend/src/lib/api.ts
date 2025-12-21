@@ -8,6 +8,7 @@ import type {
   UpdateBusinessProfileData,
   ChatResponse,
   ProcessedDocument,
+  Document,
   ApiResponse
 } from './types';
 
@@ -142,6 +143,24 @@ export const updateBusinessProfile = async (
   return response.data;
 };
 
+export const generateIntents = async (): Promise<ApiResponse<{ intents: string[] }>> => {
+  const response = await api.post('/business/generate-intents');
+  return response.data;
+};
+
+export const generateFollowUp = async (
+  sessionId: string,
+  type: string,
+  extraInfo: string
+): Promise<ApiResponse<{ content: string }>> => {
+  const response = await api.post('/analytics/followup', {
+    session_id: sessionId,
+    type,
+    extra_info: extraInfo
+  });
+  return response.data;
+};
+
 // Document endpoints
 export const uploadDocuments = async (files: File[]): Promise<ApiResponse<{ files: string[] }>> => {
   const formData = new FormData();
@@ -156,9 +175,14 @@ export const uploadDocuments = async (files: File[]): Promise<ApiResponse<{ file
   return response.data;
 };
 
-export const listDocuments = async (): Promise<string[]> => {
+export const listDocuments = async (): Promise<Document[]> => {
   const response = await api.get('/documents');
   return response.data.data || response.data;
+};
+
+export const deleteDocument = async (id: string): Promise<ApiResponse<null>> => {
+  const response = await api.delete(`/documents/${id}`);
+  return response.data;
 };
 
 export const processDocuments = async (): Promise<ProcessedDocument[]> => {

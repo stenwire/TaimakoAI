@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Nimbus — Smart SaaS Platform</title>
+  <meta name="description" content="Nimbus — analytics, automations and collaboration for modern teams." />
+  <meta name="color-scheme" content="light dark" />
+
+  <!-- Sten Chat Widget -->
+  <script>
+    (function() {
+        var s = document.createElement("script");
+        s.src = "http://localhost:3000/widget.js";
+        s.async = true;
+        s.dataset.widgetId = "b148754d-689c-4ecc-acb8-91c019ea7d22";
+        document.head.appendChild(s);
+    })();
+  </script>
+
+  <!-- Minimal, elegant styling in one file -->
+  <style>
+    /* Reset-ish */
+    :root{
+      --bg: #0f1724;
+      --card: #0b1220;
+      --muted: #9aa4b2;
+      --accent: #6c8cff;
+      --accent-2: #7ce6c9;
+      --glass: rgba(255,255,255,0.04);
+      --radius: 12px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      color-scheme: dark;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background:
+        linear-gradient(180deg, rgba(12,18,30,0.9) 0%, rgba(6,10,18,0.96) 100%),
+        radial-gradient(600px 400px at 10% 10%, rgba(108,140,255,0.06), transparent 10%),
+        radial-gradient(500px 300px at 90% 80%, rgba(124,230,201,0.03), transparent 10%);
+      color: #e6eef6;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      padding:32px;
+      line-height:1.4;
+    }
+
+    /* Container */
+    .wrap{
+      max-width:1200px;
+      margin:0 auto;
+    }
+
+    /* NAV */
+    header.nav{
+      display:flex;
+      gap:20px;
+      align-items:center;
+      justify-content:space-between;
+      margin-bottom:28px;
+    }
+    .brand{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      text-decoration:none;
+      color:inherit;
+    }
+    .logo{
+      width:44px;height:44px;border-radius:10px;background:
+        conic-gradient(from 220deg at 50% 50%, var(--accent), var(--accent-2));
+      display:grid;place-items:center;font-weight:700;color:#021024;
+      box-shadow: 0 4px 18px rgba(108,140,255,0.12), inset 0 -6px 18px rgba(255,255,255,0.02);
+      font-size:18px;
+    }
+    nav.links{display:flex;gap:18px;align-items:center}
+    nav.links a{
+      color:var(--muted);
+      text-decoration:none;
+      font-weight:600;
+      padding:8px 10px;border-radius:8px;
+    }
+    nav.links a:hover{color:var(--accent); background:var(--glass)}
+
+    .cta{
+      display:inline-flex;align-items:center;gap:10px;
+      background:linear-gradient(90deg,var(--accent), #8fa8ff);
+      color:#021024;padding:10px 14px;border-radius:10px;
+      text-decoration:none;font-weight:700;
+      box-shadow: 0 8px 24px rgba(108,140,255,0.12);
+    }
+
+    /* HERO */
+    .hero{
+      display:grid;
+      grid-template-columns:1fr 440px;
+      gap:28px;
+      align-items:stretch;
+      margin-bottom:36px;
+    }
+    .hero-card{
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+      border-radius: var(--radius);
+      padding:28px;
+      box-shadow: 0 8px 40px rgba(2,6,15,0.6);
+      border: 1px solid rgba(255,255,255,0.03);
+    }
+    .eyebrow{display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,0.02); color:var(--accent-2); font-weight:700;font-size:13px;margin-bottom:12px}
+    h1{font-size:34px;margin:0 0 12px 0;line-height:1.05}
+    p.lead{color:var(--muted);margin:0 0 20px 0;font-size:16px}
+
+    .hero-actions{display:flex;gap:12px;align-items:center}
+    .btn{
+      padding:12px 14px;border-radius:10px;font-weight:700;text-decoration:none;border:0;cursor:pointer;
+      display:inline-flex;gap:10px;align-items:center;
+    }
+    .btn-primary{background:linear-gradient(90deg,var(--accent), #8fa8ff);color:#021024;box-shadow:0 10px 30px rgba(108,140,255,0.12)}
+    .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
+
+    /* Quick stats */
+    .stats{display:flex;gap:12px;margin-top:18px}
+    .stat{background:rgba(255,255,255,0.02);padding:12px;border-radius:10px;min-width:120px}
+    .stat b{display:block;font-size:18px}
+
+    /* Right column card: preview */
+    .preview{
+      display:flex;flex-direction:column;gap:12px;
+    }
+    .panel{
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+      border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.03)
+    }
+    .mock{
+      height:260px;border-radius:10px;background:
+        linear-gradient(180deg, rgba(2,8,22,0.8), rgba(8,14,26,0.7));
+      display:flex;flex-direction:column;gap:12px;padding:16px;color:var(--muted);overflow:hidden;
+    }
+    .mock .row{display:flex;justify-content:space-between;align-items:center}
+    .chip{padding:6px 10px;border-radius:999px;background:rgba(255,255,255,0.02);font-weight:700;font-size:13px}
+
+    /* Features */
+    .features{
+      display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:28px 0 36px 0;
+    }
+    .feature{background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
+    .feature h3{margin:0 0 8px 0}
+    .feature p{color:var(--muted);margin:0;font-size:14px}
+
+    /* Pricing */
+    .pricing{display:flex;gap:14px;margin-bottom:36px}
+    .plan{flex:1;padding:20px;border-radius:12px;border:1px solid rgba(255,255,255,0.03);background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent)}
+    .plan .price{font-size:20px;font-weight:800}
+    .plan ul{margin:12px 0 0 0;padding:0;list-style:none;color:var(--muted)}
+    .plan li{padding:8px 0;border-top:1px dashed rgba(255,255,255,0.02)}
+
+    /* Testimonials / Footer */
+    .testimonials{display:flex;gap:12px;margin-bottom:36px}
+    .testimonial{background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);padding:18px;border-radius:12px;flex:1;color:var(--muted)}
+    footer{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:13px;padding-top:18px;border-top:1px solid rgba(255,255,255,0.02)}
+
+    /* Signup modal */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(2,6,12,0.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:40}
+    .modal{background:linear-gradient(180deg,#021024,#071228);border-radius:12px;padding:22px;width:100%;max-width:720px;border:1px solid rgba(255,255,255,0.04);box-shadow:0 20px 80px rgba(2,6,15,0.7)}
+    .modal-grid{display:grid;grid-template-columns:1fr 320px;gap:18px}
+    .form-field{display:flex;flex-direction:column;margin-bottom:12px}
+    label{font-weight:700;margin-bottom:6px;font-size:13px}
+    input[type="text"],input[type="email"],select{
+      padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit;
+      outline:none;font-size:14px
+    }
+    .small{font-size:13px;color:var(--muted)}
+
+    /* Dashboard demo (hidden until "Try it") */
+    .dashboard{
+      margin-top:28px;
+      padding:18px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+      border:1px solid rgba(255,255,255,0.03);
+    }
+    .dash-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px}
+    .card{background:linear-gradient(180deg, rgba(0,0,0,0.2), transparent);padding:12px;border-radius:10px}
+    .kpi{display:flex;gap:12px;align-items:center}
+    .kpi b{font-size:22px}
+
+    /* Responsiveness */
+    @media (max-width:1000px){
+      .hero{grid-template-columns:1fr}
+      .modal-grid{grid-template-columns:1fr}
+      .features{grid-template-columns:repeat(2,1fr)}
+      .pricing{flex-direction:column}
+      .testimonials{flex-direction:column}
+      .dash-grid{grid-template-columns:1fr}
+    }
+
+    @media (max-width:520px){
+      body{padding:18px}
+      h1{font-size:26px}
+      .brand span{display:none}
+      .stats{flex-direction:column}
+      nav.links{display:none}
+    }
+
+    /* Utility */
+    .muted{color:var(--muted)}
+    .hidden{display:none}
+    .visually-hidden{position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="nav" role="banner">
+      <a class="brand" href="#" aria-label="Nimbus home">
+        <div class="logo" aria-hidden="true">N</div>
+        <div>
+          <div style="font-weight:800">Nimbus</div>
+          <div class="small muted">Analytics · Automations · Teams</div>
+        </div>
+      </a>
+
+      <nav class="links" role="navigation" aria-label="Primary">
+        <a href="#features">Features</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#dashboard">Demo</a>
+        <a href="#docs">Docs</a>
+      </nav>
+
+      <div style="display:flex;gap:12px;align-items:center">
+        <a class="cta" id="try-free" href="#try" role="button">Start free</a>
+        <a class="btn btn-ghost" id="signin" href="#signin">Sign in</a>
+      </div>
+    </header>
+
+    <!-- HERO -->
+    <section class="hero" aria-labelledby="hero-heading">
+      <div class="hero-card" role="region" aria-label="Main introduction">
+        <span class="eyebrow">Trusted by teams — 202k+ users</span>
+        <h1 id="hero-heading">Smart insights and automations that scale your team</h1>
+        <p class="lead">Nimbus connects all your data sources, surfaces actionable insights, and automates repeated work — so teams focus on outcomes, not plumbing.</p>
+
+        <div class="hero-actions">
+          <button class="btn btn-primary" id="open-signup" aria-haspopup="dialog">Create account — it's free</button>
+          <a class="btn btn-ghost" href="#video" aria-label="Watch introduction video">Watch intro</a>
+        </div>
+
+        <div class="stats" role="list" aria-label="Key stats">
+          <div class="stat" role="listitem"><div class="small muted">Avg time saved</div><b>12 hrs/wk</b></div>
+          <div class="stat" role="listitem"><div class="small muted">Integrations</div><b>45+</b></div>
+          <div class="stat" role="listitem"><div class="small muted">SLA uptime</div><b>99.95%</b></div>
+        </div>
+
+        <div style="margin-top:18px;color:var(--muted);font-size:13px">No credit card required • Cancel anytime</div>
+      </div>
+
+      <aside class="preview" aria-label="Product preview">
+        <div class="panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div class="chip">Workspace · Acme Inc.</div>
+            <div class="small muted">Updated 2m ago</div>
+          </div>
+
+          <div class="mock" aria-hidden="true">
+            <div class="row">
+              <div style="font-weight:800">Revenue dashboard</div>
+              <div class="small muted">USD</div>
+            </div>
+
+            <div style="display:flex;gap:12px;align-items:flex-end">
+              <div style="flex:1">
+                <div style="height:120px;background:linear-gradient(90deg, rgba(124,230,201,0.08), rgba(108,140,255,0.06));border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:700">Chart</div>
+              </div>
+              <div style="width:120px">
+                <div style="background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;text-align:center">
+                  <div class="small muted">MRR</div>
+                  <div style="font-weight:800;font-size:18px">$48.3k</div>
+                </div>
+                <div style="height:8px"></div>
+                <div style="background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;text-align:center">
+                  <div class="small muted">Churn</div>
+                  <div style="font-weight:800;font-size:18px">1.2%</div>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:8px;justify-content:space-between;margin-top:auto">
+              <div class="small muted">Active users: <strong style="color:var(--accent)">3,842</strong></div>
+              <div class="small muted">Tasks: 42 pending</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-weight:800">Integrations</div>
+            <div class="small muted">Slack · Stripe · Postgres · HubSpot</div>
+          </div>
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M3 7h18" stroke="rgba(255,255,255,0.06)" stroke-width="2" stroke-linecap="round"/>
+            <path d="M3 12h18" stroke="rgba(255,255,255,0.06)" stroke-width="2" stroke-linecap="round"/>
+            <path d="M3 17h18" stroke="rgba(255,255,255,0.06)" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </aside>
+    </section>
+
+    <!-- FEATURES -->
+    <section id="features" class="features" aria-label="Key features">
+      <article class="feature" aria-labelledby="f1">
+        <h3 id="f1">Unified Data Layer</h3>
+        <p>Connect databases, warehouses, and apps in minutes — schema mapping and transformations included.</p>
+      </article>
+
+      <article class="feature" aria-labelledby="f2">
+        <h3 id="f2">Automations</h3>
+        <p>Trigger flows from events, schedule jobs, or use pre-built templates to automate repetitive work.</p>
+      </article>
+
+      <article class="feature" aria-labelledby="f3">
+        <h3 id="f3">Collaborative Notebooks</h3>
+        <p>Share dashboards, write notes, and assign tasks directly to teammates in context.</p>
+      </article>
+    </section>
+
+    <!-- PRICING -->
+    <section id="pricing" aria-label="Pricing plans">
+      <h2 style="margin-top:0">Plans that scale with you</h2>
+      <div class="pricing">
+        <div class="plan">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-weight:800">Starter</div>
+              <div class="small muted">For small teams</div>
+            </div>
+            <div class="price">$0<span class="small muted"> / mo</span></div>
+          </div>
+          <ul>
+            <li>Up to 3 users</li>
+            <li>Basic integrations</li>
+            <li>Email support</li>
+          </ul>
+          <div style="margin-top:12px">
+            <button class="btn btn-primary" onclick="openSignup('Starter')">Get started</button>
+          </div>
+        </div>
+
+        <div class="plan" style="border:2px solid rgba(108,140,255,0.12);box-shadow:0 12px 40px rgba(108,140,255,0.06)">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-weight:800">Pro</div>
+              <div class="small muted">Growing teams</div>
+            </div>
+            <div class="price">$29<span class="small muted"> / mo</span></div>
+          </div>
+          <ul>
+            <li>Unlimited users</li>
+            <li>All integrations</li>
+            <li>Priority support</li>
+          </ul>
+          <div style="margin-top:12px">
+            <button class="btn btn-primary" onclick="openSignup('Pro')">Try Pro</button>
+          </div>
+        </div>
+
+        <div class="plan">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-weight:800">Enterprise</div>
+              <div class="small muted">Advanced security</div>
+            </div>
+            <div class="price">Custom</div>
+          </div>
+          <ul>
+            <li>SAML & SSO</li>
+            <li>Dedicated support</li>
+            <li>SLAs & compliance</li>
+          </ul>
+          <div style="margin-top:12px">
+            <button class="btn btn-ghost" onclick="contactSales()">Contact sales</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TESTIMONIALS -->
+    <section class="testimonials" aria-label="Testimonials">
+      <div class="testimonial">
+        <div style="font-weight:800">"Nimbus saved our analytics team 30% of their time."</div>
+        <div class="small muted" style="margin-top:10px">— Maya Chen, Head of Analytics, Tranquil</div>
+      </div>
+
+      <div class="testimonial">
+        <div style="font-weight:800">"Building automations was delightfully fast."</div>
+        <div class="small muted" style="margin-top:10px">— David Ruiz, CTO, Verto</div>
+      </div>
+    </section>
+
+    <!-- Dashboard demo (hidden until user "Starts free") -->
+    <section id="dashboard" aria-label="Interactive demo">
+      <div id="demo-cta" style="display:block">
+        <div style="font-weight:800;font-size:18px;margin-bottom:12px">Instant demo available</div>
+        <div class="small muted">Click "Create account" to see a live demo of the dashboard and automations.</div>
+      </div>
+
+      <div id="demo-panel" class="dashboard hidden" aria-hidden="true">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div style="font-weight:800">Acme Inc. — Overview</div>
+          <div class="small muted">Last updated: <strong id="demo-updated">just now</strong></div>
+        </div>
+
+        <div class="dash-grid">
+          <div>
+            <div class="card" style="margin-bottom:12px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                  <div class="small muted">Monthly recurring revenue</div>
+                  <div style="font-size:22px;font-weight:800">$48,340</div>
+                </div>
+                <div style="text-align:right">
+                  <div class="small muted">Change</div>
+                  <div style="color:var(--accent-2);font-weight:800">+6.2%</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                <div style="font-weight:800">Automations</div>
+                <div class="small muted">3 active</div>
+              </div>
+              <div class="small muted">- Billing reminders sent automatically<br>- Lead routing flow<br>- Weekly metrics export</div>
+            </div>
+          </div>
+
+          <aside>
+            <div class="card" style="margin-bottom:12px">
+              <div style="font-weight:800;margin-bottom:6px">Top customers</div>
+              <div class="small muted">
+                <ol style="margin:0 0 0 18px;padding:0">
+                  <li>Polaris Co. — $12.3k</li>
+                  <li>Blue Harbor — $8.7k</li>
+                  <li>Velox — $4.1k</li>
+                </ol>
+              </div>
+            </div>
+
+            <div class="card">
+              <div style="font-weight:800;margin-bottom:6px">Quick actions</div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <button class="btn btn-primary" onclick="simulateExport()">Export report</button>
+                <button class="btn btn-ghost" onclick="openAutomation()">Edit automation</button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <footer role="contentinfo">
+      <div>© <strong>Nimbus</strong> — Built with care</div>
+      <div class="muted">Privacy · Terms · Status</div>
+    </footer>
+  </div>
+
+  <!-- Signup Modal -->
+  <div id="modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modal-title">
+    <div class="modal" role="document">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div>
+          <div style="font-weight:800" id="modal-title">Create your Nimbus account</div>
+          <div class="small muted" id="modal-sub">Start with a 14-day free trial — no card required</div>
+        </div>
+        <button aria-label="Close dialog" id="close-modal" class="btn btn-ghost">✕</button>
+      </div>
+
+      <div class="modal-grid">
+        <form id="signup-form" onsubmit="return submitSignup(event)" novalidate>
+          <div class="form-field">
+            <label for="fullName">Full name</label>
+            <input id="fullName" name="fullName" type="text" required placeholder="Alex Johnson" />
+            <div class="small muted">Use your work email for faster setup.</div>
+          </div>
+
+          <div class="form-field">
+            <label for="email">Work email</label>
+            <input id="email" name="email" type="email" required placeholder="you@company.com" />
+          </div>
+
+          <div class="form-field">
+            <label for="company">Company</label>
+            <input id="company" name="company" type="text" placeholder="Acme Inc." />
+          </div>
+
+          <div class="form-field">
+            <label for="plan">Select plan</label>
+            <select id="plan" name="plan" aria-label="Choose plan">
+              <option>Starter</option>
+              <option>Pro</option>
+              <option>Enterprise</option>
+            </select>
+          </div>
+
+          <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+            <button class="btn btn-primary" type="submit">Create account</button>
+            <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+          </div>
+        </form>
+
+        <div style="padding-left:12px;border-left:1px dashed rgba(255,255,255,0.03)">
+          <div style="font-weight:800;margin-bottom:8px">What you get</div>
+          <ul style="margin:0;padding-left:18px;color:var(--muted)">
+            <li>14-day trial of Pro features</li>
+            <li>Up to 10 integrations</li>
+            <li>Email support + onboarding guide</li>
+          </ul>
+
+          <div style="margin-top:18px">
+            <div class="small muted">Security</div>
+            <div style="font-weight:800;margin-top:6px">SOC2 Type II</div>
+            <div class="small muted" style="margin-top:6px">SSO, SAML, SCIM available on Enterprise</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Minimal JS for interactions -->
+  <script>
+    (function(){
+      // Accessibility helpers
+      const modal = document.getElementById('modal');
+      const openBtns = document.querySelectorAll('#open-signup, #try-free, #signin, .plan .btn-primary, #open-signup');
+      const closeBtn = document.getElementById('close-modal');
+      const demoPanel = document.getElementById('demo-panel');
+      const demoCta = document.getElementById('demo-cta');
+
+      // Open modal
+      function showModal(defaultPlan){
+        modal.style.display = 'flex';
+        modal.setAttribute('aria-hidden','false');
+        document.body.style.overflow = 'hidden';
+        const planSelect = document.getElementById('plan');
+        if(defaultPlan && planSelect){
+          planSelect.value = (['Starter','Pro','Enterprise'].includes(defaultPlan) ? defaultPlan : 'Starter');
+        }
+        // focus trap: focus first input
+        setTimeout(()=>document.getElementById('fullName').focus(),50);
+      }
+      window.openSignup = function(defaultPlan){
+        showModal(defaultPlan);
+      }
+      // Close modal
+      window.closeModal = function(){
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden','true');
+        document.body.style.overflow = '';
+      }
+      closeBtn.addEventListener('click', closeModal);
+      modal.addEventListener('click', function(e){
+        if(e.target === modal) closeModal();
+      });
+      document.addEventListener('keydown', function(e){
+        if(e.key === 'Escape' && modal.getAttribute('aria-hidden') === 'false') closeModal();
+      });
+
+      // wire open buttons
+      document.getElementById('open-signup').addEventListener('click', ()=>showModal('Starter'));
+      document.getElementById('try-free').addEventListener('click', ()=>showModal('Starter'));
+      document.getElementById('signin').addEventListener('click', function(e){
+        e.preventDefault();
+        alert('Sign-in flow not implemented in this demo. Use "Create account" to try the demo.');
+      });
+
+      // Basic signup handler (simulated)
+      window.submitSignup = function(e){
+        e.preventDefault();
+        const form = e.target;
+        const name = form.fullName.value.trim();
+        const email = form.email.value.trim();
+        const plan = form.plan.value;
+
+        // Basic validation
+        if(!name || !email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)){
+          alert('Please provide a valid name and work email.');
+          return false;
+        }
+
+        // Simulate account creation then show demo
+        closeModal();
+        // reveal demo panel
+        demoPanel.classList.remove('hidden');
+        demoPanel.setAttribute('aria-hidden','false');
+        demoCta.style.display = 'none';
+        // personalize demo header
+        const title = document.querySelector('#demo-panel > div[style]') || null;
+        const now = new Date();
+        document.getElementById('demo-updated').textContent = now.toLocaleTimeString();
+
+        // small toast
+        showToast('Welcome, ' + name.split(' ')[0] + '! Your ' + plan + ' trial is active.');
+        return false;
+      }
+
+      // Contact sales placeholder
+      window.contactSales = function(){ alert('Contact sales at sales@nimbus.example — this is a demo.'); }
+
+      // Simulate export action
+      window.simulateExport = function(){
+        showToast('Export started — we will email you the CSV.');
+      }
+
+      window.openAutomation = function(){
+        showToast('Opening automation editor (demo).');
+      }
+
+      // Toast
+      function showToast(msg){
+        const t = document.createElement('div');
+        t.textContent = msg;
+        Object.assign(t.style,{
+          position:'fixed',right:'20px',bottom:'20px',padding:'10px 14px',background:'rgba(2,8,30,0.85)',border:'1px solid rgba(255,255,255,0.04)',borderRadius:'10px',zIndex:100,fontWeight:700
+        });
+        document.body.appendChild(t);
+        setTimeout(()=>{ t.style.transition='opacity 300ms'; t.style.opacity='0'; }, 2400);
+        setTimeout(()=>document.body.removeChild(t),2700);
+      }
+
+      // Small helpful function for onclick attributes referencing global functions
+      window.openSignup = window.openSignup || function(p){ showModal(p); }
+    })();
+  </script>
+</body>
+</html>

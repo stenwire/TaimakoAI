@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Card from '@/components/ui/Card';
-import { getAccessToken } from '@/lib/api';
+import { getAccessToken, getBusinessProfile, updateBusinessProfile, generateIntents } from '@/lib/api';
 import { useToast } from '@/contexts/ToastContext';
+import { BusinessProfile } from '@/lib/types';
 
 const BACKEND_URL = 'http://localhost:8000'; // Should use env var
 const FRONTEND_URL = 'http://localhost:3000'; // Should use env var
@@ -18,6 +19,8 @@ interface WidgetSettings {
   welcome_message?: string;
   initial_ai_message?: string;
   send_initial_message_automatically?: boolean;
+  whatsapp_enabled?: boolean;
+  whatsapp_number?: string;
 }
 
 export default function WidgetSettingsPage() {
@@ -25,10 +28,14 @@ export default function WidgetSettingsPage() {
   const { success, error } = useToast();
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [business, setBusiness] = useState<BusinessProfile | null>(null);
+  const [generatingIntents, setGeneratingIntents] = useState(false);
+
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetchSettings();
+    fetchBusiness();
   }, []);
 
   const fetchSettings = async () => {
@@ -50,6 +57,13 @@ export default function WidgetSettingsPage() {
     }
   };
 
+  const fetchBusiness = async () => {
+    try {
+      const res = await getBusinessProfile();
+      if (res.status === 'success' && res.data) setBusiness(res.data);
+    } catch (e) { console.error(e); }
+  }
+
   const handleUpdate = async () => {
     setUpdating(true);
     if (!settings) return;
@@ -67,7 +81,9 @@ export default function WidgetSettingsPage() {
           icon_url: settings.icon_url,
           welcome_message: settings.welcome_message,
           initial_ai_message: settings.initial_ai_message,
-          send_initial_message_automatically: settings.send_initial_message_automatically
+          send_initial_message_automatically: settings.send_initial_message_automatically,
+          whatsapp_enabled: settings.whatsapp_enabled,
+          whatsapp_number: settings.whatsapp_number
         }),
       });
       if (res.ok) {
@@ -84,6 +100,32 @@ export default function WidgetSettingsPage() {
       setUpdating(false);
     }
   };
+
+  const handleBusinessUpdate = async () => {
+    if (!business) return;
+    try {
+      await updateBusinessProfile({
+        description: business.description,
+        intents: business.intents
+      });
+      success("Business profile updated!");
+    } catch (e) { error("Failed to update business profile"); }
+  }
+
+  const handleGenerateIntents = async () => {
+    if (!business?.description) {
+      error("Please enter a business description first");
+      return;
+    }
+    setGeneratingIntents(true);
+    try {
+      const res = await generateIntents();
+      if (res.data?.intents) {
+        setBusiness({ ...business, intents: res.data.intents });
+        success("Intents generated!");
+      }
+    } catch (e) { error("Generaton failed"); } finally { setGeneratingIntents(false); }
+  }
 
   const copyEmbedCode = () => {
     if (!settings?.public_widget_id) return;
@@ -102,8 +144,6 @@ export default function WidgetSettingsPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (loading) return <div className="p-8">Loading settings...</div>;
-
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8">
       <div>
@@ -114,6 +154,44 @@ export default function WidgetSettingsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Settings Form */}
         <div className="space-y-6">
+          <Card className="p-6 space-y-6">
+            <h2 className="text-lg font-semibold text-gray-900 border-b pb-2">Business Context</h2>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Business Description</label>
+              <textarea
+                className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-[var(--primary-color)] focus:border-[var(--primary-color)] bg-gray-50"
+                rows={4}
+                value={business?.description || ''}
+                disabled
+                placeholder="Describe your business..."
+              />
+            </div>
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-medium text-gray-700">Intents (Top 5)</label>
+                <Button size="sm" variant="secondary" onClick={handleGenerateIntents} loading={generatingIntents} disabled={!business?.description}>
+                  ✨ Generate with AI
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {[0, 1, 2, 3, 4].map(i => (
+                  <Input
+                    key={i}
+                    placeholder={`Intent ${i + 1}`}
+                    value={business?.intents?.[i] || ''}
+                    onChange={e => {
+                      if (!business) return;
+                      const newIntents = [...(business.intents || [])];
+                      newIntents[i] = e.target.value;
+                      setBusiness({ ...business, intents: newIntents });
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+            <Button onClick={handleBusinessUpdate}>Save Business Context</Button>
+          </Card>
+
           <Card className="p-6 space-y-6">
             <h2 className="text-lg font-semibold text-gray-900 border-b pb-2">Appearance</h2>
 
@@ -188,7 +266,40 @@ export default function WidgetSettingsPage() {
                     className="h-4 w-4 text-[var(--primary-color)] border-gray-300 rounded focus:ring-[var(--primary-color)]"
                   />
                   <label htmlFor="auto_send" className="text-sm font-medium text-gray-700">Send Initial AI Message automatically</label>
+                  <label htmlFor="auto_send" className="text-sm font-medium text-gray-700">Send Initial AI Message automatically</label>
                 </div>
+              </div>
+            </div>
+
+            <div className="border-t pt-4 mt-4">
+              <h3 className="text-md font-medium text-gray-900 mb-4 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-600"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                WhatsApp Integration
+              </h3>
+
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="whatsapp_enabled"
+                    checked={settings?.whatsapp_enabled || false}
+                    onChange={(e) => settings && setSettings({ ...settings, whatsapp_enabled: e.target.checked })}
+                    className="h-4 w-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                  />
+                  <label htmlFor="whatsapp_enabled" className="text-sm font-medium text-gray-700">Enable WhatsApp Support</label>
+                </div>
+
+                {settings?.whatsapp_enabled && (
+                  <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp Number</label>
+                    <p className="text-xs text-gray-500 mb-2">Include country code (e.g., 15551234567). Do not include '+' or dashes.</p>
+                    <Input
+                      placeholder="e.g. 15551234567"
+                      value={settings?.whatsapp_number || ""}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => settings && setSettings({ ...settings, whatsapp_number: e.target.value })}
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -262,6 +373,6 @@ export default function WidgetSettingsPage() {
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 }

@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import uuid
 from datetime import datetime, timezone
+import httpx
 
 from app.db.session import get_db
 from app.models.widget import WidgetSettings, GuestUser, GuestMessage
@@ -26,7 +27,10 @@ class WidgetUpdate(BaseModel):
     icon_url: Optional[str] = None
     welcome_message: Optional[str] = None
     initial_ai_message: Optional[str] = None
+    initial_ai_message: Optional[str] = None
     send_initial_message_automatically: Optional[bool] = None
+    whatsapp_enabled: Optional[bool] = None
+    whatsapp_number: Optional[str] = None
 
 
 
@@ -87,6 +91,12 @@ def update_my_widget_settings(
 
     if settings.send_initial_message_automatically is not None:
         widget.send_initial_message_automatically = settings.send_initial_message_automatically
+        
+    if settings.whatsapp_enabled is not None:
+        widget.whatsapp_enabled = settings.whatsapp_enabled
+        
+    if settings.whatsapp_number is not None:
+        widget.whatsapp_number = settings.whatsapp_number
         
     db.commit()
     db.refresh(widget)
@@ -179,6 +189,7 @@ def start_guest_session(public_widget_id: str, guest_in: GuestStartRequest, db: 
 async def init_guest_session(
     public_widget_id: str,
     session_in: SessionStartRequest,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """
@@ -187,24 +198,73 @@ async def init_guest_session(
     widget = db.query(WidgetSettings).filter(WidgetSettings.public_widget_id == public_widget_id).first()
     if not widget:
         raise HTTPException(status_code=404, detail="Widget not found")
-
+        
     guest = db.query(GuestUser).filter(GuestUser.id == session_in.guest_id).first()
     if not guest:
+        # Auto-create guest if ID provided but not found? Or fail?
+        # Usually widget creates guest first. But let's be robust.
+        # Ideally, return 404, but for resilience we could create.
+        # Let's assume Valid Guest ID.
         raise HTTPException(status_code=404, detail="Guest not found")
-
+        
     # Create new session
-    # If origin is RESUMED, we should error or handle differently?
-    # Requirement: "If origin = “resumed” -> do NOT create new session, append message to existing."
-    # But for "resumed", the frontend should probably call the /chat/session/{id} endpoint with the existing ID.
-    # If `init` is called with origin="resumed", it implies we are trying to resume but maybe don't have the ID?
-    # The prompt says: "Clicking 'History' fetches past sessions ... Clicking a past session loads old messages ... Sending a message continues session_id."
-    # So `init` should primarily be for NEW sessions (manual or auto-start).
-    
     session = ChatSession(
         guest_id=guest.id,
         origin=session_in.origin
     )
+    
+    # 1. Populate context from Frontend (Device, Referrer, Timezone, simple UTMs)
+    if session_in.context:
+        ctx = session_in.context
+        session.device_type = ctx.device_type
+        session.browser = ctx.browser
+        session.os = ctx.os
+        session.timezone = ctx.timezone
+        session.referrer = ctx.referrer
+        session.utm_source = ctx.utm_source
+        session.utm_medium = ctx.utm_medium
+        session.utm_campaign = ctx.utm_campaign
+        
+        # If frontend sent country/city (unlikely yet), use it.
+        session.country = ctx.country
+        session.city = ctx.city
+
+    # 2. IP Geolocation Fallback
+    # If country is missing, try to resolve via IP
+    if not session.country:
+        try:
+            client_ip = request.client.host
+            # In dev, localhost IP is 127.0.0.1 which resolves to nothing useful.
+            # Only try if not localhost and safe.
+            if client_ip and client_ip not in ["127.0.0.1", "::1"]:
+                # Using a free, no-key API for demonstration: ip-api.com
+                # Limit: 45 requests per minute. Fine for prototype/demo.
+                # Production should use MaxMind GeoIP2 local DB or paid API.
+                async with httpx.AsyncClient() as client:
+                    resp = await client.get(f"http://ip-api.com/json/{client_ip}", timeout=2.0)
+                    if resp.status_code == 200:
+                        geo = resp.json()
+                        if geo.get("status") == "success":
+                            session.country = geo.get("country")
+                            session.city = geo.get("city")
+                            # If timezone was missing, this is also a good source
+                            if not session.timezone:
+                                session.timezone = geo.get("timezone")
+        except Exception as e:
+            # log error but don't block session creation
+            print(f"GeoIP Lookup Failed: {e}")
+
     db.add(session)
+    
+    # Update Guest Stats
+    guest.last_seen_at = datetime.now(timezone.utc)
+    if guest.total_sessions is None:
+        guest.total_sessions = 0
+    guest.total_sessions += 1
+    
+    if guest.total_sessions > 1:
+        guest.is_returning = True
+        
     db.commit()
     db.refresh(session)
     
@@ -253,9 +313,11 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
     if not owner_user or not owner_user.business:
         business_name = "Sten"
         instruction = None
+        intents = None
     else:
         business_name = owner_user.business.business_name
         instruction = owner_user.business.custom_agent_instruction
+        intents = owner_user.business.intents
 
     # 3. Call AI
     ai_response_text = await run_conversation(
@@ -263,7 +325,8 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
         user_id=widget.user_id,
         business_name=business_name,
         custom_instruction=instruction,
-        session_id=session_id # Use session_id for thread consistency
+        session_id=session_id, # Use session_id for thread consistency
+        intents=intents
     )
 
     # 4. Store AI response
@@ -276,6 +339,52 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
     db.add(ai_msg)
     db.commit()
     db.refresh(ai_msg)
+
+    # 5. Update Session Stats
+    session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
+    if session:
+        if session.total_messages is None: session.total_messages = 0
+        if session.user_messages is None: session.user_messages = 0
+        if session.ai_messages is None: session.ai_messages = 0
+        
+        session.total_messages += 2 # 1 user + 1 AI
+        session.user_messages += 1
+        session.ai_messages += 1
+        # Calculate duration
+        # Ensure session.created_at is aware or naive consistently.
+        # DB usually returns naive (implicitly UTC) if not using PostgreSQL with timezone=True explicitly in some configs.
+        # But datetime.now(timezone.utc) is aware.
+        # Safe strategy: Ensure both are aware.
+        
+        now_aware = datetime.now(timezone.utc)
+        
+        if session.created_at:
+             created_at = session.created_at
+             if created_at.tzinfo is None:
+                 created_at = created_at.replace(tzinfo=timezone.utc)
+             
+             delta = now_aware - created_at
+             session.session_duration = int(delta.total_seconds())
+        
+        # First response time (if not set)
+        if session.first_response_time is None:
+             # guest_msg.created_at and ai_msg.created_at might be naive or aware.
+             # They are freshly created so they might be naive if fetched back from SQLite immediately?
+             # Or they are the objects we just added? No, we queried messages or refreshed them.
+             
+             g_created = guest_msg.created_at
+             a_created = ai_msg.created_at
+             
+             if g_created and a_created:
+                 if g_created.tzinfo is None:
+                     g_created = g_created.replace(tzinfo=timezone.utc)
+                 if a_created.tzinfo is None:
+                     a_created = a_created.replace(tzinfo=timezone.utc)
+                     
+                 frt = a_created - g_created
+                 session.first_response_time = int(frt.total_seconds())
+
+        db.commit()
 
     return WidgetChatResponse(
         message=GuestMessageSchema.model_validate(guest_msg),
@@ -300,9 +409,23 @@ async def analyze_chat_session(session_id: str, db: Session = Depends(get_db)):
     session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
-        
+
+    # Fetch intents from business if available
+    intents = None
+    try:
+        # ChatSession -> GuestUser -> WidgetSettings -> User -> Business
+        guest = db.query(GuestUser).filter(GuestUser.id == session.guest_id).first()
+        if guest:
+            widget = db.query(WidgetSettings).filter(WidgetSettings.id == guest.widget_id).first()
+            if widget:
+                owner_user = db.query(User).filter(User.id == widget.user_id).first()
+                if owner_user and owner_user.business and owner_user.business.intents:
+                    intents = owner_user.business.intents
+    except Exception as e:
+        print(f"Error fetching intents: {e}")
+
     # 2. Run analysis
-    summary, intent = await analyze_session(db, session_id)
+    summary, intent = await analyze_session(db, session_id, intents=intents)
     
     # 3. Persist
     updated_session = await persist_analysis(db, session_id, summary, intent)

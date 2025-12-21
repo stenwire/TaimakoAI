@@ -32,6 +32,7 @@ class WidgetChatRequest(BaseModel):
 class GuestMessageSchema(BaseModel):
     id: str
     guest_id: str
+    session_id: str
     sender: str  # "guest" or "ai"
     message_text: str
     created_at: datetime
@@ -51,16 +52,33 @@ class WidgetConfigResponse(BaseModel):
     icon_url: Optional[str]
     welcome_message: Optional[str]
     initial_ai_message: Optional[str]
+    initial_ai_message: Optional[str]
     send_initial_message_automatically: Optional[bool] = True
+    whatsapp_enabled: Optional[bool] = False
+    whatsapp_number: Optional[str] = None
     
     class Config:
         from_attributes = True
+
+# Context Data
+class WidgetContext(BaseModel):
+    device_type: Optional[str] = None
+    browser: Optional[str] = None
+    os: Optional[str] = None
+    country: Optional[str] = None
+    city: Optional[str] = None
+    timezone: Optional[str] = None
+    referrer: Optional[str] = None
+    utm_source: Optional[str] = None
+    utm_medium: Optional[str] = None
+    utm_campaign: Optional[str] = None
 
 # Session Management
 class SessionStartRequest(BaseModel):
     guest_id: str
     message: str
     origin: str = "auto-start" # manual, auto-start, resumed
+    context: Optional[WidgetContext] = None
 
 class SessionHistoryResponse(BaseModel):
     id: str

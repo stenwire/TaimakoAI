@@ -19,6 +19,11 @@ class BaseFileStorage(ABC):
         """Lists files for a user."""
         pass
 
+    @abstractmethod
+    def delete(self, file_path: str) -> bool:
+        """Deletes a file."""
+        pass
+
 class LocalFileStorage(BaseFileStorage):
     def __init__(self, base_dir: str = "uploads"):
         self.base_dir = base_dir
@@ -45,5 +50,12 @@ class LocalFileStorage(BaseFileStorage):
         if not os.path.exists(user_dir):
             return []
         return os.listdir(user_dir)
+
+    def delete(self, file_path: str) -> bool:
+        full_path = self.get_full_path(file_path)
+        if os.path.exists(full_path):
+            os.remove(full_path)
+            return True
+        return False
 
 file_storage = LocalFileStorage()

@@ -11,6 +11,7 @@ from app.models.document import Document
 from app.models.business import Business  # Import Business model
 from app.models.widget import WidgetSettings, GuestUser, GuestMessage
 from app.models.chat_session import ChatSession
+from app.models.analytics import AnalyticsDailySummary
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

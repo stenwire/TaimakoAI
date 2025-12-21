@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getAccessToken } from '@/lib/api';
+import { getAccessToken, generateFollowUp } from '@/lib/api';
 import Card from '@/components/ui/Card';
 import Modal from '@/components/ui/Modal';
 import { User, MessageSquare, Clock, Smartphone, RefreshCw, RotateCcw, Sparkles } from 'lucide-react';
@@ -114,9 +114,26 @@ export default function WidgetInteractionsPage() {
     }
   };
 
+  // Follow-up Logic
+  const [followUpType, setFollowUpType] = useState('email');
+  const [followUpInfo, setFollowUpInfo] = useState('');
+  const [generatingFollowUp, setGeneratingFollowUp] = useState(false);
+  const [followUpResult, setFollowUpResult] = useState('');
+
+  const handleGenerateFollowUp = async () => {
+    if (!selectedSessionId) return;
+    setGeneratingFollowUp(true);
+    try {
+      const res = await generateFollowUp(selectedSessionId, followUpType, followUpInfo);
+      if (res.data?.content) setFollowUpResult(res.data.content);
+    } catch (e) { console.error(e); } finally { setGeneratingFollowUp(false); }
+  };
+
   const loadSessionTranscript = async (sessionId: string) => {
     setSelectedSessionId(sessionId);
     setLoadingMessages(true);
+    setFollowUpResult(''); // Clear previous result
+    setFollowUpInfo('');   // Clear previous info
     try {
       const token = getAccessToken();
       const res = await fetch(`${BACKEND_URL}/widgets/session/${sessionId}/messages`, { // New endpoint for session msgs
@@ -319,6 +336,53 @@ export default function WidgetInteractionsPage() {
                       Click analyze to generate insights for this session.
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Follow-up Section */}
+              {selectedSessionId && (
+                <div className="p-4 border-b bg-gray-50/50">
+                  <h3 className="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-blue-600" />
+                    Generate Follow-up
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex gap-2 items-start">
+                      <select
+                        value={followUpType}
+                        onChange={e => setFollowUpType(e.target.value)}
+                        className="text-sm border border-gray-300 rounded-md p-2 bg-white focus:ring-indigo-500 focus:border-indigo-500"
+                      >
+                        <option value="email">Email</option>
+                        <option value="transcript">Transcript</option>
+                      </select>
+                      <input
+                        type="text"
+                        placeholder="Any extra info to include?"
+                        className="flex-1 text-sm border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        value={followUpInfo}
+                        onChange={e => setFollowUpInfo(e.target.value)}
+                      />
+                      <button
+                        onClick={handleGenerateFollowUp}
+                        disabled={generatingFollowUp}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 whitespace-nowrap transition-colors"
+                      >
+                        {generatingFollowUp ? 'Generating...' : 'Generate'}
+                      </button>
+                    </div>
+                    {followUpResult && (
+                      <div className="mt-2 animate-in fade-in zoom-in duration-200">
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Generated Result</label>
+                        <textarea
+                          readOnly
+                          value={followUpResult}
+                          className="w-full text-sm p-3 border border-gray-200 rounded-md bg-white shadow-sm focus:ring-indigo-500 focus:border-indigo-500 font-mono"
+                          rows={6}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 

@@ -16,3 +16,10 @@ class IngestResponse(BaseModel):
     filename: str
     chunks_created: int
     status: str
+
+class DocumentResponse(BaseModel):
+    id: str
+    filename: str
+    status: str
+    created_at: datetime
+    error_message: Optional[str] = None

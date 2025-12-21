@@ -14,6 +14,7 @@ export interface BusinessProfile {
   description: string;
   website: string;
   custom_agent_instruction: string;
+  intents?: string[];
   created_at: string;
   updated_at: string;
 }
@@ -23,6 +24,7 @@ export interface CreateBusinessProfileData {
   description: string;
   website: string;
   custom_agent_instruction: string;
+  intents?: string[];
 }
 
 export interface UpdateBusinessProfileData {
@@ -30,13 +32,16 @@ export interface UpdateBusinessProfileData {
   description?: string;
   website?: string;
   custom_agent_instruction?: string;
+  intents?: string[];
 }
 
 // Document types
 export interface Document {
+  id: string;
   filename: string;
-  size?: number;
-  uploaded_at?: string;
+  status: string;
+  created_at: string;
+  error_message?: string;
 }
 
 export interface ProcessedDocument {
@@ -81,4 +86,27 @@ export interface ApiResponse<T> {
   status: 'success' | 'error';
   message?: string;
   data?: T;
+}
+// Widget types
+export interface WidgetSettings {
+  public_widget_id: string;
+  theme: string;
+  primary_color: string;
+  icon_url?: string;
+  welcome_message?: string;
+  initial_ai_message?: string;
+  send_initial_message_automatically?: boolean;
+  whatsapp_enabled?: boolean;
+  whatsapp_number?: string;
+}
+
+export interface UpdateWidgetSettings {
+  theme?: string;
+  primary_color?: string;
+  icon_url?: string;
+  welcome_message?: string;
+  initial_ai_message?: string;
+  send_initial_message_automatically?: boolean;
+  whatsapp_enabled?: boolean;
+  whatsapp_number?: string;
 }

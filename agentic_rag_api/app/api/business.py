@@ -6,6 +6,7 @@ from app.models.user import User
 from app.models.business import Business
 from app.schemas.business import BusinessCreate, BusinessUpdate, BusinessResponse
 from app.core.response_wrapper import success_response
+from app.services.analysis_agent import generate_business_intents
 
 router = APIRouter()
 
@@ -70,6 +71,8 @@ async def update_business(
         business.website = business_data.website
     if business_data.custom_agent_instruction is not None:
         business.custom_agent_instruction = business_data.custom_agent_instruction
+    if business_data.intents is not None:
+        business.intents = business_data.intents
     
     db.commit()
     db.refresh(business)
@@ -78,3 +81,15 @@ async def update_business(
         message="Business profile updated successfully",
         data=BusinessResponse.model_validate(business)
     )
+
+@router.post("/business/generate-intents", response_model=None)
+async def generate_intents(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    business = db.query(Business).filter(Business.user_id == current_user.id).first()
+    if not business or not business.description:
+        raise HTTPException(status_code=400, detail="Business description is required to generate intents.")
+        
+    intents = await generate_business_intents(business.description)
+    return success_response(data={"intents": intents})

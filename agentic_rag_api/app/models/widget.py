@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Boolean
+from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Boolean, Integer
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from app.db.base import Base
@@ -21,7 +21,10 @@ class WidgetSettings(Base):
     icon_url = Column(String, nullable=True)
     welcome_message = Column(Text, default="Hi there! 👋")
     initial_ai_message = Column(Text, default="How can I help you today?")
+    initial_ai_message = Column(Text, default="How can I help you today?")
     send_initial_message_automatically = Column(Boolean, default=True)
+    whatsapp_enabled = Column(Boolean, default=False)
+    whatsapp_number = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -38,6 +41,12 @@ class GuestUser(Base):
     email = Column(String, nullable=True)
     phone = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # Analytics
+    first_seen_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    last_seen_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    total_sessions = Column(Integer, default=0)
+    is_returning = Column(Boolean, default=False)
 
     # Relationships
     widget = relationship("WidgetSettings", back_populates="guests")

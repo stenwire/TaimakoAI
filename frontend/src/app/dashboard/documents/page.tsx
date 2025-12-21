@@ -6,16 +6,18 @@ import { FileText, Upload, Database, RefreshCw, Trash2, CheckCircle, AlertCircle
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import SkeletonLoader from '@/components/ui/SkeletonLoader';
-import { uploadDocuments, listDocuments, processDocuments } from '@/lib/api';
+import { uploadDocuments, listDocuments, processDocuments, deleteDocument } from '@/lib/api';
+import { Document } from '@/lib/types';
 
 export default function DocumentsPage() {
-  const [documents, setDocuments] = useState<string[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDocuments();
@@ -85,6 +87,24 @@ export default function DocumentsPage() {
       setMessage({ type: 'error', text: 'Failed to process documents' });
     } finally {
       setProcessing(false);
+    }
+  };
+
+  const confirmDelete = (id: string) => {
+    setDeleteId(id);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    try {
+      await deleteDocument(deleteId);
+      setMessage({ type: 'success', text: 'Document deleted. Please run Process to update Knowledge Base.' });
+      fetchDocuments();
+      setTimeout(() => setMessage(null), 5000);
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to delete document' });
+    } finally {
+      setDeleteId(null);
     }
   };
 
@@ -247,15 +267,32 @@ export default function DocumentsPage() {
               <div className="space-y-2 max-h-[400px] overflow-y-auto">
                 {documents.map((doc, index) => (
                   <div
-                    key={index}
-                    className="table-row flex items-center justify-between p-3 rounded-[var(--radius-sm)]"
+                    key={doc.id || index}
+                    className="flex items-center justify-between p-3 rounded-[var(--radius-sm)] hover:bg-[var(--bg-secondary)] group gap-3"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-[var(--bg-secondary)] rounded-[var(--radius-sm)]">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="flex-shrink-0 p-2 bg-[var(--bg-secondary)] rounded-[var(--radius-sm)]">
                         <FileText className="w-4 h-4 text-[var(--success)]" />
                       </div>
-                      <span className="text-small text-[var(--text-primary)]">{doc}</span>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-small text-[var(--text-primary)] truncate">{doc.filename}</span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded-sm flex-shrink-0 ${doc.status === 'processed' ? 'bg-green-100 text-green-700' :
+                              doc.status === 'error' ? 'bg-red-100 text-red-700' :
+                                'bg-yellow-100 text-yellow-700'
+                            }`}>{doc.status}</span>
+                          {doc.error_message && <span className="text-[10px] text-red-500 truncate" title={doc.error_message}>{doc.error_message}</span>}
+                        </div>
+                      </div>
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => confirmDelete(doc.id)}
+                      className="text-[var(--error)] hover:bg-[var(--error-bg)] flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -263,6 +300,19 @@ export default function DocumentsPage() {
           </Card>
         </motion.div>
       </div>
+      {/* Delete Modal */}
+      {deleteId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4 shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Document?</h3>
+            <p className="text-sm text-gray-500 mb-6">Are you sure you want to delete this document? This action cannot be undone.</p>
+            <div className="flex justify-end gap-3">
+              <Button variant="secondary" onClick={() => setDeleteId(null)}>Cancel</Button>
+              <Button variant="primary" className="bg-red-600 hover:bg-red-700 text-white border-none" onClick={handleDelete}>Delete</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

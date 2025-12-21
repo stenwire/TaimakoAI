@@ -57,7 +57,8 @@ async def run_conversation(
     user_id: str = USER_ID,
     business_name: str = APP_NAME,
     custom_instruction: Optional[str] = None,
-    session_id: Optional[str] = None
+    session_id: Optional[str] = None,
+    intents: Optional[list] = None
 ):
     """
     Run a conversation with a dynamically configured agent.
@@ -68,6 +69,7 @@ async def run_conversation(
         business_name: Name of the business
         custom_instruction: Optional custom agent instructions
         session_id: Optional session identifier (defaults to user_id)
+        intents: Optional list of business intents
         
     Returns:
         Agent's response text
@@ -76,7 +78,7 @@ async def run_conversation(
         session_id = user_id
     
     # Create agent dynamically based on business configuration
-    agent = AgentFactory.create_rag_agent(business_name, custom_instruction)
+    agent = AgentFactory.create_rag_agent(business_name, custom_instruction, intents=intents)
     
     # Create runner with dynamic agent
     runner = Runner(

@@ -87,9 +87,20 @@
     iframeContainer.style.transform = "translateZ(0)"; // Force GPU layer
     iframeContainer.style.backfaceVisibility = "hidden";
 
+    // Capture context
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const referrer = document.referrer;
+    const locationInfo = window.location.href;
+
+    // Construct params
+    const params = new URLSearchParams();
+    if (referrer) params.append("ref", referrer);
+    params.append("loc", locationInfo);
+    params.append("tz", timezone);
+
     // Iframe
     const iframe = document.createElement("iframe");
-    iframe.src = `${FRONTEND_URL}/widget/${widgetId}`;
+    iframe.src = `${FRONTEND_URL}/widget/${widgetId}?${params.toString()}`;
     iframe.title = "Sten Chat Widget";
     iframe.allow = "clipboard-write";
     iframe.style.width = "100%";

@@ -93,16 +93,50 @@ class RAGService:
         db.commit()
         return results
 
-    def list_documents(self, user_id: str, db: Session) -> List[str]:
-        # Return filenames from DB
+    def list_documents(self, user_id: str, db: Session) -> List[dict]:
+        # Return docs from DB
         docs = db.query(Document).filter(Document.user_id == user_id).all()
-        return [doc.filename for doc in docs]
+        return [
+            {
+                "id": doc.id,
+                "filename": doc.filename, 
+                "status": doc.status, 
+                "created_at": doc.created_at,
+                "error_message": doc.error_message
+            } 
+            for doc in docs
+        ]
 
     def query(self, text: str, user_id: str) -> List[str]:
         # Query with user_id filter
         results = self.vector_db.query(text, where={"user_id": user_id})
         if results and results['documents']:
             return results['documents'][0]
+        if results and results['documents']:
+            return results['documents'][0]
         return []
+
+    def delete_document(self, document_id: str, user_id: str, db: Session) -> bool:
+        doc = db.query(Document).filter(Document.id == document_id, Document.user_id == user_id).first()
+        if not doc:
+            return False
+            
+        # Delete from Chroma
+        # Delete from Chroma
+        # Using $and operator for multiple conditions as required by newer Chroma versions
+        self.vector_db.delete(where={"$and": [{"filename": doc.filename}, {"user_id": user_id}]})
+        
+        # Delete file
+        try:
+            self.file_storage.delete(doc.file_path)
+        except Exception:
+            # Continue even if file delete fails (maybe already gone)
+            pass
+        
+        # Delete from DB
+        db.delete(doc)
+        db.commit()
+        
+        return True
 
 rag_service = RAGService()

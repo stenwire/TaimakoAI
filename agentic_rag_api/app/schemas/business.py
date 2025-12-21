@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 class BusinessBase(BaseModel):
@@ -7,6 +7,7 @@ class BusinessBase(BaseModel):
     description: Optional[str] = None
     website: Optional[str] = None
     custom_agent_instruction: Optional[str] = None
+    intents: Optional[List[str]] = None
 
 class BusinessCreate(BusinessBase):
     pass
@@ -16,6 +17,7 @@ class BusinessUpdate(BaseModel):
     description: Optional[str] = None
     website: Optional[str] = None
     custom_agent_instruction: Optional[str] = None
+    intents: Optional[List[str]] = None
 
 class BusinessResponse(BusinessBase):
     id: str

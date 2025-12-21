@@ -44,13 +44,14 @@ class AgentFactory:
         )
     
     @staticmethod
-    def create_rag_agent(business_name: str, custom_instruction: Optional[str] = None):
+    def create_rag_agent(business_name: str, custom_instruction: Optional[str] = None, intents: Optional[list] = None):
         """
         Create a RAG agent with business-specific configuration.
         
         Args:
             business_name: Name of the business
             custom_instruction: Optional custom instructions for the agent
+            intents: Optional list of business intents
             
         Returns:
             Configured Agent instance
@@ -61,6 +62,9 @@ class AgentFactory:
         # Use provided custom instruction or fallback to the default detailed placeholder
         instruction_to_use = custom_instruction if custom_instruction else DEFAULT_AGENT_INSTRUCTION
         base_instruction += f"{instruction_to_use}\n\n"
+        
+        if intents:
+            base_instruction += f"The business has defined the following key intents: {', '.join(intents)}. Keep these in mind when determining the user's intent.\n\n"
         
         base_instruction += (
             "For greetings, delegate to 'greeting_agent'. "

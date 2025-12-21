@@ -2,6 +2,15 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
+import {
+  MessageSquare,
+  Phone,
+  Clock,
+  RotateCcw,
+  Menu as MenuIcon,
+  X,
+  Send
+} from 'lucide-react';
 
 // Types
 interface WidgetConfig {
@@ -11,6 +20,8 @@ interface WidgetConfig {
   icon_url?: string;
   welcome_message?: string;
   initial_ai_message?: string;
+  whatsapp_enabled?: boolean;
+  whatsapp_number?: string;
 }
 
 interface Message {
@@ -43,7 +54,7 @@ export default function WidgetPage() {
   const [config, setConfig] = useState<WidgetConfig | null>(null);
   const [guestId, setGuestId] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [view, setView] = useState<'loading' | 'form' | 'chat'>('loading');
+  const [view, setView] = useState<'loading' | 'actions' | 'form' | 'chat'>('loading');
   const [showMenu, setShowMenu] = useState(false);
   const [history, setHistory] = useState<SessionHistory[]>([]);
   const [viewingHistory, setViewingHistory] = useState(false);
@@ -102,7 +113,12 @@ export default function WidgetPage() {
           // Just go to 'chat' view with empty list.
           setView('chat');
         } else {
-          setView('form');
+          // If WhatsApp enabled, show actions choice first
+          if (data.whatsapp_enabled) {
+            setView('actions');
+          } else {
+            setView('form');
+          }
         }
       })
       .catch(err => {
@@ -173,6 +189,51 @@ export default function WidgetPage() {
     try {
       let res;
       if (!sessionId) {
+        // Collect Context
+        const userAgent = navigator.userAgent;
+        let browser = "Unknown";
+        if (userAgent.indexOf("Chrome") > -1) browser = "Chrome";
+        else if (userAgent.indexOf("Safari") > -1) browser = "Safari";
+        else if (userAgent.indexOf("Firefox") > -1) browser = "Firefox";
+
+        let os = "Unknown";
+        if (userAgent.indexOf("Win") > -1) os = "Windows";
+        else if (userAgent.indexOf("Mac") > -1) os = "macOS";
+        else if (userAgent.indexOf("Android") > -1) os = "Android";
+        else if (userAgent.indexOf("iPhone") > -1) os = "iOS";
+
+        const isMobile = /Mobi|Android/i.test(userAgent);
+
+        // Read URL params passed from widget.js
+        // Since we are in an iframe, window.location.search should have them? 
+        // Or better: use Next.js useSearchParams if available, but for simplicity:
+        const urlParams = new URLSearchParams(window.location.search);
+
+        const context = {
+          device_type: isMobile ? "mobile" : "desktop",
+          browser: browser,
+          os: os,
+          timezone: urlParams.get("tz") || Intl.DateTimeFormat().resolvedOptions().timeZone,
+          referrer: urlParams.get("ref") || document.referrer,
+          // UTMs could be parsed from 'loc' (the parent URL)
+          // loc is the parent page URL
+          // Let's rely on backend or just pass what we can. 
+          // Parsing UTMs from 'loc' string:
+        };
+
+        const loc = urlParams.get("loc");
+        if (loc) {
+          try {
+            const url = new URL(loc);
+            const utmSource = url.searchParams.get("utm_source");
+            const utmMedium = url.searchParams.get("utm_medium");
+            const utmCampaign = url.searchParams.get("utm_campaign");
+            if (utmSource) Object.assign(context, { utm_source: utmSource });
+            if (utmMedium) Object.assign(context, { utm_medium: utmMedium });
+            if (utmCampaign) Object.assign(context, { utm_campaign: utmCampaign });
+          } catch (e) { }
+        }
+
         // Start NEW session
         res = await fetch(`${BACKEND_URL}/widgets/guest/session/init/${publicWidgetId}`, {
           method: 'POST',
@@ -180,11 +241,8 @@ export default function WidgetPage() {
           body: JSON.stringify({
             guest_id: guestId,
             message: userMsg.message_text,
-            origin: viewingHistory ? "resumed" : "auto-start" // If sending from history view without ID (weird case), or clean slate
-            // Logic fix: "When user manually clicks New Chat -> origin=manual" 
-            // But here we don't track the 'trigger' unless we store it.
-            // For now, let's default to "auto-start" if fresh, or "manual" if we had a flag.
-            // Let's rely on backend defaults for now or update component state to track "nextOrigin".
+            origin: viewingHistory ? "resumed" : "auto-start",
+            context: context
           })
         });
       } else {
@@ -263,6 +321,18 @@ export default function WidgetPage() {
     }
   };
 
+  const handleWhatsAppClick = () => {
+    if (!config?.whatsapp_number) return;
+
+    // Format message
+    const businessName = config.welcome_message?.includes("Hi there!") ? "the team" : "us"; // Fallback logic, ideally we have business name
+    // Actually we don't have business name in config, maybe just universal greeting
+    const text = encodeURIComponent(`Hi, I would like to chat with you.`);
+
+    // Open WhatsApp
+    window.open(`https://wa.me/${config.whatsapp_number}?text=${text}`, '_blank');
+  };
+
   const primaryColor = config?.primary_color || '#000000';
 
   if (!config && view === 'loading') {
@@ -282,26 +352,36 @@ export default function WidgetPage() {
       onClick={handleContainerClick}
     >
       {/* Header */}
-      <div className="bg-[var(--primary-color)] text-white p-4 flex items-center justify-between shadow-md shrink-0 z-10">
-        <h1 className="text-lg font-semibold">Chat Support</h1>
-        {view === 'chat' && (
-          <button onClick={() => setShowMenu(!showMenu)} className="p-1 hover:bg-white/10 rounded">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+      <div className="bg-[var(--primary-color)] text-white p-4 flex items-center justify-between shadow-md shrink-0 z-10 transition-colors duration-300">
+        <h1 className="text-lg font-semibold flex items-center gap-2">
+          {view === 'actions' ? (
+            <span className="flex items-center gap-2">👋 Welcome</span>
+          ) : (
+            <span className="flex items-center gap-2">
+              {view === 'chat' && <MessageSquare className="w-5 h-5" />} Support
+            </span>
+          )}
+        </h1>
+        {(view === 'chat' || view === 'actions') && (
+          <button onClick={() => setShowMenu(!showMenu)} className="p-1 hover:bg-white/10 rounded transition-colors">
+            <MenuIcon className="w-6 h-6" />
           </button>
         )}
       </div>
 
       {/* Menu / Sidebar Overlay */}
       {showMenu && (
-        <div className="absolute inset-0 bg-black/50 z-40" onClick={() => setShowMenu(false)}>
+        <div className="absolute inset-0 bg-black/50 z-40 animate-in fade-in duration-200" onClick={() => setShowMenu(false)}>
           <div
             className="absolute top-0 right-0 bottom-0 w-64 bg-white shadow-xl z-50 flex flex-col animate-in slide-in-from-right duration-200"
             onClick={e => e.stopPropagation()}
           >
             <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-              <span className="font-semibold text-gray-700">Menu</span>
-              <button onClick={() => setShowMenu(false)} className="text-gray-500 hover:text-gray-700">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              <span className="font-semibold text-gray-700 flex items-center gap-2">
+                <MenuIcon className="w-4 h-4" /> Menu
+              </span>
+              <button onClick={() => setShowMenu(false)} className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-200 transition-colors">
+                <X className="w-5 h-5" />
               </button>
             </div>
             <div className="p-2 space-y-1">
@@ -309,17 +389,36 @@ export default function WidgetPage() {
                 onClick={handleNewChat}
                 className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 text-gray-700 transition-colors"
               >
-                <span>🆕</span> New Chat
+                <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+                  <MessageSquare className="w-4 h-4" />
+                </div>
+                <span className="font-medium">New Chat</span>
               </button>
+
+              {config?.whatsapp_enabled && (
+                <button
+                  onClick={() => {
+                    handleWhatsAppClick();
+                    setShowMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 text-gray-700 transition-colors"
+                >
+                  <div className="bg-green-100 p-2 rounded-full text-green-600">
+                    <Phone className="w-4 h-4" />
+                  </div>
+                  <span className="font-medium">WhatsApp</span>
+                </button>
+              )}
+
               <button
                 onClick={handleHistoryClick}
                 className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 text-gray-700 transition-colors"
               >
-                <span>🕒</span> History
+                <div className="bg-purple-100 p-2 rounded-full text-purple-600">
+                  <Clock className="w-4 h-4" />
+                </div>
+                <span className="font-medium">History</span>
               </button>
-              <div className="border-t border-gray-100 my-2"></div>
-              <div className="px-4 py-2 text-xs text-gray-400">Settings</div>
-              {/* Settings items can go here */}
             </div>
           </div>
         </div>
@@ -327,8 +426,66 @@ export default function WidgetPage() {
 
       {/* Error Toast */}
       {error && (
-        <div className="absolute top-16 left-4 right-4 bg-red-500 text-white text-sm px-4 py-2 rounded-lg shadow-lg z-50 animate-pulse pointer-events-none">
-          {error}
+        <div className="absolute top-16 left-4 right-4 bg-red-500 text-white text-sm px-4 py-2 rounded-lg shadow-lg z-50 animate-pulse pointer-events-none flex items-center gap-2">
+          <span className="font-bold">!</span> {error}
+        </div>
+      )}
+
+      {/* Actions View (New) */}
+      {view === 'actions' && (
+        <div className="flex-1 p-6 flex flex-col justify-center animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="text-center space-y-2 mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[var(--primary-color)] text-white shadow-lg mb-4">
+              {config?.icon_url ? <img src={config.icon_url} className="w-10 h-10 object-contain" /> : <MessageSquare className="w-8 h-8" />}
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900">How would you like to connect?</h2>
+            <p className="text-gray-500 max-w-[80%] mx-auto">Choose the channel that works best for you.</p>
+          </div>
+
+          <div className="space-y-4">
+            <button
+              onClick={() => setView('form')}
+              className="w-full bg-[var(--primary-color)] text-white p-4 rounded-xl shadow-lg hover:brightness-90 transition-all transform hover:-translate-y-1 flex items-center justify-between group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="bg-white/20 p-2 rounded-lg">
+                  <MessageSquare className="w-6 h-6" />
+                </div>
+                <div className="text-left">
+                  <div className="font-bold">Chat with AI</div>
+                  <div className="text-xs text-white/80">Instant responses</div>
+                </div>
+              </div>
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                <Send className="w-5 h-5" />
+              </div>
+            </button>
+
+            <button
+              onClick={handleWhatsAppClick}
+              className="w-full bg-[#25D366] text-white p-4 rounded-xl shadow-lg hover:brightness-90 transition-all transform hover:-translate-y-1 flex items-center justify-between group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="bg-white/20 p-2 rounded-lg">
+                  <Phone className="w-6 h-6" />
+                </div>
+                <div className="text-left">
+                  <div className="font-bold">WhatsApp</div>
+                  <div className="text-xs text-white/80">Drop a message</div>
+                </div>
+              </div>
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                <Send className="w-5 h-5 -rotate-45" />
+              </div>
+            </button>
+          </div>
+
+          <button
+            onClick={() => setView('form')}
+            className="mt-8 text-gray-400 text-sm hover:text-[var(--primary-color)] transition-colors underline decoration-dotted"
+          >
+            Continue to form &rarr;
+          </button>
         </div>
       )}
 

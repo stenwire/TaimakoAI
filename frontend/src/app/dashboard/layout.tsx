@@ -24,6 +24,7 @@ export default function DashboardLayout({
         { label: 'Business Profile', href: '/dashboard/business', icon: Building2 },
         { label: 'Documents', href: '/dashboard/documents', icon: FileText },
         { label: 'Chat', href: '/dashboard/chat', icon: MessageSquare },
+        { label: 'Analytics', href: '/dashboard/analytics', icon: LayoutDashboard }, // Using LayoutDashboard or similar
         { label: 'Interactions', href: '/dashboard/widget-interactions', icon: Users },
         { label: 'Widget Settings', href: '/dashboard/widget-settings', icon: Settings },
       ],

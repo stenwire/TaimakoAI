@@ -56,6 +56,9 @@ app.include_router(business_router)
 from app.api.widget import router as widget_router
 app.include_router(widget_router, prefix="/widgets", tags=["widgets"])
 
+from app.api.analytics import router as analytics_router
+app.include_router(analytics_router, prefix="/analytics", tags=["analytics"])
+
 from app.core.response_wrapper import success_response
 
 @app.get("/")

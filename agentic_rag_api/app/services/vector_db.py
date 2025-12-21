@@ -22,4 +22,7 @@ class VectorDBService:
             where=where
         )
 
+    def delete(self, where: Dict[str, Any]):
+        self.collection.delete(where=where)
+
 vector_db = VectorDBService()
