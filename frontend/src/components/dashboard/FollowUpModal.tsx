@@ -15,6 +15,7 @@ interface FollowUpModalProps {
 export default function FollowUpModal({ isOpen, onClose, onSubmit, loading }: FollowUpModalProps) {
   const [context, setContext] = useState('');
   const [result, setResult] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,10 +84,11 @@ export default function FollowUpModal({ isOpen, onClose, onSubmit, loading }: Fo
                       variant="primary"
                       onClick={() => {
                         navigator.clipboard.writeText(result);
-                        // Could show toast here
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
                       }}
                     >
-                      Copy to Clipboard
+                      {copied ? 'Copied!' : 'Copy to Clipboard'}
                     </Button>
                   </div>
                 </div>
@@ -122,7 +124,7 @@ export default function FollowUpModal({ isOpen, onClose, onSubmit, loading }: Fo
                       variant="primary"
                       loading={loading}
                       disabled={!context.trim() || loading}
-                      className="bg-[var(--brand-primary)] text-white hover:bg-[var(--brand-primary)]/90"
+                      className="bg-[var(--brand-primary)] text-white hover:bg-[var(--brand-primary)]/90 hover:text-white"
                     >
                       <Send className="w-4 h-4 mr-2" />
                       Generate Draft

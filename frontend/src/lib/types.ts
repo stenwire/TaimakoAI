@@ -187,4 +187,8 @@ export interface GuestSession {
   origin: string;
   summary: string | null;
   top_intent: string | null;
+  country?: string | null;
+  city?: string | null;
+  device_type?: string | null;
+  os?: string | null;
 }

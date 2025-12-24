@@ -96,8 +96,14 @@ export default function GuestSessionsList() {
               <div className="flex items-center justify-between text-xs text-[var(--text-tertiary)] pt-4 border-t border-[var(--border-subtle)]">
                 <div className="flex gap-4">
                   {/* Placeholders for metadata not yet in list view, but ready for layout */}
-                  <span className="flex items-center"><MapPin className="w-3.5 h-3.5 mr-1" /> Unknown Location</span>
-                  <span className="flex items-center"><Smartphone className="w-3.5 h-3.5 mr-1" /> Unknown Device</span>
+                  <span className="flex items-center">
+                    <MapPin className="w-3.5 h-3.5 mr-1" />
+                    {session.city && session.country ? `${session.city}, ${session.country}` : (session.country || "Unknown Location")}
+                  </span>
+                  <span className="flex items-center">
+                    <Smartphone className="w-3.5 h-3.5 mr-1" />
+                    {session.device_type ? (session.os ? `${session.device_type} (${session.os})` : session.device_type) : "Unknown Device"}
+                  </span>
                 </div>
                 <span className="text-[var(--brand-primary)] font-medium group-hover:underline flex items-center">
                   View Details <ChevronRight className="w-4 h-4 ml-1" />

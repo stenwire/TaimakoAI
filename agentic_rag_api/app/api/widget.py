@@ -325,8 +325,9 @@ async def init_guest_session(
             print(f"Attempting geolocation for IP: {client_ip}")
             
             # Skip localhost IPs
-            if client_ip and client_ip not in ["127.0.0.1", "::1", "localhost"]:
-                client_ip = "8.8.8.8"
+            if client_ip:
+                if client_ip in ["127.0.0.1", "::1", "localhost"]:
+                    client_ip = "8.8.8.8" # this is purely for testing only
                 # Use httpx_client to avoid variable name collision
                 async with httpx.AsyncClient() as httpx_client:
                     resp = await httpx_client.get(

@@ -108,7 +108,7 @@ export default function SessionDetailPage() {
             Run Analysis
           </Button>
           <Button
-            className="bg-[var(--brand-primary)] text-white hover:bg-[var(--brand-primary)]/90"
+            className="bg-[var(--brand-primary)] text-white hover:bg-[var(--brand-primary)]/90 hover:text-white"
             onClick={() => setIsModalOpen(true)}
           >
             <Wand2 className="w-4 h-4 mr-2" />

@@ -112,7 +112,18 @@ export default function WidgetPage() {
           setGuestId(storedGuestId);
           // On refresh, start FRESH (Clean Slate) even if we know the guest
           // So we do NOT load stored session or fetch messages.
+          // So we do NOT load stored session or fetch messages.
           // Just go to 'chat' view with empty list.
+          if (data.initial_ai_message && data.initial_ai_message.trim()) {
+            setMessages([{
+              id: "init-" + Date.now(),
+              sender: 'ai',
+              message_text: data.initial_ai_message,
+              created_at: new Date().toISOString()
+            }]);
+          } else {
+            setMessages([]);
+          }
           setView('chat');
         } else {
           // If WhatsApp enabled, show actions choice first
@@ -163,7 +174,20 @@ export default function WidgetPage() {
       localStorage.setItem(`taimako_guest_${publicWidgetId}`, data.guest_id);
       setView('chat');
       setSessionId(null); // Explicitly no session yet
-      setMessages([]); // Clear messages
+      setSessionId(null); // Explicitly no session yet
+
+      // Set initial message if available
+      if (config?.initial_ai_message && config.initial_ai_message.trim()) {
+        setMessages([{
+          id: "init-" + Date.now(),
+          sender: 'ai',
+          message_text: config.initial_ai_message,
+          created_at: new Date().toISOString()
+        }]);
+      } else {
+        setMessages([]); // Clear messages
+      }
+
       setTimeout(() => inputRef.current?.focus(), 300);
     } catch (err) {
       console.error(err);
@@ -284,7 +308,16 @@ export default function WidgetPage() {
   };
 
   const handleNewChat = () => {
-    setMessages([]);
+    if (config?.initial_ai_message && config.initial_ai_message.trim()) {
+      setMessages([{
+        id: "init-" + Date.now(),
+        sender: 'ai',
+        message_text: config.initial_ai_message,
+        created_at: new Date().toISOString()
+      }]);
+    } else {
+      setMessages([]);
+    }
     setSessionId(null);
     setViewingHistory(false);
     setShowMenu(false);

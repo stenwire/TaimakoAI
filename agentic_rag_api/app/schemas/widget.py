@@ -88,6 +88,12 @@ class SessionHistoryResponse(BaseModel):
     summary: Optional[str] = None
     summary_generated_at: Optional[datetime] = None
     top_intent: Optional[str] = None
+    
+    # Context
+    country: Optional[str] = None
+    city: Optional[str] = None
+    device_type: Optional[str] = None
+    os: Optional[str] = None
 
     class Config:
         from_attributes = True
