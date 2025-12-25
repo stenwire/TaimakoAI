@@ -100,8 +100,11 @@ def update_my_widget_settings(
         widget.theme = settings.theme
     if settings.primary_color:
         widget.primary_color = settings.primary_color
-    if settings.icon_url:
-        widget.icon_url = settings.icon_url
+    if settings.icon_url is not None:
+        if settings.icon_url == "":
+             widget.icon_url = None
+        else:
+             widget.icon_url = settings.icon_url
     if settings.welcome_message is not None:
         val = settings.welcome_message.strip()
         if val == "":
