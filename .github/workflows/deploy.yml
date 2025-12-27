@@ -1,4 +1,4 @@
-name: Deploy to VPS (Standard Docker)
+name: Deploy to VPS (Podman with Docker commands)
 
 on:
   push:
@@ -38,13 +38,24 @@ jobs:
           echo "backend_image=$(echo '${{ github.repository }}-backend' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
           echo "frontend_image=$(echo '${{ github.repository }}-frontend' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
 
+      - name: Setup Docker alias for Podman
+        run: |
+          # Use Podman instead of Docker
+          alias docker=podman
+          # Make it available for subsequent steps
+          echo 'alias docker=podman' >> ~/.bashrc
+
       - name: Free up disk space
         run: |
           echo "=== Disk space before cleanup ==="
           df -h
           
+          # Use docker commands (which actually call Podman via alias)
           docker system prune -af --volumes || true
-          rm -rf /tmp/docker-* || true
+          
+          # Clean temp files
+          rm -rf /tmp/podman-* /tmp/buildah-* /tmp/docker-* || true
+          rm -rf ~/.local/share/containers/storage/tmp/* || true
           
           echo "=== Disk space after cleanup ==="
           df -h
@@ -54,30 +65,32 @@ jobs:
 
       - name: Log in to GitHub Container Registry
         run: |
+          # Standard docker login command works with Podman
           echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Build and push Backend image
         run: |
           cd backend
           
-          # Build image
+          # Standard docker build command (uses Podman)
           docker build \
             -t ${{ env.REGISTRY }}/${{ steps.image-names.outputs.backend_image }}:latest \
             -t ${{ env.REGISTRY }}/${{ steps.image-names.outputs.backend_image }}:${{ github.sha }} \
             -f Dockerfile.prod \
             .
           
-          # Push images
+          # Standard docker push command (uses Podman)
           docker push ${{ env.REGISTRY }}/${{ steps.image-names.outputs.backend_image }}:latest
           docker push ${{ env.REGISTRY }}/${{ steps.image-names.outputs.backend_image }}:${{ github.sha }}
           
           # Clean up immediately
-          docker image prune -af
+          docker rmi ${{ env.REGISTRY }}/${{ steps.image-names.outputs.backend_image }}:${{ github.sha }} || true
 
       - name: Cleanup after backend
         if: always()
         run: |
           docker system prune -af --volumes
+          rm -rf ~/.local/share/containers/storage/tmp/* || true
           echo "=== Disk space after backend ==="
           df -h
 
@@ -95,13 +108,19 @@ jobs:
           echo "backend_image=$(echo '${{ github.repository }}-backend' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
           echo "frontend_image=$(echo '${{ github.repository }}-frontend' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
 
+      - name: Setup Docker alias for Podman
+        run: |
+          alias docker=podman
+          echo 'alias docker=podman' >> ~/.bashrc
+
       - name: Free up disk space
         run: |
           echo "=== Disk space before frontend build ==="
           df -h
           
           docker system prune -af --volumes || true
-          rm -rf /tmp/docker-* || true
+          rm -rf /tmp/podman-* /tmp/buildah-* /tmp/docker-* || true
+          rm -rf ~/.local/share/containers/storage/tmp/* || true
           
           echo "=== Disk space after cleanup ==="
           df -h
@@ -117,24 +136,22 @@ jobs:
         run: |
           cd frontend
           
-          # Build image
           docker build \
             -t ${{ env.REGISTRY }}/${{ steps.image-names.outputs.frontend_image }}:latest \
             -t ${{ env.REGISTRY }}/${{ steps.image-names.outputs.frontend_image }}:${{ github.sha }} \
             -f Dockerfile.prod \
             .
           
-          # Push images
           docker push ${{ env.REGISTRY }}/${{ steps.image-names.outputs.frontend_image }}:latest
           docker push ${{ env.REGISTRY }}/${{ steps.image-names.outputs.frontend_image }}:${{ github.sha }}
           
-          # Clean up immediately
-          docker image prune -af
+          docker rmi ${{ env.REGISTRY }}/${{ steps.image-names.outputs.frontend_image }}:${{ github.sha }} || true
 
       - name: Cleanup after frontend
         if: always()
         run: |
           docker system prune -af --volumes
+          rm -rf ~/.local/share/containers/storage/tmp/* || true
           echo "=== Disk space after frontend ==="
           df -h
 
@@ -148,6 +165,11 @@ jobs:
         run: |
           echo "backend_image=$(echo '${{ github.repository }}-backend' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
           echo "frontend_image=$(echo '${{ github.repository }}-frontend' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
+      - name: Setup Docker alias for Podman
+        run: |
+          alias docker=podman
+          echo 'alias docker=podman' >> ~/.bashrc
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -204,12 +226,14 @@ jobs:
           docker stop agentic_cx_backend || true
           docker rm agentic_cx_backend || true
 
+          # Run database migrations
           docker run --rm \
             --network agentic_cx_network \
             ${{ env.BACKEND_ENV }} \
             ${{ env.REGISTRY }}/${{ steps.image-names.outputs.backend_image }}:latest \
             alembic upgrade head
 
+          # Run the backend container
           docker run -d \
             --name agentic_cx_backend \
             --network agentic_cx_network \
@@ -223,6 +247,7 @@ jobs:
           docker stop agentic_cx_frontend || true
           docker rm agentic_cx_frontend || true
 
+          # Run the frontend container
           docker run -d \
             --name agentic_cx_frontend \
             --network agentic_cx_network \
