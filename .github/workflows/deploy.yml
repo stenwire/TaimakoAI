@@ -8,8 +8,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  BACKEND_IMAGE_NAME: ${{ github.repository }}-backend
-  FRONTEND_IMAGE_NAME: ${{ github.repository }}-frontend
   # PostgreSQL configuration
   POSTGRES_USER: agentic_cx
   POSTGRES_DB: agentic_cx_db
@@ -39,6 +37,12 @@ jobs:
       image-tag: ${{ steps.meta.outputs.version }}
 
     steps:
+      - name: Set lowercase image names
+        id: image-names
+        run: |
+          echo "backend_image=$(echo '${{ github.repository }}-backend' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+          echo "frontend_image=$(echo '${{ github.repository }}-frontend' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+      
       - name: Free up disk space before build
         run: |
           echo "=== Disk space before cleanup ==="
@@ -82,7 +86,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ steps.image-names.outputs.backend_image }}
           tags: |
             type=sha,prefix=,suffix=,format=short
             type=raw,value=latest
@@ -96,8 +100,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           # Use registry cache instead of GitHub Actions cache
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:buildcache,mode=max
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ steps.image-names.outputs.backend_image }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ steps.image-names.outputs.backend_image }}:buildcache,mode=max
 
       - name: Immediate cleanup after backend build
         if: always()
@@ -118,6 +122,12 @@ jobs:
       image-tag: ${{ steps.meta.outputs.version }}
 
     steps:
+      - name: Set lowercase image names
+        id: image-names
+        run: |
+          echo "backend_image=$(echo '${{ github.repository }}-backend' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+          echo "frontend_image=$(echo '${{ github.repository }}-frontend' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+      
       - name: Free up disk space before build
         run: |
           echo "=== Disk space before frontend build ==="
@@ -154,7 +164,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ steps.image-names.outputs.frontend_image }}
           tags: |
             type=sha,prefix=,suffix=,format=short
             type=raw,value=latest
@@ -168,8 +178,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           # Use registry cache instead of GitHub Actions cache
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:buildcache,mode=max
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ steps.image-names.outputs.frontend_image }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ steps.image-names.outputs.frontend_image }}:buildcache,mode=max
 
       - name: Immediate cleanup after frontend build
         if: always()
@@ -185,6 +195,12 @@ jobs:
     runs-on: ld-vps-runner
 
     steps:
+      - name: Set lowercase image names
+        id: image-names
+        run: |
+          echo "backend_image=$(echo '${{ github.repository }}-backend' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+          echo "frontend_image=$(echo '${{ github.repository }}-frontend' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+      
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -194,8 +210,8 @@ jobs:
 
       - name: Pull latest images
         run: |
-          docker pull ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:latest
-          docker pull ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:latest
+          docker pull ${{ env.REGISTRY }}/${{ steps.image-names.outputs.backend_image }}:latest
+          docker pull ${{ env.REGISTRY }}/${{ steps.image-names.outputs.frontend_image }}:latest
 
       - name: Create Docker network
         run: |
@@ -248,7 +264,7 @@ jobs:
           docker run --rm \
             --network agentic_cx_network \
             ${{ env.BACKEND_ENV }} \
-            ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:latest \
+            ${{ env.REGISTRY }}/${{ steps.image-names.outputs.backend_image }}:latest \
             alembic upgrade head
 
           # Run the backend container
@@ -258,7 +274,7 @@ jobs:
             --restart unless-stopped \
             -p 127.0.0.1:8000:8000 \
             ${{ env.BACKEND_ENV }} \
-            ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ steps.image-names.outputs.backend_image }}:latest
 
       - name: Deploy Frontend container
         run: |
@@ -273,7 +289,7 @@ jobs:
             --restart unless-stopped \
             -p 127.0.0.1:3000:3000 \
             ${{ env.FRONTEND_ENV }} \
-            ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ steps.image-names.outputs.frontend_image }}:latest
 
       - name: Wait for containers to be ready
         run: sleep 10
