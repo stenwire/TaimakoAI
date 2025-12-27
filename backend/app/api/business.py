@@ -84,7 +84,8 @@ async def update_business(
         business.intents = business_data.intents
     if business_data.logo_url is not None:
         business.logo_url = business_data.logo_url
-    if business_data.gemini_api_key is not None:
+    if business_data.gemini_api_key is not None and business_data.gemini_api_key != "":
+        # Only update API key if a non-empty value is provided
         business.gemini_api_key = encrypt_string(business_data.gemini_api_key)
     
     db.commit()

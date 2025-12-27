@@ -64,3 +64,7 @@ from app.core.response_wrapper import success_response
 @app.get("/")
 async def root():
     return success_response(message="Agentic RAG API is running")
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}

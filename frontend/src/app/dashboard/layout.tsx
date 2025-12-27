@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { LayoutDashboard, Building2, FileText, MessageSquare, LogOut, Menu, X, Settings, Users, AlertTriangle } from 'lucide-react';
+import { LayoutDashboard, Building2, FileText, MessageSquare, LogOut, Menu, X, Settings, Users, AlertTriangle, Bot } from 'lucide-react';
 import Sidebar, { SidebarSection } from '@/components/ui/Sidebar';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBusiness, BusinessProvider } from '@/contexts/BusinessContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import Button from '@/components/ui/Button';
-import { getBusinessProfile } from '@/lib/api';
 
-export default function DashboardLayout({
+function DashboardLayoutInner({
   children,
 }: {
   children: React.ReactNode;
@@ -19,44 +19,27 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [apiKeyMissing, setApiKeyMissing] = useState(false);
-  const [checkingKey, setCheckingKey] = useState(true);
 
-  // Check for API key status
+  const { isApiKeySet, isLoading, refreshBusinessProfile } = useBusiness();
+
+  // Check for API key status on mount and when user changes
   useEffect(() => {
-    const checkBusinessStatus = async () => {
-      try {
-        const response = await getBusinessProfile();
-        // If data is null (no business) or api key not set
-        if (!response.data || !response.data.is_api_key_set) {
-          setApiKeyMissing(true);
-        } else {
-          setApiKeyMissing(false);
-        }
-      } catch (error) {
-        console.error("Failed to fetch business profile:", error);
-        // Fail open or closed? If error, maybe assume locked to be safe, or just let them be.
-        // Let's assume locked if we can't verify.
-        // setApiKeyMissing(true); 
-      } finally {
-        setCheckingKey(false);
-      }
-    };
-
     if (user) {
-      checkBusinessStatus();
+      refreshBusinessProfile();
     }
-  }, [user, pathname]); // Re-check on nav? Or just once? check on mount and maybe when path changes if we want to be strict.
+  }, [user, refreshBusinessProfile]);
 
   // Redirect if locked and trying to access other pages
   useEffect(() => {
-    if (!checkingKey && apiKeyMissing) {
+    if (!isLoading && !isApiKeySet) {
       if (pathname !== '/dashboard/business') {
         router.push('/dashboard/business');
       }
     }
-  }, [apiKeyMissing, checkingKey, pathname, router]);
+  }, [isApiKeySet, isLoading, pathname, router]);
 
+  const apiKeyMissing = !isApiKeySet;
+  const checkingKey = isLoading;
 
   const baseSidebarSections = [
     {
@@ -67,6 +50,7 @@ export default function DashboardLayout({
         { label: 'Knowledge Base', href: '/dashboard/documents', icon: FileText },
         { label: 'Widget', href: '/dashboard/widget-settings', icon: Settings },
         { label: 'Human Handoff', href: '/dashboard/handoff', icon: Users },
+        { label: 'Test Agent', href: '/dashboard/chat', icon: Bot },
         { label: 'Settings', href: '/dashboard/business', icon: Settings },
       ],
     },
@@ -210,3 +194,14 @@ export default function DashboardLayout({
   );
 }
 
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <BusinessProvider>
+      <DashboardLayoutInner>{children}</DashboardLayoutInner>
+    </BusinessProvider>
+  );
+}

@@ -54,23 +54,19 @@ Taimako is built as a modern full-stack application with a clear separation of c
     cd taimako
     ```
 
-2.  **Backend Setup**:
+2.  **First Time Setup**:
     ```bash
-    cd agentic_rag_api
-    python -m venv venv
-    source venv/bin/activate
-    pip install -r requirements.txt
-    uvicorn app.main:app --reload
+    # Build containers
+    make build
+
+    # Start everything (PostgreSQL will initialize on first run)
+    make start
+
+    # In another terminal, run migrations
+    make migrate
     ```
 
-3.  **Frontend Setup**:
-    ```bash
-    cd frontend
-    npm install
-    npm run dev
-    ```
-
-4.  **Access the App**:
+3.  **Access the App**:
     *   Frontend: `http://localhost:3000`
     *   Backend API Docs: `http://localhost:8000/docs`
 

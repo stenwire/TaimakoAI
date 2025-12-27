@@ -1,15 +1,39 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: agentic_cx_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: agentic_cx
+      POSTGRES_PASSWORD: agentic_cx_dev_password
+      POSTGRES_DB: agentic_cx_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agentic_cx -d agentic_cx_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   backend:
     build: ./backend
+    container_name: agentic_cx_backend
     ports:
       - "8000:8000"
     volumes:
       - ./backend:/app
     environment:
       - PYTHONUNBUFFERED=1
+      - DATABASE_URL=postgresql://agentic_cx:agentic_cx_dev_password@postgres:5432/agentic_cx_db
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   frontend:
     build: ./frontend
+    container_name: agentic_cx_frontend
     ports:
       - "3000:3000"
     volumes:
@@ -17,3 +41,8 @@ services:
       - /app/node_modules
     stdin_open: true
     tty: true
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

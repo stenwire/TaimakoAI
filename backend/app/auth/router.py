@@ -65,7 +65,25 @@ async def signup(user_in: UserSignup, db: Session = Depends(get_db)):
 @router.post("/login")
 async def login(user_in: UserLogin, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == user_in.email).first()
-    if not user or not user.hashed_password or not verify_password(user_in.password, user.hashed_password):
+    
+    # Debug logging
+    print(f"[LOGIN DEBUG] Email: {user_in.email}")
+    print(f"[LOGIN DEBUG] User found: {user is not None}")
+    if user:
+        print(f"[LOGIN DEBUG] Has hashed_password: {user.hashed_password is not None}")
+        if user.hashed_password:
+            try:
+                password_valid = verify_password(user_in.password, user.hashed_password)
+                print(f"[LOGIN DEBUG] Password valid: {password_valid}")
+            except Exception as e:
+                print(f"[LOGIN DEBUG] Password verification error: {e}")
+                password_valid = False
+        else:
+            password_valid = False
+    else:
+        password_valid = False
+    
+    if not user or not user.hashed_password or not password_valid:
         return error_response(message="Invalid credentials", status_code=401)
     
     access_token = create_access_token(subject=user.id)

@@ -8,6 +8,7 @@ from app.services.rag_service import rag_service
 from app.services.agent_service import run_conversation
 from app.schemas.document import IngestResponse
 from app.schemas.chat import ChatRequest, ChatResponse
+from app.core.security_utils import decrypt_string
 import asyncio
 
 from app.core.response_wrapper import success_response
@@ -78,12 +79,25 @@ async def chat_with_agent(
             detail="Business profile not found. Please create a business profile before using the chat."
         )
     
+    # Decrypt the API key from business profile
+    decrypted_key = None
+    if business.gemini_api_key:
+        decrypted_key = decrypt_string(business.gemini_api_key)
+    
+    if not decrypted_key:
+        raise HTTPException(
+            status_code=400,
+            detail="API key not configured. Please set your Google Gemini API key in Settings."
+        )
+    
     # Use user.id as session_id for chat history per user
     response_text = await run_conversation(
         message=request.message,
         user_id=current_user.id,
         business_name=business.business_name,
         custom_instruction=business.custom_agent_instruction,
-        session_id=current_user.id
+        session_id=current_user.id,
+        intents=business.intents,
+        api_key=decrypted_key
     )
     return success_response(data=ChatResponse(response=response_text))

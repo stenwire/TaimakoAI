@@ -107,7 +107,7 @@ export default function WidgetPage() {
       })
       .then(data => {
         setConfig(data);
-        const storedGuestId = localStorage.getItem(`sten_guest_${publicWidgetId}`);
+        const storedGuestId = localStorage.getItem(`taimako_guest_${publicWidgetId}`);
         if (storedGuestId) {
           setGuestId(storedGuestId);
           // On refresh, start FRESH (Clean Slate) even if we know the guest
