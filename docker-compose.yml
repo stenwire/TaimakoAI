@@ -24,6 +24,7 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      - /app/.venv
     environment:
       - PYTHONUNBUFFERED=1
       - DATABASE_URL=postgresql://agentic_cx:agentic_cx_dev_password@postgres:5432/agentic_cx_db

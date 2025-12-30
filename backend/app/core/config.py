@@ -4,7 +4,6 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Agentic RAG API"
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "local")
-    GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "hello-world")
     CHROMA_DB_DIR: str = "chroma_db"
 
     # Google OAuth

@@ -85,7 +85,7 @@ export default function DocumentsPage() {
     setMessage(null);
     try {
       await processDocuments();
-      setMessage({ type: 'success', text: 'Documents processed successfully!' });
+      setMessage({ type: 'success', text: 'Documents processed successfully, please refresh!' });
       setTimeout(() => setMessage(null), 3000);
     } catch (error) {
       setMessage({ type: 'error', text: 'Failed to process documents' });

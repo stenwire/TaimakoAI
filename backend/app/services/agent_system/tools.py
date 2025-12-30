@@ -28,13 +28,19 @@ def get_context(user_input: str, tool_context: ToolContext) -> str:
     if not user_id:
         return "Error: User ID not found in session state."
     
+    # Extract api_key from state
+    api_key = tool_context.state.get("api_key")
+    if not api_key:
+        print(f"Warning: Tool get_context missing api_key for user {user_id}")
+        return "Error: API Key configuration missing. Cannot access knowledge base."
+
     # Example of reading from state
     style = tool_context.state.get("response_style", "normal")
     print(f"--- Tool: Reading state 'response_style': {style} ---")
     print(f"--- Tool: Using user_id: {user_id} ---")
 
-    # Retrieve context with user_id
-    context_chunks = rag_service.query(user_input, user_id)
+    # Retrieve context with user_id and api_key
+    context_chunks = rag_service.query(text=user_input, user_id=user_id, api_key=api_key)
     context_text = "\n\n".join(context_chunks)
     return context_text
 
