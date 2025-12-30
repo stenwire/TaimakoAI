@@ -26,7 +26,7 @@ env:
 
 jobs:
   build-and-push-backend:
-    runs-on: ld-vps-runner
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
@@ -37,28 +37,6 @@ jobs:
         run: |
           echo "backend_image=$(echo '${{ github.repository }}-backend' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
           echo "frontend_image=$(echo '${{ github.repository }}-frontend' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
-
-      - name: Setup Docker alias for Podman
-        run: |
-          # Use Podman instead of Docker
-          alias docker=podman
-          # Make it available for subsequent steps
-          echo 'alias docker=podman' >> ~/.bashrc
-
-      - name: Free up disk space
-        run: |
-          echo "=== Disk space before cleanup ==="
-          df -h
-          
-          # Use docker commands (which actually call Podman via alias)
-          docker system prune -af --volumes || true
-          
-          # Clean temp files
-          rm -rf /tmp/podman-* /tmp/buildah-* /tmp/docker-* || true
-          rm -rf ~/.local/share/containers/storage/tmp/* || true
-          
-          echo "=== Disk space after cleanup ==="
-          df -h
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -71,32 +49,24 @@ jobs:
       - name: Build and push Backend image
         run: |
           cd backend
-          
+
           # Standard docker build command (uses Podman)
           docker build \
             -t ${{ env.REGISTRY }}/${{ steps.image-names.outputs.backend_image }}:latest \
             -t ${{ env.REGISTRY }}/${{ steps.image-names.outputs.backend_image }}:${{ github.sha }} \
             -f Dockerfile.prod \
             .
-          
+
           # Standard docker push command (uses Podman)
           docker push ${{ env.REGISTRY }}/${{ steps.image-names.outputs.backend_image }}:latest
           docker push ${{ env.REGISTRY }}/${{ steps.image-names.outputs.backend_image }}:${{ github.sha }}
-          
+
           # Clean up immediately
           docker rmi ${{ env.REGISTRY }}/${{ steps.image-names.outputs.backend_image }}:${{ github.sha }} || true
 
-      - name: Cleanup after backend
-        if: always()
-        run: |
-          docker system prune -af --volumes
-          rm -rf ~/.local/share/containers/storage/tmp/* || true
-          echo "=== Disk space after backend ==="
-          df -h
-
   build-and-push-frontend:
     needs: [build-and-push-backend]
-    runs-on: ld-vps-runner
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
@@ -108,23 +78,6 @@ jobs:
           echo "backend_image=$(echo '${{ github.repository }}-backend' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
           echo "frontend_image=$(echo '${{ github.repository }}-frontend' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
 
-      - name: Setup Docker alias for Podman
-        run: |
-          alias docker=podman
-          echo 'alias docker=podman' >> ~/.bashrc
-
-      - name: Free up disk space
-        run: |
-          echo "=== Disk space before frontend build ==="
-          df -h
-          
-          docker system prune -af --volumes || true
-          rm -rf /tmp/podman-* /tmp/buildah-* /tmp/docker-* || true
-          rm -rf ~/.local/share/containers/storage/tmp/* || true
-          
-          echo "=== Disk space after cleanup ==="
-          df -h
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -135,25 +88,21 @@ jobs:
       - name: Build and push Frontend image
         run: |
           cd frontend
-          
+
           docker build \
             -t ${{ env.REGISTRY }}/${{ steps.image-names.outputs.frontend_image }}:latest \
             -t ${{ env.REGISTRY }}/${{ steps.image-names.outputs.frontend_image }}:${{ github.sha }} \
             -f Dockerfile.prod \
+            --build-arg NEXT_PUBLIC_ENVIRONMENT="production" \
+            --build-arg NEXT_PUBLIC_API_URL="${{ secrets.NEXT_PUBLIC_API_URL }}" \
+            --build-arg NEXT_PUBLIC_BACKEND_URL_PROD="${{ secrets.NEXT_PUBLIC_BACKEND_URL_PROD }}" \
+            --build-arg NEXT_PUBLIC_FRONTEND_URL_PROD="${{ secrets.NEXT_PUBLIC_FRONTEND_URL_PROD }}" \
             .
-          
+
           docker push ${{ env.REGISTRY }}/${{ steps.image-names.outputs.frontend_image }}:latest
           docker push ${{ env.REGISTRY }}/${{ steps.image-names.outputs.frontend_image }}:${{ github.sha }}
-          
-          docker rmi ${{ env.REGISTRY }}/${{ steps.image-names.outputs.frontend_image }}:${{ github.sha }} || true
 
-      - name: Cleanup after frontend
-        if: always()
-        run: |
-          docker system prune -af --volumes
-          rm -rf ~/.local/share/containers/storage/tmp/* || true
-          echo "=== Disk space after frontend ==="
-          df -h
+          docker rmi ${{ env.REGISTRY }}/${{ steps.image-names.outputs.frontend_image }}:${{ github.sha }} || true
 
   deploy:
     needs: [build-and-push-backend, build-and-push-frontend]
