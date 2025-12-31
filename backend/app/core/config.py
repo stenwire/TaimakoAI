@@ -1,10 +1,19 @@
 import os
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Agentic RAG API"
+    PROJECT_NAME: str = os.getenv("PROJECT_PREFIX", "")
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "local")
     CHROMA_DB_DIR: str = "chroma_db"
+
+    # Database
+    PROJECT_PREFIX: str = os.getenv("PROJECT_PREFIX", "")
+    POSTGRES_USER: str = os.getenv("POSTGRES_USER", "")
+    POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "")
+    POSTGRES_DB: str = os.getenv("POSTGRES_DB", "")
+    POSTGRES_HOST: str = os.getenv("POSTGRES_HOST", "")
+    POSTGRES_PORT: str = os.getenv("POSTGRES_PORT", "")
+    DATABASE_URL: str | None = None
 
     # Google OAuth
     GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
@@ -18,7 +27,9 @@ class Settings(BaseSettings):
     JWT_EXPIRATION_MINUTES: int = int(os.getenv("JWT_EXPIRATION_MINUTES", 60))
     REFRESH_TOKEN_EXPIRATION_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRATION_DAYS", 30))
 
-    class Config:
-        env_file = ".env"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        extra="ignore"
+    )
 
 settings = Settings()

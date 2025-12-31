@@ -92,7 +92,7 @@ async def init_session(app_name: str, user_id: str, session_id: str, initial_sta
         # Fallback: session exists, so update it.
         # Note: We assume session_id collision means it's the same session.
         if initial_state:
-             _update_session_raw(app_name, user_id, session_id, initial_state)
+            _update_session_raw(app_name, user_id, session_id, initial_state)
         # Fetch it again to return it
         return await session_service.get_session(
             app_name=app_name,

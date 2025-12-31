@@ -1,6 +1,7 @@
 export type Environment = 'local' | 'dev' | 'staging' | 'production';
 
-export const ENVIRONMENT = (process.env.NEXT_PUBLIC_ENVIRONMENT as Environment) || 'local';
+export const ENVIRONMENT = (process.env.NEXT_PUBLIC_ENVIRONMENT as Environment) ||
+  (process.env.NODE_ENV === 'production' ? 'production' : 'local');
 
 const getBackendUrl = (): string => {
   switch (ENVIRONMENT) {
