@@ -8,20 +8,9 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  # Project prefix – change this to rename everything
   PROJECT_PREFIX: "taimako"
 
-  # Container and network names (derived from prefix)
-  POSTGRES_CONTAINER: ${{ env.PROJECT_PREFIX }}_postgres
-  BACKEND_CONTAINER: ${{ env.PROJECT_PREFIX }}_backend
-  FRONTEND_CONTAINER: ${{ env.PROJECT_PREFIX }}_frontend
-  DOCKER_NETWORK: ${{ env.PROJECT_PREFIX }}_network
-
-  # Volume and backup paths
-  DATA_DIR: ~/${{ env.PROJECT_PREFIX }}
-  POSTGRES_DATA_DIR: ~/${{ env.PROJECT_PREFIX }}/postgres_data
-  BACKUPS_DIR: ~/${{ env.PROJECT_PREFIX }}/backups
-
+  # Static environment variables
   BACKEND_ENV: >-
     -e ENVIRONMENT="production"
     -e DATABASE_URL="postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@${{ secrets.POSTGRES_HOST }}:5432/${{ secrets.POSTGRES_DB }}"
@@ -109,6 +98,18 @@ jobs:
     runs-on: ld-vps-runner
 
     steps:
+      - name: Set dynamic variables
+        id: vars
+        run: |
+          PREFIX="${{ env.PROJECT_PREFIX }}"
+          echo "postgres_container=${PREFIX}_postgres" >> $GITHUB_OUTPUT
+          echo "backend_container=${PREFIX}_backend" >> $GITHUB_OUTPUT
+          echo "frontend_container=${PREFIX}_frontend" >> $GITHUB_OUTPUT
+          echo "docker_network=${PREFIX}_network" >> $GITHUB_OUTPUT
+          echo "data_dir=~/${PREFIX}" >> $GITHUB_OUTPUT
+          echo "postgres_data_dir=~/${PREFIX}/postgres_data" >> $GITHUB_OUTPUT
+          echo "backups_dir=~/${PREFIX}/backups" >> $GITHUB_OUTPUT
+
       - name: Set lowercase image names
         id: image-names
         run: |
@@ -127,26 +128,26 @@ jobs:
           docker pull ${{ env.REGISTRY }}/${{ steps.image-names.outputs.frontend_image }}:latest
 
       - name: Create Docker network
-        run: docker network create ${{ env.DOCKER_NETWORK }} || true
+        run: docker network create ${{ steps.vars.outputs.docker_network }} || true
 
       - name: Deploy PostgreSQL container
         run: |
-          mkdir -p ${{ env.POSTGRES_DATA_DIR }}
-          mkdir -p ${{ env.BACKUPS_DIR }}
+          mkdir -p ${{ steps.vars.outputs.postgres_data_dir }}
+          mkdir -p ${{ steps.vars.outputs.backups_dir }}
 
-          if docker ps -a --format '{{.Names}}' | grep -q "^${{ env.POSTGRES_CONTAINER }}$"; then
+          if docker ps -a --format '{{.Names}}' | grep -q "^${{ steps.vars.outputs.postgres_container }}$"; then
             echo "PostgreSQL container exists."
-            if ! docker ps --format '{{.Names}}' | grep -q "^${{ env.POSTGRES_CONTAINER }}$"; then
+            if ! docker ps --format '{{.Names}}' | grep -q "^${{ steps.vars.outputs.postgres_container }}$"; then
               echo "Starting stopped PostgreSQL container..."
-              docker start ${{ env.POSTGRES_CONTAINER }}
+              docker start ${{ steps.vars.outputs.postgres_container }}
             fi
           else
             echo "Creating new PostgreSQL container..."
             docker run -d \
-              --name ${{ env.POSTGRES_CONTAINER }} \
-              --network ${{ env.DOCKER_NETWORK }} \
+              --name ${{ steps.vars.outputs.postgres_container }} \
+              --network ${{ steps.vars.outputs.docker_network }} \
               --restart unless-stopped \
-              -v ${{ env.POSTGRES_DATA_DIR }}:/var/lib/postgresql/data \
+              -v ${{ steps.vars.outputs.postgres_data_dir }}:/var/lib/postgresql/data \
               -e POSTGRES_USER="${{ secrets.POSTGRES_USER }}" \
               -e POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}" \
               -e POSTGRES_DB="${{ secrets.POSTGRES_DB }}" \
@@ -155,7 +156,7 @@ jobs:
 
           echo "Waiting for PostgreSQL to be ready..."
           for i in {1..30}; do
-            if docker exec ${{ env.POSTGRES_CONTAINER }} pg_isready -U "${{ secrets.POSTGRES_USER }}" > /dev/null 2>&1; then
+            if docker exec ${{ steps.vars.outputs.postgres_container }} pg_isready -U "${{ secrets.POSTGRES_USER }}" > /dev/null 2>&1; then
               echo "PostgreSQL is ready!"
               break
             fi
@@ -165,20 +166,20 @@ jobs:
 
       - name: Deploy Backend container
         run: |
-          docker stop ${{ env.BACKEND_CONTAINER }} || true
-          docker rm ${{ env.BACKEND_CONTAINER }} || true
+          docker stop ${{ steps.vars.outputs.backend_container }} || true
+          docker rm ${{ steps.vars.outputs.backend_container }} || true
 
           # Run migrations
           docker run --rm \
-            --network ${{ env.DOCKER_NETWORK }} \
+            --network ${{ steps.vars.outputs.docker_network }} \
             ${{ env.BACKEND_ENV }} \
             ${{ env.REGISTRY }}/${{ steps.image-names.outputs.backend_image }}:latest \
             alembic upgrade head
 
           # Run backend
           docker run -d \
-            --name ${{ env.BACKEND_CONTAINER }} \
-            --network ${{ env.DOCKER_NETWORK }} \
+            --name ${{ steps.vars.outputs.backend_container }} \
+            --network ${{ steps.vars.outputs.docker_network }} \
             --restart unless-stopped \
             -p 127.0.0.1:8000:8000 \
             ${{ env.BACKEND_ENV }} \
@@ -186,12 +187,12 @@ jobs:
 
       - name: Deploy Frontend container
         run: |
-          docker stop ${{ env.FRONTEND_CONTAINER }} || true
-          docker rm ${{ env.FRONTEND_CONTAINER }} || true
+          docker stop ${{ steps.vars.outputs.frontend_container }} || true
+          docker rm ${{ steps.vars.outputs.frontend_container }} || true
 
           docker run -d \
-            --name ${{ env.FRONTEND_CONTAINER }} \
-            --network ${{ env.DOCKER_NETWORK }} \
+            --name ${{ steps.vars.outputs.frontend_container }} \
+            --network ${{ steps.vars.outputs.docker_network }} \
             --restart unless-stopped \
             -p 127.0.0.1:3000:3000 \
             ${{ env.FRONTEND_ENV }} \
@@ -204,7 +205,7 @@ jobs:
         run: |
           docker ps -a --filter "name=${{ env.PROJECT_PREFIX }}"
 
-          for container in "${{ env.POSTGRES_CONTAINER }}" "${{ env.BACKEND_CONTAINER }}" "${{ env.FRONTEND_CONTAINER }}"; do
+          for container in "${{ steps.vars.outputs.postgres_container }}" "${{ steps.vars.outputs.backend_container }}" "${{ steps.vars.outputs.frontend_container }}"; do
             if ! docker ps --format '{{.Names}}' | grep -q "^$container$"; then
               echo "$container container failed to start!"
               docker logs $container
@@ -216,8 +217,8 @@ jobs:
 
       - name: Backup database
         run: |
-          docker exec ${{ env.POSTGRES_CONTAINER }} pg_dump -U "${{ secrets.POSTGRES_USER }}" "${{ secrets.POSTGRES_DB }}" > ${{ env.BACKUPS_DIR }}/backup_$(date +%Y%m%d_%H%M%S).sql
-          ls -t ${{ env.BACKUPS_DIR }}/*.sql | tail -n +8 | xargs -r rm
+          docker exec ${{ steps.vars.outputs.postgres_container }} pg_dump -U "${{ secrets.POSTGRES_USER }}" "${{ secrets.POSTGRES_DB }}" > ${{ steps.vars.outputs.backups_dir }}/backup_$(date +%Y%m%d_%H%M%S).sql
+          ls -t ${{ steps.vars.outputs.backups_dir }}/*.sql | tail -n +8 | xargs -r rm
 
       - name: Final cleanup
         if: always()
