@@ -18,9 +18,9 @@ env:
   DOCKER_NETWORK: ${{ vars.PROJECT_PREFIX }}_network
 
   # Volume and backup paths
-  DATA_DIR: ~/taimako
-  POSTGRES_DATA_DIR: ~/taimako/postgres_data
-  BACKUPS_DIR: ~/taimako/backups
+  DATA_DIR: ~/${{ vars.PROJECT_PREFIX }}
+  POSTGRES_DATA_DIR: ~/${{ vars.PROJECT_PREFIX }}/postgres_data
+  BACKUPS_DIR: ~/${{ vars.PROJECT_PREFIX }}/backups
 
   BACKEND_ENV: >-
     -e ENVIRONMENT="production"
