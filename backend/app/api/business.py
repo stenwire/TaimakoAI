@@ -4,6 +4,7 @@ from app.db.session import get_db
 from app.auth.router import get_current_user
 from app.models.user import User
 from app.models.business import Business
+from app.models.widget import WidgetSettings
 from app.schemas.business import BusinessCreate, BusinessUpdate, BusinessResponse
 from app.core.response_wrapper import success_response
 from app.services.analysis_agent import generate_business_intents
@@ -35,8 +36,17 @@ async def create_business(
         gemini_api_key=encrypt_string(business_data.gemini_api_key) if business_data.gemini_api_key else None
     )
     db.add(business)
+    db.add(business)
     db.commit()
     db.refresh(business)
+    
+    # Sync logo_url to WidgetSettings if exists
+    if business.logo_url:
+        widget_settings = db.query(WidgetSettings).filter(WidgetSettings.user_id == current_user.id).first()
+        if widget_settings:
+            widget_settings.logo_url = business.logo_url
+            db.commit()
+
     
     response = BusinessResponse.model_validate(business)
     response.is_api_key_set = bool(business.gemini_api_key)
@@ -87,6 +97,15 @@ async def update_business(
     if business_data.gemini_api_key is not None and business_data.gemini_api_key != "":
         # Only update API key if a non-empty value is provided
         business.gemini_api_key = encrypt_string(business_data.gemini_api_key)
+    
+    # Sync logo_url to WidgetSettings
+    if business_data.logo_url is not None:
+        widget_settings = db.query(WidgetSettings).filter(WidgetSettings.user_id == current_user.id).first()
+        if widget_settings:
+            widget_settings.logo_url = business_data.logo_url
+            # If we don't commit here, the final commit below will handle it?
+            # Yes, standard SQLAlchemy session behavior.
+
     
     db.commit()
     db.refresh(business)

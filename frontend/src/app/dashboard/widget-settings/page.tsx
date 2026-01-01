@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Sparkles, Check, Copy, Plus, X } from 'lucide-react';
+import { Sparkles, Check, Copy, Plus, X, Phone, MessageSquare, Send } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Textarea from '@/components/ui/Textarea';
@@ -352,6 +352,47 @@ export default function WidgetSettingsPage() {
                 </div>
 
                 <div className="border-t border-[var(--border-subtle)] pt-8 space-y-6">
+                  <h3 className="text-sm font-bold text-[var(--brand-primary)] uppercase tracking-wider">WhatsApp Integration</h3>
+                  <div className="space-y-4">
+                    <label className="flex items-center gap-3 p-4 bg-[var(--bg-secondary)] rounded-[var(--radius-md)] border border-[var(--border-subtle)] cursor-pointer hover:border-[var(--brand-primary)] transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={settings?.whatsapp_enabled ?? false}
+                        onChange={(e) => settings && setSettings({ ...settings, whatsapp_enabled: e.target.checked })}
+                        className="h-4 w-4 text-[var(--brand-primary)] border-[var(--border-strong)] rounded focus:ring-[var(--brand-primary)]"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-4 h-4 text-green-600" />
+                          <span className="block text-sm font-medium text-[var(--text-primary)]">Enable WhatsApp Integration</span>
+                        </div>
+                        <span className="block text-xs text-[var(--text-secondary)] mt-0.5">Allow customers to chat with you via WhatsApp.</span>
+                      </div>
+                    </label>
+
+                    {settings?.whatsapp_enabled && (
+                      <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                        <Input
+                          label="WhatsApp Number"
+                          placeholder="e.g. 15551234567"
+                          value={settings?.whatsapp_number || ""}
+                          onChange={(e) => {
+                            if (!settings) return;
+                            // Only allow numbers
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            setSettings({ ...settings, whatsapp_number: val });
+                          }}
+                          className="font-mono"
+                        />
+                        <p className="text-xs text-[var(--text-tertiary)] mt-1.5 flex items-center gap-1">
+                          <span className="text-[var(--brand-primary)]">*</span> Enter numbers only, including country code (no + or spaces).
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="border-t border-[var(--border-subtle)] pt-8 space-y-6">
                   <h3 className="text-sm font-bold text-[var(--brand-primary)] uppercase tracking-wider">Limits & Security</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <Input
@@ -495,53 +536,108 @@ export default function WidgetSettingsPage() {
               {/* Mock Widget */}
               <div className="relative flex flex-col items-end space-y-4 max-h-full w-full pointer-events-none">
 
-                {/* Chat Window */}
-                <div className="w-[360px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-500 transform origin-bottom-right ring-1 ring-black/5 shrink-0 max-h-[calc(100%-80px)]">
-                  {/* Header */}
-                  <div className="h-14 flex items-center px-5 justify-between text-white shadow-sm z-10 shrink-0" style={{ backgroundColor: settings?.primary_color || '#0E3F34' }}>
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <div className="w-2 h-2 rounded-full bg-green-400 border border-white/20" />
-                        <div className="absolute inset-0 w-2 h-2 rounded-full bg-green-400 animate-ping opacity-75" />
+                {/* Chat Window or Actions View */}
+                {settings?.whatsapp_enabled ? (
+                  // ACTIONS VIEW PREVIEW
+                  <div className="w-[360px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-500 transform origin-bottom-right ring-1 ring-black/5 shrink-0 max-h-[calc(100%-80px)]">
+                    {/* Header */}
+                    <div className="h-14 flex items-center px-5 justify-between text-white shadow-sm z-10 shrink-0 mb-0" style={{ backgroundColor: settings?.primary_color || '#0E3F34' }}>
+                      <div className="flex items-center gap-3">
+                        <span className="font-space font-bold tracking-tight text-md">👋 Welcome</span>
                       </div>
-                      <span className="font-space font-bold tracking-tight text-md">Support</span>
                     </div>
-                  </div>
 
-                  {/* Messages */}
-                  <div className="flex-1 bg-[#F9FAFB] p-5 flex flex-col gap-3 overflow-y-auto min-h-0">
-                    {/* Welcome Message */}
-                    {settings?.welcome_message && (
-                      <div className="bg-white p-3.5 rounded-2xl rounded-bl-none shadow-sm text-[13px] border border-gray-100 self-start max-w-[85%] text-gray-700 leading-relaxed animate-in fade-in slide-in-from-left-2 duration-300">
-                        {settings.welcome_message}
+                    {/* Content */}
+                    <div className="flex-1 p-6 flex flex-col justify-center bg-white">
+                      <div className="text-center space-y-2 mb-6">
+                        <div className="inline-flex items-center justify-center w-14 h-14 rounded-full text-white shadow-lg mb-2" style={{ backgroundColor: settings?.primary_color || '#0E3F34' }}>
+                          {business?.logo_url ? <img src={business.logo_url} className="w-8 h-8 object-contain" alt="" /> : <MessageSquare className="w-6 h-6" />}
+                        </div>
+                        <h2 className="text-xl font-bold text-gray-900 leading-tight">How would you like to connect?</h2>
                       </div>
-                    )}
 
-                    {/* User Message */}
-                    <div className="p-3.5 rounded-2xl rounded-br-none shadow-sm text-[13px] text-white self-end max-w-[85%] leading-relaxed animate-in fade-in slide-in-from-right-2 duration-300 delay-150" style={{ backgroundColor: settings?.primary_color || '#0E3F34' }}>
-                      I have a question about pricing.
-                    </div>
+                      <div className="space-y-3">
+                        <div className="w-full bg-[var(--primary-color)] text-white p-3.5 rounded-xl shadow-md flex items-center justify-between opacity-90" style={{ backgroundColor: settings?.primary_color || '#0E3F34' }}>
+                          <div className="flex items-center gap-3">
+                            <div className="bg-white/20 p-1.5 rounded-lg">
+                              <MessageSquare className="w-5 h-5" />
+                            </div>
+                            <div className="text-left">
+                              <div className="font-bold text-sm">Chat with AI</div>
+                              <div className="text-[10px] text-white/80">Instant responses</div>
+                            </div>
+                          </div>
+                          <Send className="w-4 h-4" />
+                        </div>
 
-                    {/* AI Message */}
-                    <div className="bg-white p-3.5 rounded-2xl rounded-bl-none shadow-sm text-[13px] border border-gray-100 self-start max-w-[85%] text-gray-700 leading-relaxed animate-in fade-in slide-in-from-left-2 duration-300 delay-300">
-                      {settings?.initial_ai_message || "How can I help you today?"}
+                        <div className="w-full bg-[#25D366] text-white p-3.5 rounded-xl shadow-md flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-white/20 p-1.5 rounded-lg">
+                              <Phone className="w-5 h-5" />
+                            </div>
+                            <div className="text-left">
+                              <div className="font-bold text-sm">WhatsApp</div>
+                              <div className="text-[10px] text-white/80">Drop a message</div>
+                            </div>
+                          </div>
+                          <Send className="w-4 h-4 -rotate-45" />
+                        </div>
+                      </div>
+
+                      <div className="mt-6 text-center">
+                        <span className="text-gray-400 text-xs border-b border-dotted border-gray-400">Continue to form</span>
+                      </div>
                     </div>
                   </div>
+                ) : (
+                  // CHAT VIEW PREVIEW
+                  <div className="w-[360px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-500 transform origin-bottom-right ring-1 ring-black/5 shrink-0 max-h-[calc(100%-80px)]">
+                    {/* Header */}
+                    <div className="h-14 flex items-center px-5 justify-between text-white shadow-sm z-10 shrink-0" style={{ backgroundColor: settings?.primary_color || '#0E3F34' }}>
+                      <div className="flex items-center gap-3">
+                        <div className="relative">
+                          <div className="w-2 h-2 rounded-full bg-green-400 border border-white/20" />
+                          <div className="absolute inset-0 w-2 h-2 rounded-full bg-green-400 animate-ping opacity-75" />
+                        </div>
+                        <span className="font-space font-bold tracking-tight text-md">Support</span>
+                      </div>
+                    </div>
 
-                  {/* Footer */}
-                  <div className="p-3 bg-white border-t border-gray-100 shrink-0">
-                    <div className="h-10 bg-gray-50 rounded-full w-full border border-gray-200 flex items-center px-4 text-gray-400 text-sm">
-                      Type a message...
+                    {/* Messages */}
+                    <div className="flex-1 bg-[#F9FAFB] p-5 flex flex-col gap-3 overflow-y-auto min-h-0">
+                      {/* Welcome Message */}
+                      {settings?.welcome_message && (
+                        <div className="bg-white p-3.5 rounded-2xl rounded-bl-none shadow-sm text-[13px] border border-gray-100 self-start max-w-[85%] text-gray-700 leading-relaxed animate-in fade-in slide-in-from-left-2 duration-300">
+                          {settings.welcome_message}
+                        </div>
+                      )}
+
+                      {/* User Message */}
+                      <div className="p-3.5 rounded-2xl rounded-br-none shadow-sm text-[13px] text-white self-end max-w-[85%] leading-relaxed animate-in fade-in slide-in-from-right-2 duration-300 delay-150" style={{ backgroundColor: settings?.primary_color || '#0E3F34' }}>
+                        I have a question about pricing.
+                      </div>
+
+                      {/* AI Message */}
+                      <div className="bg-white p-3.5 rounded-2xl rounded-bl-none shadow-sm text-[13px] border border-gray-100 self-start max-w-[85%] text-gray-700 leading-relaxed animate-in fade-in slide-in-from-left-2 duration-300 delay-300">
+                        {settings?.initial_ai_message || "How can I help you today?"}
+                      </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="p-3 bg-white border-t border-gray-100 shrink-0">
+                      <div className="h-10 bg-gray-50 rounded-full w-full border border-gray-200 flex items-center px-4 text-gray-400 text-sm">
+                        Type a message...
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* Launcher */}
                 <div className="w-14 h-14 rounded-full shadow-xl flex items-center justify-center text-white cursor-pointer hover:scale-105 transition-transform active:scale-95 ring-4 ring-white/30 shrink-0" style={{ backgroundColor: settings?.primary_color || '#0E3F34' }}>
                   {settings?.icon_url ? (
                     <img src={settings.icon_url} className="w-7 h-7 object-contain" alt="Widget Icon" />
                   ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                    <MessageSquare strokeWidth={2} className="w-7 h-7" />
                   )}
                 </div>
 

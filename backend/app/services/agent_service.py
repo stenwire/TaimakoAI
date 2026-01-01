@@ -95,7 +95,8 @@ async def run_conversation(
     # Initialize session with user_id in state
     initial_state = {
         "response_style": "concise",
-        "user_id": user_id  # Store user_id for tools to access
+        "user_id": user_id,  # Store user_id for tools to access
+        "api_key": api_key   # Store api_key for tools (specifically RAG) to use
     }
     await init_session(business_name, user_id, session_id, initial_state)
     

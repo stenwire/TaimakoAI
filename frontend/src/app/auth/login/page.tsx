@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { BrainCircuit, Mail, Lock, AlertCircle } from 'lucide-react';
+import { Mail, Lock, AlertCircle } from 'lucide-react';
+import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -66,8 +67,14 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-4">
-            <div className="p-3 bg-[var(--brand-primary)] rounded-[var(--radius-squircle)]">
-              <BrainCircuit className="w-8 h-8 text-white" />
+            <div className="mb-4">
+              <Image
+                src="/logo.png"
+                alt="Taimako Logo"
+                width={64}
+                height={64}
+                className="w-16 h-16"
+              />
             </div>
             <span className="text-h1 text-[var(--text-primary)]">Taimako</span>
           </div>
