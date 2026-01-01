@@ -51,7 +51,7 @@ app.add_middleware(SlowAPIMiddleware)
 
 # Security Middlewares
 if environment in ["production", "staging"]:
-    app.add_middleware(HTTPSRedirectMiddleware)
+    # app.add_middleware(HTTPSRedirectMiddleware)
     
 app.add_middleware(
     TrustedHostMiddleware, 
