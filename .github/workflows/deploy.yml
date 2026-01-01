@@ -10,13 +10,13 @@ env:
   REGISTRY: ghcr.io
   # Project prefix – change this in repo secrets/variables to rename everything
   PROJECT_PREFIX: "taimako"
-  
+
   # Container and network names (derived from prefix)
   POSTGRES_CONTAINER: ${{ secrets.POSTGRES_HOST }}
   BACKEND_CONTAINER: ${{ vars.PROJECT_PREFIX }}_backend
   FRONTEND_CONTAINER: ${{ vars.PROJECT_PREFIX }}_frontend
   DOCKER_NETWORK: ${{ vars.PROJECT_PREFIX }}_network
-  
+
   # Volume and backup paths
   DATA_DIR: /opt/${{ vars.PROJECT_PREFIX }}
   POSTGRES_DATA_DIR: /opt/${{ vars.PROJECT_PREFIX }}/postgres_data
@@ -39,7 +39,7 @@ env:
 
 jobs:
   build-and-push-backend:
-    runs-on: ubuntu-latest
+    runs-on: ld-vps-runner
     permissions:
       contents: read
       packages: write
@@ -70,7 +70,7 @@ jobs:
 
   build-and-push-frontend:
     needs: [build-and-push-backend]
-    runs-on: ubuntu-latest
+    runs-on: ld-vps-runner
     permissions:
       contents: read
       packages: write
