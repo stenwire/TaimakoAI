@@ -9,10 +9,10 @@ on:
 env:
   REGISTRY: ghcr.io
   # Project prefix – change this in repo secrets/variables to rename everything
-  PROJECT_PREFIX: "taimako"
+  PROJECT_PREFIX: "taimako" # Add to github repo actions variables
 
   # Container and network names (derived from prefix)
-  POSTGRES_CONTAINER: ${{ secrets.POSTGRES_HOST }}
+  POSTGRES_CONTAINER: ${{ vars.PROJECT_PREFIX }}_postgres
   BACKEND_CONTAINER: ${{ vars.PROJECT_PREFIX }}_backend
   FRONTEND_CONTAINER: ${{ vars.PROJECT_PREFIX }}_frontend
   DOCKER_NETWORK: ${{ vars.PROJECT_PREFIX }}_network
