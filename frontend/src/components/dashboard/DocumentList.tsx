@@ -4,13 +4,14 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FileText, RefreshCw, Database, Check } from 'lucide-react';
 import { listDocuments, processDocuments } from '@/lib/api';
+import type { Document } from '@/lib/types';
 
 interface DocumentListProps {
   refreshTrigger: number;
 }
 
 export default function DocumentList({ refreshTrigger }: DocumentListProps) {
-  const [documents, setDocuments] = useState<string[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processStatus, setProcessStatus] = useState<string | null>(null);
@@ -72,7 +73,7 @@ export default function DocumentList({ refreshTrigger }: DocumentListProps) {
           <div className="divide-y divide-slate-800">
             {documents.map((doc, i) => (
               <motion.div
-                key={doc}
+                key={doc.id}
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.05 }}
@@ -81,7 +82,7 @@ export default function DocumentList({ refreshTrigger }: DocumentListProps) {
                 <div className="p-2 rounded-lg bg-slate-800 text-indigo-400">
                   <FileText className="w-4 h-4" />
                 </div>
-                <span className="text-sm text-slate-300">{doc}</span>
+                <span className="text-sm text-slate-300">{doc.filename}</span>
               </motion.div>
             ))}
           </div>
@@ -112,8 +113,8 @@ export default function DocumentList({ refreshTrigger }: DocumentListProps) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className={`text-sm text-center p-2 rounded-lg ${processStatus.includes('failed')
-                ? 'bg-rose-500/10 text-rose-400'
-                : 'bg-emerald-500/10 text-emerald-400'
+              ? 'bg-rose-500/10 text-rose-400'
+              : 'bg-emerald-500/10 text-emerald-400'
               }`}
           >
             {processStatus}
