@@ -56,23 +56,11 @@ def get_widget_config(
     if widget.whitelisted_domains:
         origin = request.headers.get("origin")
         print(f"\n\nOrigin: {origin}\n\n")
-        # If origin is null (e.g. direct curl) or not in whitelist, strip or block?
-        # Requirement says "it will only work under the set domains".
-        # If strict, we raise 403.
-        # However, for local dev or if origin is missing, we might need care.
-        # Let's assume strict if list is present and origin is set.
         if origin:
-            # Simple check: origin must match one of the entries exactly or maybe substring? 
-            # Usually exact match of scheme+domain+port.
-            # Allowing localhost for leniency if not explicit? No, user sets rules.
             if origin not in widget.whitelisted_domains:
-                # We can either 403 or just not return config? 
-                # Better to 403 to indicate policy violation.
-                # But CORS might block it anyway if we configured CORS middleware dynamically.
-                # Since we likely have global CORS *, we enforce here.
                 raise HTTPException(status_code=403, detail="Domain not allowed")
     
-    return widget
+    return WidgetConfigResponse.model_validate(widget)
 
 @router.get("/my-settings", response_model=None)
 def get_my_widget_settings(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):

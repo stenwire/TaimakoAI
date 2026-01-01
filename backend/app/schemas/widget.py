@@ -67,6 +67,7 @@ class WidgetConfigResponse(BaseModel):
     max_messages_per_session: Optional[int] = 50
     max_sessions_per_day: Optional[int] = 5
     whitelisted_domains: Optional[List[str]] = None
+    logo_url: Optional[str] = None
     
     class Config:
         from_attributes = True

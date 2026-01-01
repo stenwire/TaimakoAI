@@ -24,6 +24,7 @@ interface WidgetConfig {
   initial_ai_message?: string;
   whatsapp_enabled?: boolean;
   whatsapp_number?: string;
+  logo_url?: string;
 }
 
 interface Message {
@@ -473,7 +474,7 @@ export default function WidgetPage() {
         <div className="flex-1 p-6 flex flex-col justify-center animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="text-center space-y-2 mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[var(--primary-color)] text-white shadow-lg mb-4">
-              {config?.icon_url ? <img src={config.icon_url} className="w-10 h-10 object-contain" /> : <MessageSquare className="w-8 h-8" />}
+              {config?.logo_url ? <img src={config.logo_url} className="w-10 h-10 object-contain" /> : <MessageSquare className="w-8 h-8" />}
             </div>
             <h2 className="text-2xl font-bold text-gray-900">How would you like to connect?</h2>
             <p className="text-gray-500 max-w-[80%] mx-auto">Choose the channel that works best for you.</p>

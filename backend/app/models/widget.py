@@ -26,6 +26,9 @@ class WidgetSettings(Base):
     whatsapp_enabled = Column(Boolean, default=False)
     whatsapp_number = Column(String, nullable=True)
     
+    # Denormalized Business Fields (for easier widget access)
+    logo_url = Column(String, nullable=True)
+    
     # Limits & Security
     max_messages_per_session = Column(Integer, default=50) # Default limit to prevent abuse
     max_sessions_per_day = Column(Integer, default=5) # Default limit per user per day
