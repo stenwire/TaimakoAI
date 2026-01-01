@@ -12,15 +12,15 @@ env:
   PROJECT_PREFIX: "taimako" # Add to github repo actions variables
 
   # Container and network names (derived from prefix)
-  POSTGRES_CONTAINER: ${{ vars.PROJECT_PREFIX }}_postgres
-  BACKEND_CONTAINER: ${{ vars.PROJECT_PREFIX }}_backend
-  FRONTEND_CONTAINER: ${{ vars.PROJECT_PREFIX }}_frontend
-  DOCKER_NETWORK: ${{ vars.PROJECT_PREFIX }}_network
+  POSTGRES_CONTAINER: ${{ env.PROJECT_PREFIX }}_postgres
+  BACKEND_CONTAINER: ${{ env.PROJECT_PREFIX }}_backend
+  FRONTEND_CONTAINER: ${{ env.PROJECT_PREFIX }}_frontend
+  DOCKER_NETWORK: ${{ env.PROJECT_PREFIX }}_network
 
   # Volume and backup paths
-  DATA_DIR: ~/${{ vars.PROJECT_PREFIX }}
-  POSTGRES_DATA_DIR: ~/${{ vars.PROJECT_PREFIX }}/postgres_data
-  BACKUPS_DIR: ~/${{ vars.PROJECT_PREFIX }}/backups
+  DATA_DIR: ~/${{ env.PROJECT_PREFIX }}
+  POSTGRES_DATA_DIR: ~/${{ env.PROJECT_PREFIX }}/postgres_data
+  BACKUPS_DIR: ~/${{ env.PROJECT_PREFIX }}/backups
 
   BACKEND_ENV: >-
     -e ENVIRONMENT="production"
@@ -202,7 +202,7 @@ jobs:
 
       - name: Check container health
         run: |
-          docker ps -a --filter "name=${{ vars.PROJECT_PREFIX }}"
+          docker ps -a --filter "name=${{ env.PROJECT_PREFIX }}"
 
           for container in "${{ env.POSTGRES_CONTAINER }}" "${{ env.BACKEND_CONTAINER }}" "${{ env.FRONTEND_CONTAINER }}"; do
             if ! docker ps --format '{{.Names}}' | grep -q "^$container$"; then
