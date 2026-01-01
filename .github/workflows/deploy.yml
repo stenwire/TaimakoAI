@@ -8,8 +8,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  # Project prefix – change this in repo secrets/variables to rename everything
-  PROJECT_PREFIX: "taimako" # Add to github repo actions variables
+  # Project prefix – change this to rename everything
+  PROJECT_PREFIX: "taimako"
 
   # Container and network names (derived from prefix)
   POSTGRES_CONTAINER: ${{ env.PROJECT_PREFIX }}_postgres
