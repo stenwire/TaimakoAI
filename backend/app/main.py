@@ -50,7 +50,9 @@ environment = os.getenv("ENVIRONMENT", "local")
 app.add_middleware(SlowAPIMiddleware)
 
 # Security Middlewares
-if environment in ["production", "staging"]:
+# I am commenting out the HTTPS redirect middleware for now
+# because this project is hosted behind a reverse proxy
+# if environment in ["production", "staging"]:
     # app.add_middleware(HTTPSRedirectMiddleware)
     
 app.add_middleware(
