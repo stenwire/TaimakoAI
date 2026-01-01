@@ -18,9 +18,9 @@ env:
   DOCKER_NETWORK: ${{ vars.PROJECT_PREFIX }}_network
 
   # Volume and backup paths
-  DATA_DIR: /opt/${{ vars.PROJECT_PREFIX }}
-  POSTGRES_DATA_DIR: /opt/${{ vars.PROJECT_PREFIX }}/postgres_data
-  BACKUPS_DIR: /opt/${{ vars.PROJECT_PREFIX }}/backups
+  DATA_DIR: ~/${{ vars.PROJECT_PREFIX }}
+  POSTGRES_DATA_DIR: ~/${{ vars.PROJECT_PREFIX }}/postgres_data
+  BACKUPS_DIR: ~/${{ vars.PROJECT_PREFIX }}/backups
 
   BACKEND_ENV: >-
     -e ENVIRONMENT="production"
@@ -131,9 +131,8 @@ jobs:
 
       - name: Deploy PostgreSQL container
         run: |
-          sudo mkdir -p ${{ env.POSTGRES_DATA_DIR }}
-          sudo mkdir -p ${{ env.BACKUPS_DIR }}
-          sudo chown -R $USER:$USER ${{ env.DATA_DIR }}
+          mkdir -p ${{ env.POSTGRES_DATA_DIR }}
+          mkdir -p ${{ env.BACKUPS_DIR }}
 
           if docker ps -a --format '{{.Names}}' | grep -q "^${{ env.POSTGRES_CONTAINER }}$"; then
             echo "PostgreSQL container exists."
