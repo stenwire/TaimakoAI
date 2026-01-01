@@ -1,6 +1,20 @@
-.PHONY: start stop build logs migrate migrate-generate db-shell db-backup db-restore clean
+# Load variables from .env file (if present)
+ifneq (,$(wildcard ./.env))
+    include .env
+    export
+endif
 
-# Start all services
+# Default values (fallback if .env missing or vars not set)
+PROJECT_PREFIX      ?= taimako
+POSTGRES_USER       ?= taimako
+POSTGRES_DB         ?= taimako_db
+POSTGRES_CONTAINER  ?= $(PROJECT_PREFIX)_postgres
+BACKEND_CONTAINER   ?= $(PROJECT_PREFIX)_backend
+FRONTEND_CONTAINER  ?= $(PROJECT_PREFIX)_frontend
+
+.PHONY: start start-d stop build logs migrate migrate-generate db-shell db-backup db-restore clean ps db-reset db-truncate logs-backend logs-frontend
+
+# Start all services (foreground)
 start:
 	docker-compose up
 
@@ -20,7 +34,7 @@ clean:
 build:
 	docker-compose build
 
-# View logs
+# View logs (all services)
 logs:
 	docker-compose logs -f
 
@@ -30,52 +44,61 @@ logs-backend:
 logs-frontend:
 	docker-compose logs -f frontend
 
-# Database migrations (runs inside container)
+# Database migrations (runs inside backend container)
 migrate:
 	docker-compose exec backend uv run alembic upgrade head
 
-# Generate new migration (runs inside container)
+# Generate new migration
 migrate-generate:
 	@read -p "Enter migration message: " msg; \
 	docker-compose exec backend uv run alembic revision --autogenerate -m "$$msg"
 
 # Access PostgreSQL shell
 db-shell:
-	docker-compose exec postgres psql -U agentic_cx -d agentic_cx_db
+	docker-compose exec $(POSTGRES_CONTAINER) psql -U $(POSTGRES_USER) -d $(POSTGRES_DB)
 
 # Backup database to local file
 db-backup:
-	docker-compose exec postgres pg_dump -U agentic_cx agentic_cx_db > backup_$$(date +%Y%m%d_%H%M%S).sql
-	@echo "Database backed up to backup_$$(date +%Y%m%d_%H%M%S).sql"
+	@timestamp=$$(date +%Y%m%d_%H%M%S); \
+	docker-compose exec $(POSTGRES_CONTAINER) pg_dump -U $(POSTGRES_USER) $(POSTGRES_DB) > backup_$${timestamp}.sql; \
+	echo "Database backed up to backup_$${timestamp}.sql"
 
-# Restore database from backup file (usage: make db-restore FILE=backup.sql)
+# Restore database from backup file
+# Usage: make db-restore FILE=backup_20251231_120000.sql
 db-restore:
-	@if [ -z "$(FILE)" ]; then echo "Usage: make db-restore FILE=backup.sql"; exit 1; fi
-	cat $(FILE) | docker-compose exec -T postgres psql -U agentic_cx -d agentic_cx_db
-	@echo "Database restored from $(FILE)"
+	@if [ -z "$(FILE)" ]; then \
+		echo "Error: Please specify backup file. Usage: make db-restore FILE=backup.sql"; \
+		exit 1; \
+	fi
+	@if [ ! -f "$(FILE)" ]; then \
+		echo "Error: File $(FILE) not found!"; \
+		exit 1; \
+	fi
+	cat $(FILE) | docker-compose exec -T $(POSTGRES_CONTAINER) psql -U $(POSTGRES_USER) -d $(POSTGRES_DB)
+	@echo "Database successfully restored from $(FILE)"
 
-# Reset database to clean state (drops all tables, need to run 'make migrate' after)
+# Reset database (drop everything and recreate public schema)
 db-reset:
 	@echo "Resetting database to clean state (dropping all tables)..."
-	docker-compose exec postgres psql -U agentic_cx -d agentic_cx_db -c "\
+	docker-compose exec $(POSTGRES_CONTAINER) psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -c "\
 		DROP SCHEMA public CASCADE; \
 		CREATE SCHEMA public; \
-		GRANT ALL ON SCHEMA public TO agentic_cx; \
+		GRANT ALL ON SCHEMA public TO $(POSTGRES_USER); \
 		GRANT ALL ON SCHEMA public TO public;"
 	@echo "Database reset complete. Run 'make migrate' to recreate tables."
 
-# Truncate all tables (keeps tables but removes all data)
+# Truncate all tables (clear data, preserve structure)
 db-truncate:
-	@echo "Truncating all tables..."
-	docker-compose exec postgres psql -U agentic_cx -d agentic_cx_db -c "\
-		DO \$$\$$ \
+	@echo "Truncating all tables (excluding alembic_version)..."
+	docker-compose exec $(POSTGRES_CONTAINER) psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -c "\
+		DO \$\$ \
 		DECLARE r RECORD; \
 		BEGIN \
 			FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename != 'alembic_version') LOOP \
 				EXECUTE 'TRUNCATE TABLE ' || quote_ident(r.tablename) || ' CASCADE'; \
 			END LOOP; \
-		END \$$\$$;"
-	@echo "All tables truncated (data cleared, tables preserved)."
+		END \$\$;"
+	@echo "All tables truncated (data cleared, structure preserved)."
 
 # Show running containers
 ps:
