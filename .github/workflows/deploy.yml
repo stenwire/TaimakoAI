@@ -131,8 +131,9 @@ jobs:
 
       - name: Deploy PostgreSQL container
         run: |
-          mkdir -p ${{ env.POSTGRES_DATA_DIR }}
-          mkdir -p ${{ env.BACKUPS_DIR }}
+          sudo mkdir -p ${{ env.POSTGRES_DATA_DIR }}
+          sudo mkdir -p ${{ env.BACKUPS_DIR }}
+          sudo chown -R $USER:$USER ${{ env.DATA_DIR }}
 
           if docker ps -a --format '{{.Names}}' | grep -q "^${{ env.POSTGRES_CONTAINER }}$"; then
             echo "PostgreSQL container exists."
