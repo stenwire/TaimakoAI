@@ -33,8 +33,9 @@ export default function UploadZone({ onUploadComplete }: UploadZoneProps) {
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setFiles((prev) => [...prev, ...Array.from(e.target.files)]);
+    const selectedFiles = e.target.files;
+    if (selectedFiles) {
+      setFiles((prev) => [...prev, ...Array.from(selectedFiles)]);
     }
   };
 
@@ -60,8 +61,8 @@ export default function UploadZone({ onUploadComplete }: UploadZoneProps) {
     <div className="w-full">
       <motion.div
         className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-colors ${isDragging
-            ? 'border-indigo-500 bg-indigo-500/10'
-            : 'border-slate-700 hover:border-slate-600 bg-slate-800/50'
+          ? 'border-indigo-500 bg-indigo-500/10'
+          : 'border-slate-700 hover:border-slate-600 bg-slate-800/50'
           }`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
