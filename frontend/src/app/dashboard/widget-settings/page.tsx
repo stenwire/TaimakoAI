@@ -28,6 +28,7 @@ interface WidgetSettings {
   max_messages_per_session?: number;
   max_sessions_per_day?: number;
   whitelisted_domains?: string[];
+  is_active?: boolean;
 }
 
 type Tab = 'business' | 'appearance' | 'installation';
@@ -98,7 +99,8 @@ export default function WidgetSettingsPage() {
           whatsapp_number: settings.whatsapp_number,
           max_messages_per_session: settings.max_messages_per_session,
           max_sessions_per_day: settings.max_sessions_per_day,
-          whitelisted_domains: settings.whitelisted_domains
+          whitelisted_domains: settings.whitelisted_domains,
+          is_active: settings.is_active
         }),
       });
       if (res.ok) {
@@ -279,6 +281,24 @@ export default function WidgetSettingsPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="md:col-span-2 bg-[var(--bg-secondary)] p-6 rounded-[var(--radius-md)] border border-[var(--border-subtle)] flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-bold text-[var(--text-primary)]">Widget Status</h3>
+                      <p className="text-sm text-[var(--text-secondary)] mt-1">
+                        {settings?.is_active ? 'Widget is currently active and visible on your site.' : 'Widget is disabled and hidden from your site.'}
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={settings?.is_active ?? true}
+                        onChange={(e) => settings && setSettings({ ...settings, is_active: e.target.checked })}
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--brand-primary)]"></div>
+                    </label>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Primary Brand Color</label>
                     <div className="flex gap-3 items-center">

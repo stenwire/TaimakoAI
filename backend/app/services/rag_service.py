@@ -167,14 +167,27 @@ class RAGService:
             return []
 
         try:
-             query_embedding = self._get_query_embedding(text, api_key)
-             # Query with user_id filter and query_embedding
-             # Wrap in list as vector_db expects list of embeddings
-             results = self.vector_db.query(query_embeddings=[query_embedding], where={"user_id": user_id})
-             
-             if results and results['documents']:
-                 return results['documents'][0]
-             return []
+            print(f"RAG Service: Querying for user_id={user_id}")
+            query_embedding = self._get_query_embedding(text, api_key)
+            # Query with user_id filter and query_embedding
+            # Wrap in list as vector_db expects list of embeddings
+            
+            where_clause = {"user_id": user_id}
+            print(f"RAG Service: Executing vector_db.query with where={where_clause}")
+            
+            results = self.vector_db.query(query_embeddings=[query_embedding], where=where_clause)
+            
+            print(f"RAG Service: Raw results keys: {results.keys() if results else 'None'}")
+            if results and results.get('documents'):
+                doc_count = len(results['documents'][0])
+                print(f"RAG Service: Found {doc_count} documents.")
+                # console log first few chars of first doc if exists
+                if doc_count > 0:
+                    print(f"RAG Service: First doc snippet: {results['documents'][0][0][:50]}...")
+                return results['documents'][0]
+            
+            print("RAG Service: No documents found.")
+            return []
         except Exception as e:
             print(f"Error querying RAG: {e}")
             return []
