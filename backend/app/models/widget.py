@@ -26,6 +26,9 @@ class WidgetSettings(Base):
     whatsapp_enabled = Column(Boolean, default=False)
     whatsapp_number = Column(String, nullable=True)
     
+    # Feature Flags
+    is_active = Column(Boolean, default=True)  # Master toggle to enable/disable widget
+    
     # Denormalized Business Fields (for easier widget access)
     logo_url = Column(String, nullable=True)
     

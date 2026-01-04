@@ -39,7 +39,13 @@ export async function GET() {
       if (!res.ok) throw new Error("Failed to load widget config");
       return res.json();
     })
-    .then(config => initWidget(config))
+    .then(config => {
+      if (config.is_active === false) {
+          console.log("Taimako.AI Widget: Widget is currently disabled.");
+          return;
+      }
+      initWidget(config);
+    })
     .catch(err => console.error("Taimako.AI Widget Error:", err));
 
   function initWidget(config) {
