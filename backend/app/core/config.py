@@ -1,10 +1,19 @@
 import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+ENVIRONMENT = os.getenv("ENVIRONMENT", "local")
+
+if ENVIRONMENT in ["production", "staging"]:
+    ENV_FRONTEND_URI = os.getenv("FRONTEND_LIVE_URI", "https://taimako.dubem.xyz")
+else:
+    ENV_FRONTEND_URI = os.getenv("FRONTEND_LOCAL_URI", "http://localhost:3000")
+
 class Settings(BaseSettings):
     PROJECT_NAME: str = os.getenv("PROJECT_PREFIX", "")
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "local")
     CHROMA_DB_DIR: str = "chroma_db"
+    FRONTEND_URI: str = ENV_FRONTEND_URI
+    FRONTEND_REDIRECT_URI: str = f"{ENV_FRONTEND_URI}/auth/callback"
 
     # Database
     PROJECT_PREFIX: str = os.getenv("PROJECT_PREFIX", "")
