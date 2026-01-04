@@ -24,6 +24,13 @@ from datetime import timedelta
 
 # Additional Schema for Updating Settings
 from pydantic import BaseModel
+
+from urllib.parse import urlparse
+from app.core.config import settings
+
+router = APIRouter()
+
+
 class WidgetUpdate(BaseModel):
     theme: Optional[str] = None
     primary_color: Optional[str] = None
@@ -39,8 +46,17 @@ class WidgetUpdate(BaseModel):
     whitelisted_domains: Optional[List[str]] = None
 
 
-
-router = APIRouter()
+def normalize_url(url: str) -> str:
+    if not url:
+        return ""
+    url = str(url).strip().lower()
+    if url.startswith("https://"):
+        url = url[8:]
+    elif url.startswith("http://"):
+        url = url[7:]
+    if url.endswith("/"):
+        url = url[:-1]
+    return url
 
 @router.get("/config/{public_widget_id}", response_model=WidgetConfigResponse)
 def get_widget_config(
@@ -56,9 +72,38 @@ def get_widget_config(
     if widget.whitelisted_domains:
         origin = request.headers.get("origin")
         print(f"\n\nOrigin: {origin}\n\n")
+        
         if origin:
-            if origin not in widget.whitelisted_domains:
+            normalized_origin = normalize_url(origin)
+            allowed = False
+            
+            # 1. Check User Whitelist
+            domains = widget.whitelisted_domains if isinstance(widget.whitelisted_domains, list) else []
+            for domain in domains:
+                if normalize_url(domain) == normalized_origin:
+                    allowed = True
+                    break
+            
+            # 2. Check System Origins (Frontend)
+            if not allowed:
+                # Extract host from FRONTEND_URI (e.g., http://localhost:3000/ -> localhost:3000)
+                try:
+                    system_url = settings.FRONTEND_URI
+                    if normalize_url(system_url) == normalized_origin:
+                        allowed = True
+                        print(f"Allowed System Origin: {origin}")
+                except Exception as e:
+                    print(f"Error checking system origin: {e}")
+
+                # explicit dev fallback
+                if not allowed and normalized_origin == "localhost:3000":
+                    allowed = True
+            
+            if not allowed:
+                print(f"Blocked Origin: {origin} (normalized: {normalized_origin})")
+                print(f"Allowed: {[normalize_url(d) for d in domains]}")
                 raise HTTPException(status_code=403, detail="Domain not allowed")
+
     
     return WidgetConfigResponse.model_validate(widget)
 
