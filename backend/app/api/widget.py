@@ -43,7 +43,9 @@ class WidgetUpdate(BaseModel):
     whatsapp_number: Optional[str] = None
     max_messages_per_session: Optional[int] = None
     max_sessions_per_day: Optional[int] = None
+    max_sessions_per_day: Optional[int] = None
     whitelisted_domains: Optional[List[str]] = None
+    is_active: Optional[bool] = None
 
 
 def normalize_url(url: str) -> str:
@@ -173,6 +175,9 @@ def update_my_widget_settings(
         
     if settings.whitelisted_domains is not None:
         widget.whitelisted_domains = settings.whitelisted_domains
+        
+    if settings.is_active is not None:
+        widget.is_active = settings.is_active
         
     db.commit()
     db.refresh(widget)
@@ -586,6 +591,7 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
 
 
     try:
+        print(f"Widget: Calling run_conversation with user_id={widget.user_id} (Type: {type(widget.user_id)})")
         ai_response_text = await run_conversation(
             message=message_text,
             user_id=widget.user_id,

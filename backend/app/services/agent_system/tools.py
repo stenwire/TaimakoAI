@@ -41,6 +41,7 @@ def get_context(user_input: str, tool_context: ToolContext) -> str:
 
     # Retrieve context with user_id and api_key
     context_chunks = rag_service.query(text=user_input, user_id=user_id, api_key=api_key)
+    print(f"--- Tool: RAG Service returned {len(context_chunks)} chunks ---")
     context_text = "\n\n".join(context_chunks)
     return context_text
 
