@@ -57,15 +57,21 @@ class AgentFactory:
     def create_rag_agent(business_name: str, custom_instruction: Optional[str] = None, intents: Optional[list] = None, api_key: Optional[str] = None):
         """
         Create a RAG agent with business-specific configuration.
+        This agent is a specialist in retrieving context and answering questions.
         
         Args:
             business_name: Name of the business
             custom_instruction: Optional custom instructions for the agent
             intents: Optional list of business intents
+            api_key: API Key for the model
             
         Returns:
             Configured Agent instance
         """
+        # Determine model to use - API key is required
+        if not api_key:
+            raise ValueError("API Key is required for this business configuration.")
+        
         # Build the instruction with business context
         base_instruction = f"You are a helpful customer support assistant for {business_name}. "
         
@@ -77,31 +83,56 @@ class AgentFactory:
             base_instruction += f"The business has defined the following key intents: {', '.join(intents)}. Keep these in mind when determining the user's intent.\n\n"
         
         base_instruction += (
-            "For greetings, delegate to 'greeting_agent'. "
-            "For farewells, delegate to 'farewell_agent'. "
-            "For questions, use 'get_context' to find relevant info. "
-            "Present the context clearly."
+            "Your role is to answer questions using the 'get_context' tool. "
+            "Do not handle greetings or farewells directly if they are just pleasantries; "
+            "however, if a question is mixed with a greeting, answer the question."
         )
-        
-        # Create sub-agents with the API key
-        greeting_agent = AgentFactory.create_greeting_agent(api_key)
-        farewell_agent = AgentFactory.create_farewell_agent(api_key)
-        
-        # Determine model to use - API key is required
-        if not api_key:
-            raise ValueError("API Key is required for this business configuration.")
-        
+
         model = AgentFactory._get_model(api_key)
 
-        # Create and return the main RAG agent
+        # Create and return the RAG agent
         return Agent(
             name="rag_agent",
             model=model, 
-            description=f"Main agent for {business_name}. Provides context for questions, delegates greetings/farewells.",
+            description=f"Specialist agent for {business_name}. Provides context and answers business questions.",
             instruction=base_instruction,
             tools=[get_context],
-            sub_agents=[greeting_agent, farewell_agent],
+            sub_agents=[],
             output_key="last_agent_response",
             before_model_callback=block_unsafe_content,
             before_tool_callback=validate_tool_args
+        )
+
+    @staticmethod
+    def create_chief_agent(business_name: str, custom_instruction: Optional[str] = None, intents: Optional[list] = None, api_key: Optional[str] = None):
+        """
+        Create the Chief Agent (Orchestrator) that manages other agents.
+        """
+        if not api_key:
+            raise ValueError("API Key is required for this business configuration.")
+            
+        # Create sub-agents
+        greeting_agent = AgentFactory.create_greeting_agent(api_key)
+        farewell_agent = AgentFactory.create_farewell_agent(api_key)
+        rag_agent = AgentFactory.create_rag_agent(business_name, custom_instruction, intents, api_key)
+        
+        instruction = (
+            f"You are the Chief Agent for {business_name}. Your role is to coordinate the conversation warmly and efficiently.\n"
+            "Delegate to 'greeting_agent' for simple greetings.\n"
+            "Delegate to 'farewell_agent' for farewells.\n"
+            "Delegate to 'rag_agent' for any business-specific questions, information requests, or if the user needs help with the service.\n"
+            "If the user input is ambiguous, try to help but prioritize delegating to the 'rag_agent' if it seems like a question."
+        )
+
+        return Agent(
+            name="chief_agent",
+            model=AgentFactory._get_model(api_key),
+            description=f"Chief Orchestrator Agent for {business_name}.",
+            instruction=instruction,
+            # No tools for the chief directly, it delegates. 
+            # (Unless we want it to have some general tools, but purely orchestrator for now is safer)
+            tools=[], 
+            sub_agents=[greeting_agent, farewell_agent, rag_agent],
+            output_key="last_agent_response",
+            before_model_callback=block_unsafe_content
         )

@@ -83,7 +83,7 @@ async def run_conversation(
         session_id = user_id
     
     # Create agent dynamically based on business configuration
-    agent = AgentFactory.create_rag_agent(business_name, custom_instruction, intents=intents, api_key=api_key)
+    agent = AgentFactory.create_chief_agent(business_name, custom_instruction, intents=intents, api_key=api_key)
     
     # Create runner with dynamic agent
     runner = Runner(
