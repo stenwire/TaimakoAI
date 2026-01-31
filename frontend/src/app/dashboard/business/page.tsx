@@ -30,7 +30,9 @@ export default function BusinessProfilePage() {
     website: '',
     custom_agent_instruction: '',
     logo_url: '',
-    gemini_api_key: ''
+    gemini_api_key: '',
+    is_escalation_enabled: false,
+    escalation_emails: []
   });
 
   const personalityPresets = {
@@ -57,7 +59,9 @@ export default function BusinessProfilePage() {
           website: response.data.website,
           custom_agent_instruction: response.data.custom_agent_instruction,
           logo_url: response.data.logo_url || '',
-          gemini_api_key: '' // Never return API key
+          gemini_api_key: '', // Never return API key
+          is_escalation_enabled: response.data.is_escalation_enabled || false,
+          escalation_emails: response.data.escalation_emails || []
         });
       } else {
         // No profile found, start in edit mode
@@ -121,8 +125,11 @@ export default function BusinessProfilePage() {
         description: profile.description,
         website: profile.website,
         custom_agent_instruction: profile.custom_agent_instruction,
+        custom_agent_instruction: profile.custom_agent_instruction,
         logo_url: profile.logo_url || '',
-        gemini_api_key: ''
+        gemini_api_key: '',
+        is_escalation_enabled: profile.is_escalation_enabled || false,
+        escalation_emails: profile.escalation_emails || []
       });
       setEditing(false);
     }
@@ -351,6 +358,52 @@ export default function BusinessProfilePage() {
                   These instructions will override default behaviors. Select a mode above to start with a template.
                 </p>
               </div>
+            </div>
+
+            {/* Escalation Configuration */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-space font-semibold text-[var(--brand-primary)] border-b border-[var(--border-subtle)] pb-2">
+                Escalation Settings
+              </h3>
+              <div className="flex items-center justify-between p-4 bg-[var(--bg-secondary)] rounded-[var(--radius-md)] border border-[var(--border-subtle)]">
+                <div>
+                  <h4 className="font-medium text-[var(--text-primary)]">Enable Human Escalation</h4>
+                  <p className="text-xs text-[var(--text-tertiary)]">Allow users to request a human agent</p>
+                </div>
+                <div className="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                  <input
+                    type="checkbox"
+                    name="escalation_toggle"
+                    id="escalation_toggle"
+                    className={`toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-[var(--border-strong)] ${formData.is_escalation_enabled ? 'right-0 border-[var(--brand-primary)]' : 'left-0'}`}
+                    style={{ right: formData.is_escalation_enabled ? '0' : 'auto', left: formData.is_escalation_enabled ? 'auto' : '0' }}
+                    checked={formData.is_escalation_enabled || false}
+                    onChange={(e) => setFormData({ ...formData, is_escalation_enabled: e.target.checked })}
+                    disabled={!editing}
+                  />
+                  <label
+                    htmlFor="escalation_toggle"
+                    className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer transition-colors duration-200 ${formData.is_escalation_enabled ? 'bg-[var(--brand-primary)]' : 'bg-[var(--border-strong)]'}`}
+                  ></label>
+                </div>
+              </div>
+
+              {formData.is_escalation_enabled && (
+                <div>
+                  <label className="block text-[var(--text-secondary)] text-[13px] font-medium mb-2">
+                    Escalation Emails
+                  </label>
+                  <Input
+                    placeholder="support@example.com, manager@example.com"
+                    value={formData.escalation_emails?.join(', ') || ''}
+                    onChange={(e) => setFormData({ ...formData, escalation_emails: e.target.value.split(',').map(s => s.trim()) })}
+                    disabled={!editing}
+                  />
+                  <p className="text-[12px] text-[var(--text-tertiary)] mt-1">
+                    Comma-separated list of emails to receive notifications.
+                  </p>
+                </div>
+              )}
             </div>
 
             {editing && (

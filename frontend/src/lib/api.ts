@@ -17,7 +17,9 @@ import type {
   Session,
   SessionDetail,
   Guest,
-  GuestSession
+  GuestSession,
+  Escalation,
+  EscalationDetail
 } from './types';
 
 import { BACKEND_URL } from '../config';
@@ -276,6 +278,21 @@ export const toggleLeadStatus = async (guestId: string, isLead: boolean): Promis
   return response.data.data;
 };
 
+// Escalation endpoints
+export const getEscalations = async (businessId: string): Promise<Escalation[]> => {
+  const response = await api.get(`/escalations?business_id=${businessId}`);
+  return response.data.data;
+};
+
+export const getEscalationDetails = async (escalationId: string): Promise<EscalationDetail> => {
+  const response = await api.get(`/escalations/${escalationId}`);
+  return response.data.data;
+};
+
+export const resolveEscalation = async (escalationId: string): Promise<{ status: string }> => {
+  const response = await api.post(`/escalations/${escalationId}/resolve`);
+  return response.data.data;
+};
 
 export default api;
 
