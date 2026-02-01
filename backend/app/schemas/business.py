@@ -9,6 +9,8 @@ class BusinessBase(BaseModel):
     custom_agent_instruction: Optional[str] = None
     intents: Optional[List[str]] = None
     logo_url: Optional[str] = None
+    is_escalation_enabled: Optional[bool] = False
+    escalation_emails: Optional[List[str]] = []
 
 class BusinessCreate(BusinessBase):
     gemini_api_key: Optional[str] = None
@@ -21,6 +23,8 @@ class BusinessUpdate(BaseModel):
     intents: Optional[List[str]] = None
     logo_url: Optional[str] = None
     gemini_api_key: Optional[str] = None
+    is_escalation_enabled: Optional[bool] = None
+    escalation_emails: Optional[List[str]] = None
 
 class BusinessResponse(BusinessBase):
     id: str

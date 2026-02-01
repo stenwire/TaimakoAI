@@ -33,9 +33,10 @@ async def create_business(
         website=business_data.website,
         custom_agent_instruction=business_data.custom_agent_instruction,
         logo_url=business_data.logo_url,
-        gemini_api_key=encrypt_string(business_data.gemini_api_key) if business_data.gemini_api_key else None
+        gemini_api_key=encrypt_string(business_data.gemini_api_key) if business_data.gemini_api_key else None,
+        is_escalation_enabled=business_data.is_escalation_enabled,
+        escalation_emails=business_data.escalation_emails
     )
-    db.add(business)
     db.add(business)
     db.commit()
     db.refresh(business)
@@ -97,6 +98,10 @@ async def update_business(
     if business_data.gemini_api_key is not None and business_data.gemini_api_key != "":
         # Only update API key if a non-empty value is provided
         business.gemini_api_key = encrypt_string(business_data.gemini_api_key)
+    if business_data.is_escalation_enabled is not None:
+        business.is_escalation_enabled = business_data.is_escalation_enabled
+    if business_data.escalation_emails is not None:
+        business.escalation_emails = business_data.escalation_emails
     
     # Sync logo_url to WidgetSettings
     if business_data.logo_url is not None:

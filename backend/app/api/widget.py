@@ -570,10 +570,22 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
                  )
 
     # Decrypt API Key
-    # Decrypt API Key
     decrypted_key = None
     if owner_user and owner_user.business and owner_user.business.gemini_api_key:
         decrypted_key = decrypt_string(owner_user.business.gemini_api_key)
+        if not decrypted_key:
+            print(f"Failed to decrypt API key for business {widget.user_id}")
+            return WidgetChatResponse(
+                message=GuestMessageSchema.model_validate(guest_msg),
+                response=GuestMessageSchema(
+                    id=str(uuid.uuid4()),
+                    guest_id=guest.id,
+                    session_id=session_id,
+                    sender="ai",
+                    message_text="Service Unavailable: API Configuration Error (Key Corrupted). Please check business settings.",
+                    created_at=datetime.now(timezone.utc)
+                )
+            )
     
     if not decrypted_key:
         print(f"Missing API Key for business {widget.user_id}")

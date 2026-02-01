@@ -12,6 +12,7 @@ from app.models.business import Business
 from app.models.widget import WidgetSettings, GuestUser, GuestMessage
 from app.models.chat_session import ChatSession
 from app.models.analytics import AnalyticsDailySummary
+from app.models.escalation import Escalation
 
 # Alembic Config object
 config = context.config

@@ -17,6 +17,8 @@ export interface BusinessProfile {
   intents?: string[];
   logo_url?: string;
   is_api_key_set?: boolean;
+  is_escalation_enabled?: boolean;
+  escalation_emails?: string[];
   created_at: string;
   updated_at: string;
 }
@@ -30,6 +32,8 @@ export interface CreateBusinessProfileData {
   intents?: string[];
   logo_url?: string;
   gemini_api_key?: string;
+  is_escalation_enabled?: boolean;
+  escalation_emails?: string[];
 }
 
 export interface UpdateBusinessProfileData {
@@ -40,6 +44,8 @@ export interface UpdateBusinessProfileData {
   intents?: string[];
   logo_url?: string;
   gemini_api_key?: string;
+  is_escalation_enabled?: boolean;
+  escalation_emails?: string[];
 }
 
 // Document types
@@ -68,6 +74,35 @@ export interface Message {
 export interface ChatResponse {
   response: string;
   sources: string[];
+}
+
+// Escalation types
+export interface Escalation {
+  id: string;
+  business_id: string;
+  session_id: string;
+  status: 'pending' | 'in_progress' | 'resolved';
+  summary: string;
+  sentiment: 'positive' | 'neutral' | 'negative';
+  created_at: string;
+}
+
+export interface EscalationMessage {
+  id: string;
+  sender: 'user' | 'agent' | 'guest' | 'ai';
+  message: string;
+  created_at: string;
+}
+
+export interface EscalationDetail extends Escalation {
+  messages: EscalationMessage[];
+  guest?: {
+    name: string;
+    email: string | null;
+    phone: string | null;
+    location: string | null;
+  };
+  top_intent?: string;
 }
 
 // Auth types

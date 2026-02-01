@@ -16,6 +16,8 @@ async def analyze_session(db: Session, session_id: str, intents: Optional[List[s
     Analyzes a chat session to generate a summary and determine intent.
     Returns (summary, intent).
     """
+    print(f"\n=== Analysis Agent: Starting analysis for session {session_id} ===")
+    
     if not api_key:
         # Fail fast if no key provided
         print("Analysis Agent: No API Key provided")
@@ -23,20 +25,29 @@ async def analyze_session(db: Session, session_id: str, intents: Optional[List[s
 
     session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
     if not session:
+        print(f"Analysis Agent: Session {session_id} not found in database")
         raise ValueError("Session not found")
         
     messages = db.query(GuestMessage).filter(GuestMessage.session_id == session_id).order_by(GuestMessage.created_at).all()
     
+    print(f"Analysis Agent: Found {len(messages)} messages in session")
+    
     if not messages:
+        print("Analysis Agent: No messages to analyze")
         return "No messages in session", "General"
         
     conversation_text = ""
     for msg in messages:
         role = "User" if msg.sender == "guest" else "Agent"
         conversation_text += f"{role}: {msg.message_text}\n"
+    
+    # Show conversation preview for debugging
+    preview = conversation_text[:200] + "..." if len(conversation_text) > 200 else conversation_text
+    print(f"Analysis Agent: Conversation preview:\n{preview}")
         
     # Use provided intents or fallback to default
     intent_list = intents if intents and len(intents) > 0 else INTENT_ENUM
+    print(f"Analysis Agent: Using intent categories: {intent_list}")
         
     # Construct Prompt
     prompt = f"""
@@ -61,6 +72,7 @@ async def analyze_session(db: Session, session_id: str, intents: Optional[List[s
     """
     
     try:
+        print(f"Analysis Agent: Calling Gemini 2.0 Flash for analysis...")
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
             model="gemini-2.0-flash", 
@@ -69,6 +81,8 @@ async def analyze_session(db: Session, session_id: str, intents: Optional[List[s
         
         # Simple parsing logic
         content = response.text
+        print(f"Analysis Agent: Raw LLM response: {content[:150]}...")
+        
         # Strip code blocks if present
         if "```json" in content:
             content = content.replace("```json", "").replace("```", "")
@@ -80,17 +94,24 @@ async def analyze_session(db: Session, session_id: str, intents: Optional[List[s
         summary = data.get("summary", "Unable to generate summary")
         intent = data.get("intent", "Unable to get Intent")
         
+        print(f"Analysis Agent: Parsed summary: '{summary}'")
+        print(f"Analysis Agent: Parsed intent: '{intent}'")
+        
         # specific validation
         if intent not in intent_list:
+            print(f"Analysis Agent: Intent '{intent}' not in allowed list, defaulting to 'General'")
             if "General" in intent_list:
                 intent = "General"
             else:
                 intent = intent_list[-1] 
-            
+        
+        print(f"=== Analysis Agent: Complete - Summary length: {len(summary)} chars, Intent: {intent} ===\n")
         return summary, intent
         
     except Exception as e:
-        print(f"Error in analysis agent: {e}")
+        print(f"Analysis Agent: Error during analysis: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
         return session.summary or "Error generating summary", session.top_intent or "General"
 
 async def persist_analysis(db: Session, session_id: str, summary: str, intent: str):
