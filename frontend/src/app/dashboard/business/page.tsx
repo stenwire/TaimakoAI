@@ -30,7 +30,9 @@ export default function BusinessProfilePage() {
     website: '',
     custom_agent_instruction: '',
     logo_url: '',
-    gemini_api_key: ''
+    gemini_api_key: '',
+    is_escalation_enabled: false,
+    escalation_emails: []
   });
 
   const personalityPresets = {
@@ -57,7 +59,9 @@ export default function BusinessProfilePage() {
           website: response.data.website,
           custom_agent_instruction: response.data.custom_agent_instruction,
           logo_url: response.data.logo_url || '',
-          gemini_api_key: '' // Never return API key
+          gemini_api_key: '', // Never return API key
+          is_escalation_enabled: response.data.is_escalation_enabled || false,
+          escalation_emails: response.data.escalation_emails || []
         });
       } else {
         // No profile found, start in edit mode
@@ -122,7 +126,9 @@ export default function BusinessProfilePage() {
         website: profile.website,
         custom_agent_instruction: profile.custom_agent_instruction,
         logo_url: profile.logo_url || '',
-        gemini_api_key: ''
+        gemini_api_key: '',
+        is_escalation_enabled: profile.is_escalation_enabled || false,
+        escalation_emails: profile.escalation_emails || []
       });
       setEditing(false);
     }
@@ -352,6 +358,7 @@ export default function BusinessProfilePage() {
                 </p>
               </div>
             </div>
+
 
             {editing && (
               <div className="flex gap-3 pt-4 border-t border-[var(--border-subtle)]">

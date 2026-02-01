@@ -49,8 +49,8 @@ function DashboardLayoutInner({
         { label: 'Analytics', href: '/dashboard/analytics', icon: Building2 },
         { label: 'Knowledge Base', href: '/dashboard/documents', icon: FileText },
         { label: 'Widget', href: '/dashboard/widget-settings', icon: Settings },
-        { label: 'Human Handoff', href: '/dashboard/handoff', icon: Users },
-        { label: 'Test Agent', href: '/dashboard/chat', icon: Bot },
+        { label: 'Escalations', href: '/dashboard/handoff', icon: Users },
+        { label: 'Playground', href: '/dashboard/chat', icon: Bot },
         { label: 'Settings', href: '/dashboard/business', icon: Settings },
       ],
     },
@@ -102,15 +102,14 @@ function DashboardLayoutInner({
               {/* Sidebar Footer */}
               <div className="p-4 border-t border-[var(--border-subtle)]">
                 <div className="flex flex-col gap-2">
-                  {!sidebarCollapsed && <div className="px-2 text-xs text-[var(--text-tertiary)] uppercase font-bold tracking-wider">User</div>}
                   <div className={`flex items-center gap-3 px-2 ${sidebarCollapsed ? 'justify-center' : ''}`}>
-                    <div className="w-8 h-8 rounded-full bg-[var(--brand-secondary)] flex items-center justify-center text-white font-bold text-xs">
-                      {user?.name?.[0] || 'U'}
+                    <div className="w-8 h-8 rounded-full bg-[var(--brand-secondary)] flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
+                      {user?.name?.[0] || user?.email?.[0] || 'U'}
                     </div>
                     {!sidebarCollapsed && (
-                      <div className="flex-1 overflow-hidden">
-                        <div className="text-sm font-medium text-[var(--text-primary)] truncate">{user?.name}</div>
-                        <div className="text-xs text-[var(--text-tertiary)] truncate">Online</div>
+                      <div className="flex-1 overflow-hidden min-w-0">
+                        <div className="text-sm font-medium text-[var(--text-primary)] truncate" title={user?.name}>{user?.name || 'User'}</div>
+                        <div className="text-xs text-[var(--text-tertiary)] truncate" title={user?.email}>{user?.email}</div>
                       </div>
                     )}
                   </div>

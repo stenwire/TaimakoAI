@@ -15,6 +15,7 @@ from app.core.response_wrapper import success_response
 
 router = APIRouter()
 
+
 @router.post("/documents/upload", response_model=None)
 async def upload_documents(
     files: List[UploadFile] = File(...), 
@@ -83,6 +84,13 @@ async def chat_with_agent(
     decrypted_key = None
     if business.gemini_api_key:
         decrypted_key = decrypt_string(business.gemini_api_key)
+        if not decrypted_key:
+            # Key exists but failed to decrypt
+            print(f"Failed to decrypt API key for user {current_user.id}")
+            raise HTTPException(
+            status_code=400,
+            detail="API key is invalid or corrupted. Please re-enter your Google Gemini API key in Settings."
+            )
     
     if not decrypted_key:
         raise HTTPException(

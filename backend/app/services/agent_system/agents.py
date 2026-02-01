@@ -1,6 +1,9 @@
 from google.adk.agents import Agent
 from google.adk.models.lite_llm import LiteLlm 
-from app.services.agent_system.tools import get_context, say_hello, say_goodbye
+from app.services.agent_system.tools import (
+    get_context, say_hello, say_goodbye, 
+    analyze_sentiment, escalate_to_human
+)
 from app.services.agent_system.callbacks import block_unsafe_content, validate_tool_args
 
 # --- Model Constants ---
@@ -24,7 +27,19 @@ farewell_agent = Agent(
     tools=[say_goodbye]
 )
 
-# Root Agent: RAG (Multi-Model, Delegation, State, Guardrails)
+# Sub-Agent: Escalation
+escalation_agent = Agent(
+    name="escalation_agent",
+    model=MODEL_GEMINI_2_0_FLASH,
+    description="Handles escalation to human agents and sentiment analysis.",
+    instruction="You are an escalation specialist. "
+                "1. If the user is expressing frustration or anger, first use 'analyze_sentiment' to confirm. "
+                "2. If the user explicitly asks for a human or if sentiment is negative, use 'escalate_to_human'. "
+                "3. Be empathetic and professional.",
+    tools=[analyze_sentiment, escalate_to_human]
+)
+
+# RAG Agent: RAG (Multi-Model, Delegation, State, Guardrails)
 rag_agent = Agent(
     name="rag_agent",
     # Using LiteLlm wrapper for multi-model support (even if using Gemini here)
@@ -33,10 +48,11 @@ rag_agent = Agent(
     instruction="You are a helpful customer support assistant. "
                 "For greetings, delegate to 'greeting_agent'. "
                 "For farewells, delegate to 'farewell_agent'. "
+                "If the user asks to speak to a human, reports a serious issue, or seems very frustrated, delegate to 'escalation_agent'. "
                 "For questions, use 'get_context' to find relevant info. "
                 "Present the context clearly.",
     tools=[get_context],
-    sub_agents=[greeting_agent, farewell_agent],
+    sub_agents=[greeting_agent, farewell_agent, escalation_agent],
     output_key="last_agent_response", # Save final response to session state
     before_model_callback=block_unsafe_content,
     before_tool_callback=validate_tool_args
