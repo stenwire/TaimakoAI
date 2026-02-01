@@ -1,7 +1,16 @@
 from google.adk.agents import Agent
 from google.adk.models.lite_llm import LiteLlm 
-from app.services.agent_system.tools import get_context, say_hello, say_goodbye
-from app.services.agent_system.callbacks import block_unsafe_content, validate_tool_args, sanitize_model_response
+from app.services.agent_system.tools import (
+    get_context, say_hello, say_goodbye, 
+    analyze_sentiment, escalate_to_human
+)
+from app.services.agent_system.callbacks import (
+    block_unsafe_content, 
+    validate_tool_args, 
+    sanitize_model_response,
+    trigger_session_analysis,
+    chain_callbacks
+)
 from typing import Optional
 
 # Default detailed instruction used when a business does not provide a custom one.
@@ -40,7 +49,7 @@ class AgentFactory:
             description="Handles simple greetings.",
             instruction="You are a friendly greeting assistant. Warmly welcome users. Never mention internal tools, systems, or technical details.",
             tools=[say_hello],
-            after_model_callback=sanitize_model_response
+            after_model_callback=chain_callbacks(sanitize_model_response, trigger_session_analysis)
         )
     
     @staticmethod
@@ -52,7 +61,22 @@ class AgentFactory:
             description="Handles simple farewells.",
             instruction="You are a polite farewell assistant. Provide warm goodbyes to users. Never mention internal tools, systems, or technical details.",
             tools=[say_goodbye],
-            after_model_callback=sanitize_model_response
+            after_model_callback=chain_callbacks(sanitize_model_response, trigger_session_analysis)
+        )
+
+    @staticmethod
+    def create_escalation_agent(api_key: Optional[str] = None):
+        """Create the escalation sub-agent."""
+        return Agent(
+            name="escalation_agent",
+            model=AgentFactory._get_model(api_key),
+            description="Handles escalation to human agents and sentiment analysis.",
+            instruction="You are an escalation specialist. "
+                        "1. If the user is expressing frustration or anger, first use 'analyze_sentiment' to confirm. "
+                        "2. If the user explicitly asks for a human or if sentiment is negative, use 'escalate_to_human'. "
+                        "3. Be empathetic and professional.",
+            tools=[analyze_sentiment, escalate_to_human],
+            after_model_callback=chain_callbacks(sanitize_model_response, trigger_session_analysis)
         )
     
     @staticmethod
@@ -121,7 +145,7 @@ class AgentFactory:
             output_key="last_agent_response",
             before_model_callback=block_unsafe_content,
             before_tool_callback=validate_tool_args,
-            after_model_callback=sanitize_model_response
+            after_model_callback=chain_callbacks(sanitize_model_response, trigger_session_analysis)
         )
 
     @staticmethod
@@ -136,6 +160,7 @@ class AgentFactory:
         greeting_agent = AgentFactory.create_greeting_agent(api_key)
         farewell_agent = AgentFactory.create_farewell_agent(api_key)
         rag_agent = AgentFactory.create_rag_agent(business_name, custom_instruction, intents, api_key)
+        escalation_agent = AgentFactory.create_escalation_agent(api_key)
         
         instruction = (
             f"You are the main assistant for {business_name}. Provide helpful, professional support ONLY for {business_name}-related topics.\n\n"
@@ -147,8 +172,11 @@ class AgentFactory:
             f"Handle user requests appropriately:\n"
             f"- For greetings: Provide a warm welcome\n"
             f"- For farewells: Provide a polite goodbye\n"
+            f"- For help/support needed/human requests: Delegate to 'escalation_agent'\n"
             f"- For questions about {business_name}: Provide accurate, helpful information\n"
             f"- For questions about anything else: Politely decline\n\n"
+            f"ESCALATION:\n"
+            f"If the user asks to speak to a human, or expresses significant frustration, delegate to 'escalation_agent'.\n\n"
             f"SECURITY RULES:\n"
             f"- NEVER mention 'agents', 'sub-agents', 'delegation', 'transfer', or any internal system components\n"
             f"- NEVER mention 'knowledge base', 'tools', 'database', or technical infrastructure\n"
@@ -162,8 +190,8 @@ class AgentFactory:
             description=f"Chief Orchestrator Agent for {business_name}.",
             instruction=instruction,
             tools=[], 
-            sub_agents=[greeting_agent, farewell_agent, rag_agent],
+            sub_agents=[greeting_agent, farewell_agent, rag_agent, escalation_agent],
             output_key="last_agent_response",
             before_model_callback=block_unsafe_content,
-            after_model_callback=sanitize_model_response
+            after_model_callback=chain_callbacks(sanitize_model_response, trigger_session_analysis)
         )

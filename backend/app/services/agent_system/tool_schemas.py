@@ -92,3 +92,23 @@ class FarewellOutput(BaseModel):
                 "message": "Goodbye! Have a great day."
             }
         }
+
+class AnalyzeSentimentInput(BaseModel):
+    """Input for sentiment analysis."""
+    user_text: str = Field(..., description="The user's input text to analyze")
+
+class AnalyzeSentimentOutput(BaseModel):
+    """Output for sentiment analysis."""
+    sentiment: str = Field(..., description="Sentiment: Positive, Neutral, or Negative")
+    score: float = Field(..., description="Confidence score 0.0 to 1.0")
+
+class EscalateToHumanInput(BaseModel):
+    """Input for escalation tool."""
+    reason: str = Field(..., description="The reason for escalation (e.g., negative sentiment, user request)")
+    user_message: str = Field(..., description="The last message from the user triggering escalation")
+
+class EscalateToHumanOutput(BaseModel):
+    """Output for escalation tool."""
+    escalation_id: str = Field(..., description="ID of the created escalation ticket")
+    status: str = Field(..., description="Status of the escalation (e.g. pending)")
+    message: str = Field(..., description="Message to display to the user confirming handoff")

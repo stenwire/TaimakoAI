@@ -5,6 +5,21 @@ from app.services.agent_system.tool_schemas import (
     SayHelloInput, GreetingOutput,
     SayGoodbyeInput, FarewellOutput
 )
+from app.db.session import SessionLocal
+from app.models.business import Business
+from app.models.escalation import Escalation, EscalationStatus
+from app.models.chat_session import ChatSession
+from app.services.email_service import EmailServiceFactory
+from app.services.agent_system.tool_schemas import (
+    AnalyzeSentimentInput, AnalyzeSentimentOutput,
+    EscalateToHumanInput, EscalateToHumanOutput
+)
+import json
+
+try:
+    from google import genai
+except ImportError:
+    genai = None
 
 # Mock RAG Service import (handling missing dependencies as done previously)
 try:
@@ -99,3 +114,170 @@ def say_goodbye() -> str:
     # Create structured output
     output = FarewellOutput(message="Goodbye! Have a great day.")
     return output.message
+
+def analyze_sentiment(user_text: str, tool_context: ToolContext) -> str:
+    """Analyzes the sentiment of the user's text.
+    
+    Args:
+        user_text: The input text to analyze.
+        tool_context: Context containing API key.
+        
+    Returns:
+        JSON string with sentiment and score.
+    """
+    print(f"--- Tool: analyze_sentiment called for: {user_text} ---")
+    
+    # 1. Validate Input
+    try:
+        validated_input = AnalyzeSentimentInput(user_text=user_text)
+    except Exception as e:
+        return f"Error: Invalid input - {str(e)}"
+
+    api_key = tool_context.state.get("api_key")
+    
+    sentiment = "Neutral"
+    score = 0.5
+    
+    # 2. Use Gemini if available
+    if api_key and genai:
+        try:
+            client = genai.Client(api_key=api_key)
+            prompt = f"""
+            Analyze the sentiment of the following text.
+            Text: "{validated_input.user_text}"
+            
+            Return JSON only: {{"sentiment": "Positive" | "Neutral" | "Negative", "score": 0.0 to 1.0}}
+            """
+            response = client.models.generate_content(
+                model="gemini-2.0-flash", 
+                contents=prompt
+            )
+            text = response.text.replace("```json", "").replace("```", "").strip()
+            data = json.loads(text)
+            sentiment = data.get("sentiment", "Neutral")
+            score = data.get("score", 0.5)
+        except Exception as e:
+            print(f"Sentiment Analysis Error: {e}")
+            # Fallback based on keywords
+            lower_text = validated_input.user_text.lower()
+            if any(w in lower_text for w in ["angry", "bad", "terrible", "hate", "scam"]):
+                sentiment = "Negative"
+                score = 0.9
+            elif any(w in lower_text for w in ["good", "great", "love", "thanks"]):
+                sentiment = "Positive"
+                score = 0.9
+
+    # 3. Return Output
+    output = AnalyzeSentimentOutput(sentiment=sentiment, score=score)
+    # Storing sentiment in state for other tools to use if needed
+    tool_context.state["last_sentiment"] = sentiment
+    
+    return json.dumps(output.model_dump())
+
+def escalate_to_human(reason: str, user_message: str, tool_context: ToolContext) -> str:
+    """Escalates the conversation to a human agent.
+    
+    Args:
+        reason: Why the escalation is happening.
+        user_message: The user's message triggering it.
+        
+    Returns:
+        Confirmation message.
+    """
+    print(f"--- Tool: escalate_to_human called. Reason: {reason} ---")
+    
+    # 1. Validate Input
+    try:
+        validated_input = EscalateToHumanInput(reason=reason, user_message=user_message)
+    except Exception as e:
+        return f"Error: Invalid input - {str(e)}"
+
+    session_id = tool_context.state.get("session_id")
+    
+    if not session_id:
+        session_id = tool_context.state.get("session_id")
+        
+    if not session_id:
+        return "Error: Session ID missing from context. Cannot escalate."
+
+    db = SessionLocal()
+    try:
+        # 2. Get Session and Business
+        # 2. Get Session and Business using sequential queries (avoiding join ambiguity)
+        print(f"Escalation: Fetching session {session_id}")
+        chat_session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
+        
+        if not chat_session:
+            print(f"Escalation Error: Session {session_id} not found")
+            return "Error: Chat Session not found."
+        
+        print(f"Escalation: Session found. Guest ID: {chat_session.guest_id}")
+        
+        # Get guest user
+        if not chat_session.guest:
+            print(f"Escalation Error: No guest associated with session {session_id}")
+            return "Error: Guest user not found."
+        
+        guest = chat_session.guest
+        print(f"Escalation: Guest found. Widget ID: {guest.widget_id}")
+        
+        # Get widget settings
+        if not guest.widget:
+            print(f"Escalation Error: No widget associated with guest {guest.id}")
+            return "Error: Widget not found."
+        
+        widget = guest.widget
+        print(f"Escalation: Widget found. User ID: {widget.user_id}")
+        
+        # Get business via user_id
+        from app.models.user import User
+        business = db.query(Business).filter(Business.user_id == widget.user_id).first()
+        
+        if not business:
+            print(f"Escalation Error: No business found for user {widget.user_id}")
+            return "Error: Business not found."
+        
+        print(f"Escalation: Business found. Name: {business.business_name}, Escalation enabled: {business.is_escalation_enabled}")
+
+        # 3. Check if enabled
+        if not business.is_escalation_enabled:
+            return "I apologize, but human escalation is currently not available for this service."
+
+        # 4. Create Escalation
+        escalation = Escalation(
+            business_id=business.id,
+            session_id=session_id,
+            summary=f"Escalation Triggered: {validated_input.reason}\nUser Message: {validated_input.user_message}",
+            sentiment="Negative", # Default or should be passed.
+            status=EscalationStatus.PENDING.value
+        )
+        db.add(escalation)
+        db.commit()
+        db.refresh(escalation)
+        
+        # 5. Send Email
+        email_service = EmailServiceFactory.get_service()
+        emails = business.escalation_emails or []
+        if emails:
+            subject = f"Escalation Alert: {business.business_name}"
+            body = (
+                f"New Escalation Request.\n"
+                f"Session ID: {session_id}\n"
+                f"Reason: {validated_input.reason}\n"
+                f"User Message: {validated_input.user_message}\n"
+            )
+            email_service.send_email(emails, subject, body)
+            
+        output = EscalateToHumanOutput(
+            escalation_id=escalation.id,
+            status="pending",
+            message="Your request has been forwarded to a human agent. Only a summary will be shared."
+        )
+        
+        return json.dumps(output.model_dump())
+        
+    except Exception as e:
+        print(f"Escalation Error: {e}")
+        return f"Error processing escalation: {str(e)}"
+    finally:
+        db.close()

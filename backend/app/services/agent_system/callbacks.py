@@ -1,5 +1,6 @@
 from typing import Optional, Dict, Any
 import re
+import asyncio
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
@@ -138,3 +139,100 @@ def sanitize_model_response(
         )
     
     return None
+
+async def _run_analysis_in_background(session_id: str, api_key: Optional[str], intents: Optional[list]):
+    """Background task that runs session analysis without blocking."""
+    try:
+        # Wait 2 seconds to ensure messages are committed to database
+        # This prevents analyzing incomplete conversation state
+        print(f"--- Callback: Waiting 2s before analysis to ensure DB commit for session {session_id} ---")
+        await asyncio.sleep(2)
+        
+        print(f"--- Callback: Starting background analysis for session {session_id} ---")
+        
+        # Import here to avoid circular dependencies
+        from app.services.analysis_agent import analyze_session, persist_analysis
+        from app.db.session import SessionLocal
+        
+        # Create a new database session for this background task
+        db = SessionLocal()
+        
+        try:
+            # Log analysis parameters
+            print(f"--- Callback: Analysis params - API Key: {'present' if api_key else 'MISSING'}, Intents: {intents} ---")
+            
+            # Run analysis with timeout protection (max 10 seconds)
+            summary, intent = await asyncio.wait_for(
+                analyze_session(db, session_id, intents=intents, api_key=api_key),
+                timeout=10.0
+            )
+            
+            # Log analysis results before persistence
+            print(f"--- Callback: Analysis results - Summary: '{summary[:100]}...', Intent: '{intent}' ---")
+            
+            # Persist results to database
+            updated_session = await persist_analysis(db, session_id, summary, intent)
+            
+            if updated_session:
+                print(f"--- Callback: Analysis complete for session {session_id} ---")
+                print(f"    ✓ Summary: {summary}")
+                print(f"    ✓ Intent: {intent}")
+                print(f"    ✓ Saved at: {updated_session.summary_generated_at}")
+            else:
+                print(f"--- Callback: Failed to persist analysis for session {session_id} ---")
+                
+        except asyncio.TimeoutError:
+            print(f"--- Callback: Analysis timeout for session {session_id} (exceeded 10s) ---")
+        except Exception as e:
+            print(f"--- Callback: Analysis error for session {session_id}: {type(e).__name__}: {e} ---")
+            import traceback
+            traceback.print_exc()
+        finally:
+            db.close()
+            
+    except Exception as e:
+        print(f"--- Callback: Fatal error in background analysis: {type(e).__name__}: {e} ---")
+
+def trigger_session_analysis(
+    callback_context: CallbackContext, llm_response: LlmResponse
+) -> Optional[LlmResponse]:
+    """Triggers automatic session analysis after agent response (non-blocking)."""
+    try:
+        # Extract session_id from state
+        session_id = callback_context.state.get("session_id")
+        if not session_id:
+            # No session to analyze (might be a greeting without session)
+            return None
+        
+        # Extract API key and intents from state
+        api_key = callback_context.state.get("api_key")
+        intents = callback_context.state.get("intents")
+        
+        print(f"--- Callback: trigger_session_analysis for session {session_id} ---")
+        
+        # Launch analysis in background (non-blocking)
+        asyncio.create_task(_run_analysis_in_background(session_id, api_key, intents))
+        
+    except Exception as e:
+        # Don't let analysis errors affect the user response
+        print(f"--- Callback: Error triggering analysis: {e} ---")
+    
+    # Never modify the response - this is purely for side effects
+    return None
+
+def chain_callbacks(*callbacks):
+    """
+    Creates a callback chain that executes multiple callbacks in sequence.
+    Each callback can potentially modify the response, and the first non-None
+    response is returned.
+    """
+    def chained_callback(callback_context: CallbackContext, llm_response: LlmResponse) -> Optional[LlmResponse]:
+        result = llm_response
+        for callback in callbacks:
+            modified_response = callback(callback_context, result or llm_response)
+            if modified_response is not None:
+                result = modified_response
+        return result if result != llm_response else None
+    
+    return chained_callback
+

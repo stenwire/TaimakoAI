@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Text, DateTime, ForeignKey, JSON
+from sqlalchemy import Column, String, Text, DateTime, ForeignKey, JSON, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from app.db.base import Base
@@ -26,6 +26,8 @@ class Business(Base):
     website = Column(String, nullable=True)
     custom_agent_instruction = Column(Text, nullable=True, default=DEFAULT_AGENT_INSTRUCTION_PLACEHOLDER)
     intents = Column(JSON, nullable=True)
+    is_escalation_enabled = Column(Boolean, default=False)
+    escalation_emails = Column(JSON, nullable=True) # List of emails
     logo_url = Column(String, nullable=True) # URL to business logo
     gemini_api_key = Column(String, nullable=True) # Encrypted API Key
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

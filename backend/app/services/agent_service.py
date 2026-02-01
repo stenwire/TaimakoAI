@@ -96,7 +96,9 @@ async def run_conversation(
     initial_state = {
         "response_style": "concise",
         "user_id": user_id,  # Store user_id for tools to access
-        "api_key": api_key   # Store api_key for tools (specifically RAG) to use
+        "api_key": api_key,   # Store api_key for tools (specifically RAG) to use
+        "session_id": session_id,  # Store session_id for analysis callback
+        "intents": intents  # Store intents for analysis callback
     }
     await init_session(business_name, user_id, session_id, initial_state)
     
