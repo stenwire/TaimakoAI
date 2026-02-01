@@ -9,12 +9,12 @@ import { AnalyticsOverview, IntentStat, TrafficSource, LocationStat } from '@/li
 
 // --- Components ---
 
-const MetricCard = ({ title, value, delta, label, icon: Icon, delay }: { title: string, value: string, delta?: string, label: string, icon: React.ElementType, delay: number }) => (
+const MetricCard = ({ title, value, delta, label, icon: Icon, delay, className }: { title: string, value: string, delta?: string, label: string, icon: React.ElementType, delay: number, className?: string }) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.5, delay }}
-    className="bg-white p-6 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] shadow-[var(--shadow-sm)] flex flex-col justify-between h-full hover:shadow-[var(--shadow-md)] transition-shadow"
+    className={cn("bg-white p-6 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] shadow-[var(--shadow-sm)] flex flex-col justify-between h-full hover:shadow-[var(--shadow-md)] transition-shadow", className)}
   >
     <div className="flex justify-between items-start mb-4">
       <div className="p-2 bg-[var(--bg-tertiary)] rounded-lg">
@@ -40,7 +40,7 @@ const IntentDonut = ({ intents }: { intents: IntentStat[] }) => {
   let cumulative = 0;
 
   return (
-    <div className="flex items-center gap-8 h-full">
+    <div className="flex flex-col lg:flex-row items-center gap-8 h-full">
       <div className="relative w-40 h-40 flex-shrink-0">
         <svg viewBox="0 0 100 100" className="transform -rotate-90 w-full h-full">
           {intents.length > 0 ? intents.map((intent, i) => {
@@ -124,13 +124,14 @@ export default function DashboardOverview() {
         <p className="text-[var(--text-secondary)]">Welcome back. Here&apos;s what&apos;s happening today.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-4 px-4 md:grid md:grid-cols-2 lg:grid-cols-4 md:pb-0 md:mx-0 md:px-0 scrollbar-hide">
         <MetricCard
           title="Total Sessions"
           value={metrics?.total_sessions.toLocaleString() || "0"}
           label="Total Sessions"
           icon={MessageSquare}
           delay={0.1}
+          className="min-w-[280px] snap-center md:min-w-0"
         />
         <MetricCard
           title="Unique Guests"
@@ -138,6 +139,7 @@ export default function DashboardOverview() {
           label="Unique Guests"
           icon={Users}
           delay={0.2}
+          className="min-w-[280px] snap-center md:min-w-0"
         />
         <MetricCard
           title="Leads Captured"
@@ -145,6 +147,7 @@ export default function DashboardOverview() {
           label="Leads Captured"
           icon={Target}
           delay={0.3}
+          className="min-w-[280px] snap-center md:min-w-0"
         />
         <MetricCard
           title="Avg Duration"
@@ -152,6 +155,7 @@ export default function DashboardOverview() {
           label="Avg Session Duration"
           icon={Clock}
           delay={0.4}
+          className="min-w-[280px] snap-center md:min-w-0"
         />
       </div>
 

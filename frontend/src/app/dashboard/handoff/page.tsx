@@ -112,7 +112,7 @@ export default function HandoffPage() {
 
   const RequestsView = (
     <div className="space-y-6">
-      <div className="flex gap-4 items-center">
+      <div className="flex flex-col md:flex-row gap-4 md:items-center">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[var(--text-tertiary)] w-4 h-4" />
           <input
@@ -121,19 +121,21 @@ export default function HandoffPage() {
             className="w-full pl-10 pr-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]/20"
           />
         </div>
-        <select
-          className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] px-3 py-2 text-sm focus:outline-none"
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-        >
-          <option value="all">All Status</option>
-          <option value="pending">Pending</option>
-          <option value="in_progress">In Progress</option>
-          <option value="resolved">Resolved</option>
-        </select>
-        <Button variant="secondary" onClick={fetchBusinessAndEscalations}>
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <select
+            className="flex-1 md:flex-none bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] px-3 py-2 text-sm focus:outline-none"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+          >
+            <option value="all">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="in_progress">In Progress</option>
+            <option value="resolved">Resolved</option>
+          </select>
+          <Button variant="secondary" onClick={fetchBusinessAndEscalations} className="flex-1 md:flex-none justify-center">
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {loadingEscalations ? (

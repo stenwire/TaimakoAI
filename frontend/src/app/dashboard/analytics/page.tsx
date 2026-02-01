@@ -55,9 +55,9 @@ const TrendChart = ({ days, setDays }: { days: number, setDays: (d: number) => v
           ))}
         </div>
       </div>
-      <div className="h-48 flex items-end gap-1 pt-4 border-b border-[var(--border-subtle)] pb-1">
+      <div className="h-48 flex items-end gap-1 pt-4 border-b border-[var(--border-subtle)] pb-1 overflow-x-auto">
         {chartData.map((item) => (
-          <div key={item.date} className="flex-1 flex flex-col items-center gap-1 group relative h-full justify-end">
+          <div key={item.date} className="flex-1 flex flex-col items-center gap-1 group relative h-full justify-end min-w-[8px]">
             <div
               className="w-full bg-[var(--brand-primary)]/80 rounded-t-sm hover:bg-[var(--brand-primary)] transition-all min-w-[4px] relative"
               style={{ height: `${(item.count / max) * 100}%` }}

@@ -119,7 +119,7 @@ export default function DocumentsPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="flex items-center justify-between"
+        className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
       >
         <div className="flex items-center gap-3">
           <div className="p-3 bg-[var(--success)]/10 rounded-[var(--radius-squircle)]">
@@ -132,7 +132,7 @@ export default function DocumentsPage() {
             </p>
           </div>
         </div>
-        <Button variant="secondary" onClick={fetchDocuments}>
+        <Button variant="secondary" onClick={fetchDocuments} className="self-start md:self-auto">
           <RefreshCw className="w-4 h-4" />
           Refresh
         </Button>
