@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { getAccessToken, generateFollowUp } from '@/lib/api';
 import Card from '@/components/ui/Card';
 import Modal from '@/components/ui/Modal';
-import { User, MessageSquare, Clock, Smartphone, RefreshCw, RotateCcw, Sparkles } from 'lucide-react';
+import { User, MessageSquare, Clock, Smartphone, RefreshCw, RotateCcw, Sparkles, ChevronLeft } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -187,46 +187,56 @@ export default function WidgetInteractionsPage() {
             <p>No interactions yet.</p>
           </div>
         ) : (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Visitor</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">First Seen</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+          <div className="flex flex-col">
+            {/* Header - Desktop Only */}
+            <div className="hidden lg:grid grid-cols-12 gap-4 px-6 py-4 bg-gray-50 border-b border-gray-200 text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <div className="col-span-4">Visitor</div>
+              <div className="col-span-4">Contact</div>
+              <div className="col-span-3">First Seen</div>
+              <div className="col-span-1 text-right">Action</div>
+            </div>
+
+            {/* List */}
+            <div className="divide-y divide-gray-200">
               {guests.map((guest) => (
-                <tr key={guest.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs">
-                        {guest.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{guest.name}</div>
-                      </div>
+                <div key={guest.id} className="flex flex-col lg:grid lg:grid-cols-12 gap-4 px-6 py-4 hover:bg-gray-50 transition-colors">
+
+                  {/* Visitor Name */}
+                  <div className="lg:col-span-4 flex items-center">
+                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm">
+                      {guest.name.charAt(0).toUpperCase()}
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{guest.email || guest.phone || '-'}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <div className="ml-4">
+                      <div className="text-sm font-medium text-gray-900">{guest.name}</div>
+                      <div className="lg:hidden text-xs text-gray-500 mt-0.5">ID: {guest.id.substring(0, 8)}</div>
+                    </div>
+                  </div>
+
+                  {/* Contact */}
+                  <div className="lg:col-span-4 flex items-center text-sm text-gray-900">
+                    <span className="lg:hidden w-20 text-gray-500 text-xs uppercase mr-2">Contact:</span>
+                    {guest.email || guest.phone || '-'}
+                  </div>
+
+                  {/* Date */}
+                  <div className="lg:col-span-3 flex items-center text-sm text-gray-500">
+                    <span className="lg:hidden w-20 text-gray-500 text-xs uppercase mr-2">Seen:</span>
                     {formatDate(guest.created_at)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  </div>
+
+                  {/* Action */}
+                  <div className="lg:col-span-1 flex items-center justify-start lg:justify-end mt-2 lg:mt-0">
                     <button
                       onClick={() => loadSessions(guest)}
-                      className="text-indigo-600 hover:text-indigo-900 font-medium"
+                      className="w-full lg:w-auto px-4 py-2 lg:px-0 lg:py-0 bg-indigo-50 lg:bg-transparent text-indigo-600 rounded-md lg:rounded-none text-sm font-medium hover:text-indigo-900 hover:bg-indigo-100 transition-colors text-center"
                     >
                       View History
                     </button>
-                  </td>
-                </tr>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </div>
         )}
       </Card>
 
@@ -236,39 +246,54 @@ export default function WidgetInteractionsPage() {
           isOpen={!!selectedGuest}
           onClose={() => setSelectedGuest(null)}
           title={`History for ${selectedGuest.name}`}
-          className="max-w-5xl w-full"
+          className="max-w-5xl w-full h-[90vh] lg:h-auto overflow-hidden flex flex-col"
         >
-          <div className="h-[600px] flex border rounded-md overflow-hidden bg-white">
+          <div className="flex-1 flex flex-col lg:flex-row border rounded-md overflow-hidden bg-white h-[600px] lg:h-[600px] w-full relative">
+
             {/* Sidebar: Sessions List */}
-            <div className="w-1/3 border-r bg-gray-50 flex flex-col">
-              <div className="p-3 border-b bg-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Sessions
+            {/* Hidden on mobile if session selected */}
+            <div className={`flex-col bg-gray-50 w-full lg:w-1/3 border-r border-gray-200 transition-all absolute lg:relative inset-0 z-10 lg:z-0 ${selectedSessionId ? 'hidden lg:flex' : 'flex'}`}>
+              <div className="p-3 border-b border-gray-200 bg-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider flex justify-between items-center">
+                <span>Sessions</span>
+                <span className="text-[10px] font-normal normal-case bg-white px-2 py-0.5 rounded border border-gray-200">{sessions.length} total</span>
               </div>
+
               <div className="flex-1 overflow-y-auto p-2 space-y-2">
                 {loadingSessions ? (
-                  <div className="text-center p-4 text-gray-400 text-sm">Loading sessions...</div>
+                  <div className="flex flex-col items-center justify-center h-40 space-y-3">
+                    <RefreshCw className="w-5 h-5 animate-spin text-gray-300" />
+                    <span className="text-gray-400 text-sm">Loading sessions...</span>
+                  </div>
                 ) : sessions.length === 0 ? (
-                  <div className="text-center p-4 text-gray-400 text-sm">No sessions found.</div>
+                  <div className="text-center p-8 text-gray-400 text-sm bg-white rounded border border-dashed border-gray-200 m-2">
+                    <Clock className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                    No sessions found.
+                  </div>
                 ) : (
                   sessions.map(session => (
                     <div
                       key={session.id}
                       onClick={() => loadSessionTranscript(session.id)}
-                      className={`p-3 rounded-md cursor-pointer border transition-colors ${selectedSessionId === session.id
-                        ? 'bg-white border-indigo-500 shadow-sm ring-1 ring-indigo-500'
-                        : 'bg-white border-gray-200 hover:border-indigo-300'
+                      className={`p-3 rounded-md cursor-pointer border transition-all active:scale-[0.98] ${selectedSessionId === session.id
+                        ? 'bg-white border-indigo-500 shadow-sm ring-1 ring-indigo-500 z-10'
+                        : 'bg-white border-gray-200 hover:border-indigo-300 hover:shadow-sm'
                         }`}
                     >
-                      <div className="flex justify-between items-start mb-1 h-5">
-                        <div className="text-xs text-gray-500 flex items-center">
-                          <Clock className="w-3 h-3 mr-1" />
+                      <div className="flex justify-between items-start mb-1.5">
+                        <div className="text-xs text-gray-500 flex items-center font-medium">
+                          <Clock className="w-3 h-3 mr-1.5" />
                           {new Date(session.created_at).toLocaleDateString()}
                         </div>
                         {getOriginBadge(session.origin)}
                       </div>
-                      <div className="text-sm font-medium text-gray-800 truncate" title={session.summary || "No summary"}>
-                        {session.summary || "Conversation"}
+                      <div className="text-sm font-medium text-gray-800 line-clamp-2" title={session.summary || "No summary"}>
+                        {session.summary || "Start of conversation..."}
                       </div>
+                      {session.top_intent && (
+                        <div className="mt-2 text-[10px] inline-block px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded border border-gray-200">
+                          {session.top_intent}
+                        </div>
+                      )}
                     </div>
                   ))
                 )}
@@ -276,156 +301,162 @@ export default function WidgetInteractionsPage() {
             </div>
 
             {/* Main: Transcript */}
-            <div className="w-2/3 flex flex-col bg-white">
-              <div className="p-3 border-b text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 flex justify-between">
-                <span>Transcript</span>
-                {selectedSessionId && <span className="text-gray-400 font-normal">Session ID: {selectedSessionId.slice(0, 8)}...</span>}
+            {/* Hidden on mobile if NO session selected */}
+            <div className={`flex-col bg-white w-full lg:w-2/3 transition-all absolute lg:relative inset-0 z-20 lg:z-0 ${selectedSessionId ? 'flex' : 'hidden lg:flex'}`}>
+              <div className="p-3 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 flex items-center justify-between h-12 flex-shrink-0">
+                <div className="flex items-center gap-3">
+                  {/* Mobile Back Button */}
+                  <button
+                    onClick={() => setSelectedSessionId(null)}
+                    className="lg:hidden p-1.5 -ml-1.5 hover:bg-gray-200 rounded-md text-gray-600 transition-colors"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <span>Transcript</span>
+                </div>
+                {selectedSessionId && (
+                  <span className="text-[10px] text-gray-400 font-mono bg-white px-1.5 py-0.5 rounded border border-gray-200">
+                    ID: {selectedSessionId.slice(0, 8)}
+                  </span>
+                )}
               </div>
 
               {/* Analysis Section */}
               {selectedSessionId && (
-                <div className="p-4 border-b bg-gray-50/50">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-purple-600" />
-                      Analysis
-                    </h3>
-                    <button
-                      onClick={() => analyzeSession(selectedSessionId)}
-                      disabled={analyzing}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white border shadow-sm transition-all
-                                ${analyzing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-purple-50 hover:border-purple-200'}
-                                bg-gradient-to-r from-transparent via-transparent to-transparent
-                                hover:from-purple-500/10 hover:via-pink-500/10 hover:to-orange-500/10
-                                border-transparent ring-1 ring-gray-200 hover:ring-purple-300
-                            `}
-                    >
-                      {analyzing ? (
-                        <RefreshCw className="w-3 h-3 animate-spin text-purple-600" />
-                      ) : (
-                        <Sparkles className="w-3 h-3 text-purple-600" />
-                      )}
-                      <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600">
-                        {analyzing ? 'Analyzing...' : 'Analyze Session'}
-                      </span>
-                    </button>
-                  </div>
-
-                  {sessions.find(s => s.id === selectedSessionId)?.summary ? (
-                    <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm space-y-2">
-                      <div>
-                        <span className="text-xs font-bold text-gray-500 uppercase">Summary</span>
-                        <p className="text-sm text-gray-800 mt-1">
-                          {sessions.find(s => s.id === selectedSessionId)?.summary}
-                        </p>
-                      </div>
-                      <div className="flex items-center justify-between pt-2 border-t border-gray-50">
-                        <div>
-                          <span className="text-xs font-bold text-gray-500 uppercase mr-2">Top Intent</span>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                            {sessions.find(s => s.id === selectedSessionId)?.top_intent || "General"}
-                          </span>
-                        </div>
-                        {sessions.find(s => s.id === selectedSessionId)?.summary_generated_at && (
-                          <div className="text-[10px] text-gray-400">
-                            Generated: {new Date(sessions.find(s => s.id === selectedSessionId)!.summary_generated_at!).toLocaleString()}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-xs text-gray-400 italic">
-                      Click analyze to generate insights for this session.
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Follow-up Section */}
-              {selectedSessionId && (
-                <div className="p-4 border-b bg-gray-50/50">
-                  <h3 className="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-blue-600" />
-                    Generate Follow-up
-                  </h3>
-                  <div className="space-y-3">
-                    <div className="flex gap-2 items-start">
-                      <select
-                        value={followUpType}
-                        onChange={e => setFollowUpType(e.target.value)}
-                        className="text-sm border border-gray-300 rounded-md p-2 bg-white focus:ring-indigo-500 focus:border-indigo-500"
-                      >
-                        <option value="email">Email</option>
-                        <option value="transcript">Transcript</option>
-                      </select>
-                      <input
-                        type="text"
-                        placeholder="Any extra info to include?"
-                        className="flex-1 text-sm border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        value={followUpInfo}
-                        onChange={e => setFollowUpInfo(e.target.value)}
-                      />
+                <div className="flex-shrink-0 border-b border-gray-200 bg-gray-50/30 max-h-[30vh] overflow-y-auto">
+                  <div className="p-4">
+                    <div className="flex justify-between items-center mb-3">
+                      <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-purple-600" />
+                        Analysis
+                      </h3>
                       <button
-                        onClick={handleGenerateFollowUp}
-                        disabled={generatingFollowUp}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 whitespace-nowrap transition-colors"
+                        onClick={() => analyzeSession(selectedSessionId)}
+                        disabled={analyzing}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white border shadow-sm transition-all
+                                ${analyzing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-purple-50 hover:border-purple-200'}
+                                border-gray-200
+                            `}
                       >
-                        {generatingFollowUp ? 'Generating...' : 'Generate'}
+                        {analyzing ? (
+                          <RefreshCw className="w-3 h-3 animate-spin text-purple-600" />
+                        ) : (
+                          <Sparkles className="w-3 h-3 text-purple-600" />
+                        )}
+                        <span className="text-purple-700">
+                          {analyzing ? 'Analyzing...' : 'Analyze Session'}
+                        </span>
                       </button>
                     </div>
-                    {followUpResult && (
-                      <div className="mt-2 animate-in fade-in zoom-in duration-200">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Generated Result</label>
-                        <textarea
-                          readOnly
-                          value={followUpResult}
-                          className="w-full text-sm p-3 border border-gray-200 rounded-md bg-white shadow-sm focus:ring-indigo-500 focus:border-indigo-500 font-mono"
-                          rows={6}
-                        />
+
+                    {sessions.find(s => s.id === selectedSessionId)?.summary ? (
+                      <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm space-y-2">
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                          {sessions.find(s => s.id === selectedSessionId)?.summary}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-100">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700 border border-purple-100">
+                            Intent: {sessions.find(s => s.id === selectedSessionId)?.top_intent || "General"}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-gray-400 italic text-center py-2">
+                        Click analyze to generate insights for this session.
                       </div>
                     )}
                   </div>
                 </div>
               )}
 
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {/* Follow-up Section */}
+              {selectedSessionId && (
+                <div className="flex-shrink-0 border-b border-gray-200 bg-gray-50/30">
+                  <div className="p-4">
+                    <details className="group">
+                      <summary className="list-none flex justify-between items-center cursor-pointer text-sm font-semibold text-gray-800">
+                        <span className="flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-blue-600" />
+                          Generate Follow-up
+                        </span>
+                        <div className="text-xs text-gray-400 group-open:hidden">Click to expand</div>
+                      </summary>
+
+                      <div className="mt-3 space-y-3">
+                        <div className="flex flex-col sm:flex-row gap-2 items-start">
+                          <select
+                            value={followUpType}
+                            onChange={e => setFollowUpType(e.target.value)}
+                            className="w-full sm:w-auto text-sm border border-gray-300 rounded-md p-2 bg-white"
+                          >
+                            <option value="email">Email</option>
+                            <option value="transcript">Transcript</option>
+                          </select>
+                          <input
+                            type="text"
+                            placeholder="Extra instructions..."
+                            className="w-full sm:flex-1 text-sm border border-gray-300 rounded-md p-2"
+                            value={followUpInfo}
+                            onChange={e => setFollowUpInfo(e.target.value)}
+                          />
+                          <button
+                            onClick={handleGenerateFollowUp}
+                            disabled={generatingFollowUp}
+                            className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+                          >
+                            {generatingFollowUp ? 'Generating...' : 'Generate'}
+                          </button>
+                        </div>
+                        {followUpResult && (
+                          <div className="mt-2">
+                            <textarea
+                              readOnly
+                              value={followUpResult}
+                              className="w-full text-sm p-3 border border-gray-200 rounded-md bg-white shadow-sm font-mono h-32"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </details>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/30">
                 {loadingMessages ? (
-                  <div className="h-full flex items-center justify-center text-gray-400">Loading transcript...</div>
+                  <div className="h-full flex flex-col items-center justify-center space-y-2 text-gray-400">
+                    <RefreshCw className="w-6 h-6 animate-spin" />
+                    <span>Loading transcript...</span>
+                  </div>
                 ) : !selectedSessionId ? (
-                  <div className="h-full flex items-center justify-center text-gray-400">Select a session to view details.</div>
+                  <div className="h-full flex flex-col items-center justify-center text-gray-400 text-center p-8">
+                    <MessageSquare className="w-12 h-12 mb-4 opacity-10" />
+                    <p>Select a session to view the conversation history.</p>
+                  </div>
                 ) : messages.length === 0 ? (
                   <div className="h-full flex items-center justify-center text-gray-400">No messages in this session.</div>
                 ) : (
                   messages.map((msg) => (
                     <div key={msg.id} className={`flex ${msg.sender === 'guest' ? 'justify-start' : 'justify-end'}`}>
                       <div
-                        className={`max-w-[80%] rounded-lg px-3 py-2 text-sm shadow-sm ${msg.sender === 'guest'
-                          ? 'bg-gray-100 text-gray-800 border border-gray-200'
-                          : 'bg-indigo-600 text-white'
+                        className={`max-w-[85%] sm:max-w-[80%] rounded-2xl px-4 py-3 text-sm shadow-sm ${msg.sender === 'guest'
+                          ? 'bg-white text-gray-800 border border-gray-200 rounded-tl-none'
+                          : 'bg-indigo-600 text-white rounded-tr-none'
                           }`}
                       >
                         <div
                           className={`prose prose-sm max-w-none break-words
                             ${msg.sender === 'guest'
-                              ? 'text-gray-800 prose-headings:text-gray-800 prose-strong:text-gray-800 prose-p:text-gray-800 prose-li:text-gray-800 prose-ul:text-gray-800 prose-ol:text-gray-800 prose-a:text-blue-600 prose-a:underline prose-code:text-gray-800 prose-code:bg-gray-100'
-                              : 'text-white prose-headings:text-white prose-strong:text-white prose-p:text-white prose-li:text-white prose-ul:text-white prose-ol:text-white prose-a:text-white/90 prose-a:underline prose-code:text-white prose-code:bg-white/20'
+                              ? 'text-gray-800 prose-headings:text-gray-800 prose-p:text-gray-800 prose-a:text-blue-600'
+                              : 'text-white prose-headings:text-white prose-p:text-white prose-a:text-white/90'
                             }
-                            [&>ul]:list-disc [&>ul]:pl-4 [&>ol]:list-decimal [&>ol]:pl-4 [&>li]:my-0.5 [&>p]:my-1 [&:first-child]:mt-0 [&:last-child]:mb-0
                           `}
                         >
-                          <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                            components={{
-                              p: ({ node, ...props }) => <p className="mb-1 last:mb-0" {...props} />,
-                              ul: ({ node, ...props }) => <ul className="pl-4 mb-1 list-disc" {...props} />,
-                              ol: ({ node, ...props }) => <ol className="pl-4 mb-1 list-decimal" {...props} />,
-                              li: ({ node, ...props }) => <li className="mb-0.5" {...props} />
-                            }}
-                          >
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
                             {msg.message_text}
                           </ReactMarkdown>
                         </div>
-                        <p className="text-[10px] opacity-70 mt-1 min-w-[60px] text-right">
+                        <p className={`text-[10px] mt-1.5 text-right ${msg.sender === 'guest' ? 'text-gray-400' : 'text-white/70'}`}>
                           {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>
@@ -436,9 +467,10 @@ export default function WidgetInteractionsPage() {
             </div>
           </div>
           <div className="mt-4 flex justify-end">
+            {/* Only show Close on desktop, mobile has back button inside */}
             <button
               onClick={() => setSelectedGuest(null)}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm font-medium"
+              className="w-full lg:w-auto px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm font-medium transition-colors"
             >
               Close
             </button>
