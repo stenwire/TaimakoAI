@@ -22,6 +22,10 @@ start:
 start-d:
 	docker-compose up -d
 
+# Run tests for backend
+backend-test:
+	docker-compose exec backend uv run pytest . -v
+
 # Stop all services
 stop:
 	docker-compose down
