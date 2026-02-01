@@ -29,6 +29,7 @@ env:
     -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}"
     -e GOOGLE_REDIRECT_URI="${{ secrets.GOOGLE_REDIRECT_URI }}"
     -e FRONTEND_REDIRECT_URI="${{ secrets.FRONTEND_REDIRECT_URI }}"
+    -e JWT_SECRET="${{ secrets.JWT_SECRET }}"
 
   FRONTEND_ENV: >-
     -e NODE_ENV="production"
