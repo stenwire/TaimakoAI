@@ -118,50 +118,62 @@ export default function DashboardOverview() {
   if (loading) return <div className="p-8">Loading dashboard...</div>;
 
   return (
+
     <div className="space-y-6">
-      <div className="mb-8">
+      <div className="mb-6 lg:mb-8">
         <h1 className="text-2xl font-space font-bold text-[var(--brand-primary)]">Overview</h1>
         <p className="text-[var(--text-secondary)]">Welcome back. Here&apos;s what&apos;s happening today.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard
-          title="Total Sessions"
-          value={metrics?.total_sessions.toLocaleString() || "0"}
-          label="Total Sessions"
-          icon={MessageSquare}
-          delay={0.1}
-        />
-        <MetricCard
-          title="Unique Guests"
-          value={metrics?.total_guests.toLocaleString() || "0"}
-          label="Unique Guests"
-          icon={Users}
-          delay={0.2}
-        />
-        <MetricCard
-          title="Leads Captured"
-          value={metrics?.leads_captured.toLocaleString() || "0"}
-          label="Leads Captured"
-          icon={Target}
-          delay={0.3}
-        />
-        <MetricCard
-          title="Avg Duration"
-          value={`${metrics ? Math.floor(metrics.avg_session_duration / 60) : 0}m ${metrics ? metrics.avg_session_duration % 60 : 0}s`}
-          label="Avg Session Duration"
-          icon={Clock}
-          delay={0.4}
-        />
+      {/* Metrics Section: Horizontal Scroll on Mobile, Grid on Desktop */}
+      <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-4 px-4 lg:grid lg:grid-cols-4 lg:gap-4 lg:pb-0 lg:mx-0 lg:px-0 scrollbar-hide">
+        <div className="min-w-[260px] snap-center h-full">
+          <MetricCard
+            title="Total Sessions"
+            value={metrics?.total_sessions.toLocaleString() || "0"}
+            label="Total Sessions"
+            icon={MessageSquare}
+            delay={0.1}
+          />
+        </div>
+        <div className="min-w-[260px] snap-center h-full">
+          <MetricCard
+            title="Unique Guests"
+            value={metrics?.total_guests.toLocaleString() || "0"}
+            label="Unique Guests"
+            icon={Users}
+            delay={0.2}
+          />
+        </div>
+        <div className="min-w-[260px] snap-center h-full">
+          <MetricCard
+            title="Leads Captured"
+            value={metrics?.leads_captured.toLocaleString() || "0"}
+            label="Leads Captured"
+            icon={Target}
+            delay={0.3}
+          />
+        </div>
+        <div className="min-w-[260px] snap-center h-full">
+          <MetricCard
+            title="Avg Duration"
+            value={`${metrics ? Math.floor(metrics.avg_session_duration / 60) : 0}m ${metrics ? metrics.avg_session_duration % 60 : 0}s`}
+            label="Avg Session Duration"
+            icon={Clock}
+            delay={0.4}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-auto lg:h-[320px]">
         <div className="lg:col-span-8 bg-white p-6 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] shadow-[var(--shadow-sm)]">
           <h3 className="text-lg font-space font-semibold text-[var(--brand-primary)] mb-6">Intent Distribution</h3>
-          <IntentDonut intents={intents} />
+          <div className="h-[calc(100%-2rem)] flex items-center justify-center">
+            <IntentDonut intents={intents} />
+          </div>
         </div>
 
-        <div className="lg:col-span-4 bg-[var(--brand-primary)] text-white p-6 rounded-[var(--radius-lg)] shadow-[var(--shadow-glow)] flex flex-col justify-between relative overflow-hidden">
+        <div className="lg:col-span-4 bg-[var(--brand-primary)] text-white p-6 rounded-[var(--radius-lg)] shadow-[var(--shadow-glow)] flex flex-col justify-between relative overflow-hidden min-h-[200px]">
           <div className="relative z-10">
             <h3 className="text-lg font-space font-semibold text-white/90">Returning Guests</h3>
             <p className="text-sm text-white/70 mt-1">Guests engaging more than once</p>
@@ -209,7 +221,7 @@ export default function DashboardOverview() {
 
         <div className="lg:col-span-6 bg-white p-6 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] shadow-[var(--shadow-sm)] flex flex-col">
           <h3 className="text-lg font-space font-semibold text-[var(--brand-primary)] mb-4">Traffic Sources</h3>
-          <div className="grid grid-cols-2 gap-4 flex-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
             {sources.map((item, i) => (
               <div key={item.source} className="p-4 bg-[var(--bg-tertiary)]/30 rounded-[var(--radius-md)] flex flex-col justify-center">
                 <div className={`w-2 h-2 rounded-full mb-3 bg-[var(--brand-primary)]`} />
