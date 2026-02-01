@@ -81,7 +81,7 @@ export default function ChatPage() {
             <MessageSquare className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-[var(--text-primary)]">Test Your AI Agent</h1>
+            <h1 className="text-xl font-bold text-[var(--text-primary)]">Agent Playground</h1>
             <p className="text-sm text-[var(--text-secondary)]">
               Preview how your customers will experience your AI agent
             </p>
@@ -94,7 +94,7 @@ export default function ChatPage() {
             className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
           >
             <RotateCcw className="w-4 h-4 mr-2" />
-            New Chat
+            New Session
           </Button>
         )}
       </motion.div>
@@ -118,7 +118,7 @@ export default function ChatPage() {
 
               {/* Title */}
               <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-3">
-                Test Your AI Agent
+                Agent Playground
               </h2>
               <p className="text-[var(--text-secondary)] mb-8">
                 Ask questions to see how your AI agent responds to your customers
@@ -177,8 +177,8 @@ export default function ChatPage() {
                     {/* Avatar */}
                     <div
                       className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm ${msg.role === 'user'
-                          ? 'bg-[var(--brand-primary)]'
-                          : 'bg-gradient-to-br from-[var(--brand-accent)] to-[var(--brand-primary)]'
+                        ? 'bg-[var(--brand-primary)]'
+                        : 'bg-gradient-to-br from-[var(--brand-accent)] to-[var(--brand-primary)]'
                         }`}
                     >
                       {msg.role === 'user' ? (
@@ -191,8 +191,8 @@ export default function ChatPage() {
                     {/* Message Bubble */}
                     <div
                       className={`max-w-[80%] rounded-2xl px-4 py-3 ${msg.role === 'user'
-                          ? 'bg-[var(--brand-primary)] text-white rounded-tr-md'
-                          : 'bg-[var(--bg-secondary)] text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-tl-md'
+                        ? 'bg-[var(--brand-primary)] text-white rounded-tr-md'
+                        : 'bg-[var(--bg-secondary)] text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-tl-md'
                         }`}
                     >
                       {msg.role === 'agent' ? (

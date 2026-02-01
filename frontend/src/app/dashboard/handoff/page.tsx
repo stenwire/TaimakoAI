@@ -1,40 +1,37 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Users, Bell, Flag, Plus, Trash2, CheckCircle2, Search, Filter, MessageSquare, Clock } from 'lucide-react';
+import { Users, Flag, Plus, CheckCircle2, Search, MessageSquare, Clock, X, Mail } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Tabs from '@/components/ui/Tabs';
 import SkeletonLoader from '@/components/ui/SkeletonLoader';
-import EscalationDetailModal from '@/components/dashboard/EscalationDetailModal';
-import { getBusinessProfile, getEscalations } from '@/lib/api';
+import { getBusinessProfile, getEscalations, updateBusinessProfile } from '@/lib/api';
+import { useToast } from '@/contexts/ToastContext';
 import type { Escalation } from '@/lib/types';
 
-interface HandoffRule {
-  id: string;
-  condition: string;
-  value: string;
-  action: string;
-}
+
 
 export default function HandoffPage() {
-  const [activeTab, setActiveTab] = useState('requests');
-  const [businessId, setBusinessId] = useState<string | null>(null);
+  const router = useRouter();
+  const { success, error: toastError } = useToast();
+
 
   // Escalation List State
   const [escalations, setEscalations] = useState<Escalation[]>([]);
   const [loadingEscalations, setLoadingEscalations] = useState(false);
-  const [selectedEscalationId, setSelectedEscalationId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
   // Configuration State
-  const [rules, setRules] = useState<HandoffRule[]>([
-    { id: '1', condition: 'sentiment_below', value: '0.3', action: 'notify_email' },
-    { id: '2', condition: 'intent_equals', value: 'billing_dispute', action: 'assign_team' }
-  ]);
-  const [emailAlerts, setEmailAlerts] = useState<string[]>(['support@acme.com']);
+
+
+  // Escalation Settings State (moved from business settings)
+  const [isEscalationEnabled, setIsEscalationEnabled] = useState(false);
+  const [escalationEmails, setEscalationEmails] = useState<string[]>([]);
+  const [newEmail, setNewEmail] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -44,11 +41,11 @@ export default function HandoffPage() {
   const fetchBusinessAndEscalations = async () => {
     try {
       setLoadingEscalations(true);
-      // We need business ID first. In a real app, this might be in context.
-      // Assuming getBusinessProfile returns the ID.
       const profileRes = await getBusinessProfile();
       if (profileRes.data?.id) {
-        setBusinessId(profileRes.data.id);
+
+        setIsEscalationEnabled(profileRes.data.is_escalation_enabled || false);
+        setEscalationEmails(profileRes.data.escalation_emails || []);
         const escRes = await getEscalations(profileRes.data.id);
         setEscalations(escRes || []);
       }
@@ -59,19 +56,40 @@ export default function HandoffPage() {
     }
   };
 
-  const handleSaveConfig = () => {
+  const handleSaveConfig = async () => {
     setSaving(true);
-    setTimeout(() => setSaving(false), 1000);
+    try {
+      await updateBusinessProfile({
+        is_escalation_enabled: isEscalationEnabled,
+        escalation_emails: escalationEmails
+      });
+      success("Configuration saved successfully!");
+    } catch (e) {
+      toastError("Failed to save configuration");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addEmail = () => {
+    if (newEmail && !escalationEmails.includes(newEmail)) {
+      // Basic email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (emailRegex.test(newEmail)) {
+        setEscalationEmails([...escalationEmails, newEmail]);
+        setNewEmail('');
+      } else {
+        toastError("Please enter a valid email address");
+      }
+    }
+  };
+
+  const removeEmail = (email: string) => {
+    setEscalationEmails(escalationEmails.filter(e => e !== email));
   };
 
   // Rule management
-  const addRule = () => {
-    setRules([...rules, { id: Date.now().toString(), condition: 'intent_equals', value: '', action: 'notify_email' }]);
-  };
-  const removeRule = (id: string) => setRules(rules.filter(r => r.id !== id));
-  const updateRule = (id: string, field: keyof HandoffRule, val: string) => {
-    setRules(rules.map(r => r.id === id ? { ...r, [field]: val } : r));
-  };
+
 
   // Filtered escalations
   const filteredEscalations = escalations.filter(e => {
@@ -86,6 +104,10 @@ export default function HandoffPage() {
       case 'pending': return 'text-amber-600 bg-amber-50 border-amber-200';
       default: return 'text-gray-600 bg-gray-50 border-gray-200';
     }
+  };
+
+  const handleEscalationClick = (escalationId: string) => {
+    router.push(`/dashboard/handoff/${escalationId}`);
   };
 
   const RequestsView = (
@@ -136,11 +158,11 @@ export default function HandoffPage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] p-4 hover:shadow-sm transition-shadow cursor-pointer"
-              onClick={() => setSelectedEscalationId(esc.id)}
+              onClick={() => handleEscalationClick(esc.id)}
             >
               <div className="flex justify-between items-start">
                 <div className="flex gap-3">
-                  <div className={`mt-1 p-2 rounded-full ${esc.sentiment === 'negative' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${esc.sentiment === 'negative' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
                     <Flag className="w-4 h-4" />
                   </div>
                   <div>
@@ -164,84 +186,86 @@ export default function HandoffPage() {
 
   const ConfigurationView = (
     <div className="space-y-6">
-      {/* Global Settings */}
+      {/* Escalation Settings (moved from Business Settings) */}
       <Card>
-        <h2 className="text-lg font-space font-semibold text-[var(--brand-primary)] border-b border-[var(--border-subtle)] pb-2 mb-4">Availability & Sensitivity</h2>
-        <div className="space-y-4">
+        <h2 className="text-lg font-space font-semibold text-[var(--brand-primary)] border-b border-[var(--border-subtle)] pb-2 mb-4">
+          Escalation Settings
+        </h2>
+        <div className="space-y-6">
+          {/* Enable Toggle */}
           <div className="flex items-center justify-between p-4 bg-[var(--bg-secondary)] rounded-[var(--radius-md)] border border-[var(--border-subtle)]">
             <div>
-              <h4 className="font-medium text-[var(--text-primary)]">Strict Handoff Mode</h4>
-              <p className="text-xs text-[var(--text-tertiary)]">Immediately escalate if AI confidence is low</p>
+              <h4 className="font-medium text-[var(--text-primary)]">Enable Human Escalation</h4>
+              <p className="text-xs text-[var(--text-tertiary)]">Allow users to request a human agent</p>
             </div>
-            <div className="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
-              <input type="checkbox" name="toggle" id="toggle" className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-[var(--border-strong)]" />
-              <label htmlFor="toggle" className="toggle-label block overflow-hidden h-6 rounded-full bg-[var(--border-strong)] cursor-pointer"></label>
-            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={isEscalationEnabled}
+                onChange={(e) => setIsEscalationEnabled(e.target.checked)}
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--brand-primary)]"></div>
+            </label>
           </div>
-        </div>
-      </Card>
 
-      {/* Rules Engine */}
-      <Card>
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h2 className="text-lg font-space font-semibold text-[var(--brand-primary)]">Escalation Rules</h2>
-            <p className="text-sm text-[var(--text-secondary)]">Define triggers for automatic handoff</p>
-          </div>
-          <Button size="sm" variant="secondary" onClick={addRule}>
-            <Plus className="w-4 h-4 mr-1" /> Add Rule
-          </Button>
-        </div>
-
-        <div className="space-y-3">
-          {rules.map((rule) => (
-            <div key={rule.id} className="grid grid-cols-12 gap-3 items-center p-3 bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-[var(--radius-md)]">
-              <div className="col-span-1 flex justify-center">
-                <div className="p-2 bg-[var(--bg-tertiary)] rounded-full">
-                  <Flag className="w-4 h-4 text-[var(--brand-accent)]" />
+          {/* Escalation Emails */}
+          {isEscalationEnabled && (
+            <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="flex items-center gap-2 mb-2">
+                <Mail className="w-4 h-4 text-[var(--text-secondary)]" />
+                <label className="text-sm font-medium text-[var(--text-secondary)]">Escalation Emails</label>
+              </div>
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="support@example.com"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addEmail();
+                      }
+                    }}
+                  />
+                  <Button
+                    variant="secondary"
+                    onClick={addEmail}
+                    disabled={!newEmail}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {escalationEmails.map((email) => (
+                    <div
+                      key={email}
+                      className="group flex items-center gap-2 px-3 py-1.5 bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded-full text-sm text-[var(--text-secondary)] hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition-all"
+                    >
+                      <span>{email}</span>
+                      <button
+                        onClick={() => removeEmail(email)}
+                        className="w-4 h-4 rounded-full flex items-center justify-center hover:text-[var(--error)] text-[var(--text-tertiary)] transition-colors opacity-0 group-hover:opacity-100"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {escalationEmails.length === 0 && (
+                    <p className="text-xs text-[var(--text-tertiary)] py-1">No emails configured. Add emails to receive escalation notifications.</p>
+                  )}
                 </div>
               </div>
-              <div className="col-span-3">
-                <select
-                  className="w-full text-sm bg-transparent border-none focus:ring-0 font-medium"
-                  value={rule.condition}
-                  onChange={(e) => updateRule(rule.id, 'condition', e.target.value)}
-                >
-                  <option value="intent_equals">If Intent is...</option>
-                  <option value="sentiment_below">If Sentiment &lt;</option>
-                  <option value="confidence_below">If Confidence &lt;</option>
-                  <option value="word_match">If message contains...</option>
-                </select>
-              </div>
-              <div className="col-span-4">
-                <input
-                  type="text"
-                  className="w-full text-sm bg-[var(--bg-secondary)] px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)]"
-                  value={rule.value}
-                  placeholder="Value..."
-                  onChange={(e) => updateRule(rule.id, 'value', e.target.value)}
-                />
-              </div>
-              <div className="col-span-3">
-                <select
-                  className="w-full text-sm bg-transparent border-none focus:ring-0 text-[var(--text-secondary)]"
-                  value={rule.action}
-                  onChange={(e) => updateRule(rule.id, 'action', e.target.value)}
-                >
-                  <option value="notify_email">Send Email Alert</option>
-                  <option value="assign_team">Assign to Team</option>
-                  <option value="mark_priority">Mark as Priority</option>
-                </select>
-              </div>
-              <div className="col-span-1 flex justify-end">
-                <button onClick={() => removeRule(rule.id)} className="text-[var(--text-tertiary)] hover:text-[var(--status-error)] transition-colors">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
+              <p className="text-[12px] text-[var(--text-tertiary)] mt-2">
+                These emails will receive notifications when a conversation is escalated.
+              </p>
             </div>
-          ))}
+          )}
         </div>
       </Card>
+
+
 
       <div className="flex justify-end pt-4">
         <Button size="lg" onClick={handleSaveConfig} loading={saving}>
@@ -259,7 +283,7 @@ export default function HandoffPage() {
           <Users className="w-8 h-8 text-[var(--brand-accent)]" />
         </div>
         <div>
-          <h1 className="text-h1 text-[var(--text-primary)]">Human Handoff</h1>
+          <h1 className="text-h1 text-[var(--text-primary)]">Escalations</h1>
           <p className="text-body text-[var(--text-secondary)] mt-1">
             Manage escalation requests and configure handoff rules.
           </p>
@@ -272,14 +296,6 @@ export default function HandoffPage() {
           { id: 'requests', label: 'Escalation Requests', content: RequestsView },
           { id: 'configuration', label: 'Configuration', content: ConfigurationView }
         ]}
-      />
-
-      <EscalationDetailModal
-        escalationId={selectedEscalationId}
-        onClose={() => setSelectedEscalationId(null)}
-        onResolve={() => {
-          fetchBusinessAndEscalations(); // Refresh list after resolve
-        }}
       />
     </div>
   );

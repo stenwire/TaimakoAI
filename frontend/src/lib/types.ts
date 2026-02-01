@@ -32,6 +32,8 @@ export interface CreateBusinessProfileData {
   intents?: string[];
   logo_url?: string;
   gemini_api_key?: string;
+  is_escalation_enabled?: boolean;
+  escalation_emails?: string[];
 }
 
 export interface UpdateBusinessProfileData {
@@ -87,13 +89,20 @@ export interface Escalation {
 
 export interface EscalationMessage {
   id: string;
-  sender: 'user' | 'agent';
+  sender: 'user' | 'agent' | 'guest' | 'ai';
   message: string;
   created_at: string;
 }
 
 export interface EscalationDetail extends Escalation {
   messages: EscalationMessage[];
+  guest?: {
+    name: string;
+    email: string | null;
+    phone: string | null;
+    location: string | null;
+  };
+  top_intent?: string;
 }
 
 // Auth types

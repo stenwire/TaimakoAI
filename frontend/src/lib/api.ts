@@ -19,7 +19,7 @@ import type {
   Guest,
   GuestSession,
   Escalation,
-  EscalationDetail
+  EscalationDetail,
 } from './types';
 
 import { BACKEND_URL } from '../config';
