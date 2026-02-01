@@ -62,6 +62,7 @@ class ProductionConfig(BaseConfig):
         "https://taimako.dubem.xyz", 
         "https://www.taimako.dubem.xyz"
     ]
+    CORS_ALLOW_ORIGIN_REGEX: str = r"https?://.*"
     
     ALLOWED_HOSTS: List[str] = [
         "taimako.dubem.xyz", 
