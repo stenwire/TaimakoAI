@@ -59,13 +59,13 @@ export default function GuestSessionsList() {
 
   return (
     <div className="max-w-[1200px] mx-auto h-[calc(100vh-140px)] flex flex-col">
-      <div className="mb-6 flex-shrink-0 flex items-center justify-between">
+      <div className="mb-6 flex-shrink-0 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-4">
           <Button variant="secondary" onClick={() => router.back()} className="rounded-full px-3">
             <ArrowLeft className="w-5 h-5 text-[var(--text-secondary)]" />
           </Button>
           <div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-2xl font-space font-bold text-[var(--brand-primary)]">
                 {guest?.name || 'Guest History'}
               </h1>
@@ -84,7 +84,7 @@ export default function GuestSessionsList() {
             onClick={handleToggleLead}
             disabled={togglingLead}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full transition-all",
+              "flex items-center justify-center w-full md:w-auto gap-2 px-4 py-2 text-sm font-medium rounded-full transition-all",
               guest.is_lead
                 ? "bg-[var(--status-success)]/10 text-[var(--status-success)] hover:bg-[var(--status-success)]/20 border border-[var(--status-success)]/20"
                 : "bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border-subtle)] border border-[var(--border-subtle)]"

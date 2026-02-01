@@ -183,7 +183,7 @@ export default function WidgetSettingsPage() {
         {/* Settings Form - Left Panel (Scrollable) */}
         <div className="lg:col-span-7 flex flex-col h-full bg-white rounded-[var(--radius-lg)] border border-[var(--border-subtle)] overflow-hidden shadow-sm">
           {/* Tabs Header */}
-          <div className="flex border-b border-[var(--border-subtle)] px-6 pt-4 gap-6 bg-[var(--bg-secondary)]/30">
+          <div className="flex border-b border-[var(--border-subtle)] px-6 pt-4 gap-6 bg-[var(--bg-secondary)]/30 overflow-x-auto scrollbar-hide">
             {tabs.map(tab => (
               <button
                 key={tab.id}

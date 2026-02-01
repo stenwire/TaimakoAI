@@ -321,10 +321,12 @@ export default function BusinessProfilePage() {
 
             {/* Agent Configuration Section */}
             <div className="space-y-4">
-              <h3 className="text-lg font-space font-semibold text-[var(--brand-primary)] border-b border-[var(--border-subtle)] pb-2 flex justify-between items-center">
-                Agent Configuration
+              <div className="border-b border-[var(--border-subtle)] pb-2 flex flex-col gap-2 md:flex-row md:justify-between md:items-center">
+                <h3 className="text-lg font-space font-semibold text-[var(--brand-primary)]">
+                  Agent Configuration
+                </h3>
                 {editing && (
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     {['professional', 'sales', 'support'].map(p => (
                       <button
                         key={p}
@@ -336,7 +338,7 @@ export default function BusinessProfilePage() {
                     ))}
                   </div>
                 )}
-              </h3>
+              </div>
 
               <div>
                 <label className="block text-[var(--text-secondary)] text-[13px] font-medium mb-2">

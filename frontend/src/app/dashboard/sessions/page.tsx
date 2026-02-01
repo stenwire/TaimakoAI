@@ -51,12 +51,12 @@ export default function SessionsGuestList() {
 
   return (
     <div className="max-w-[1600px] mx-auto h-[calc(100vh-140px)] flex flex-col">
-      <div className="mb-6 flex-shrink-0 flex justify-between items-end">
+      <div className="mb-6 flex-shrink-0 flex flex-col items-start gap-4 md:flex-row md:items-end md:gap-0">
         <div>
           <h1 className="text-2xl font-space font-bold text-[var(--brand-primary)]">Customer Sessions</h1>
           <p className="text-[var(--text-secondary)]">Browse interactions by customer.</p>
         </div>
-        <div className="relative w-64">
+        <div className="relative w-full md:w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-tertiary)]" />
           <input
             type="text"
@@ -70,7 +70,7 @@ export default function SessionsGuestList() {
 
       <div className="flex-1 bg-white rounded-[var(--radius-lg)] border border-[var(--border-subtle)] shadow-sm overflow-hidden flex flex-col">
         {/* Header Row */}
-        <div className="grid grid-cols-12 gap-4 p-4 border-b border-[var(--border-subtle)] bg-[var(--bg-secondary)]/50 text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+        <div className="hidden md:grid md:grid-cols-12 gap-4 p-4 border-b border-[var(--border-subtle)] bg-[var(--bg-secondary)]/50 text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
           <div className="col-span-4 pl-2">Customer</div>
           <div className="col-span-3">Contact Info</div>
           <div className="col-span-2">First Seen</div>
@@ -92,9 +92,9 @@ export default function SessionsGuestList() {
               <div
                 key={guest.id}
                 onClick={() => router.push(`/dashboard/sessions/${guest.id}`)}
-                className="grid grid-cols-12 gap-4 p-4 border-b border-[var(--border-subtle)] hover:bg-[var(--bg-primary)] transition-colors cursor-pointer group items-center"
+                className="flex flex-col gap-2 md:grid md:grid-cols-12 md:gap-4 p-4 border-b border-[var(--border-subtle)] hover:bg-[var(--bg-primary)] transition-colors cursor-pointer group items-start md:items-center"
               >
-                <div className="col-span-4 pl-2 flex items-center gap-3">
+                <div className="w-full md:col-span-4 pl-2 flex items-center gap-3">
                   <div className={cn(
                     "w-10 h-10 rounded-full text-white flex items-center justify-center font-bold shadow-sm",
                     guest.is_lead ? "bg-[var(--status-success)]" : "bg-[var(--brand-primary)]"
@@ -113,7 +113,7 @@ export default function SessionsGuestList() {
                     <p className="text-xs text-[var(--text-tertiary)] font-mono truncate max-w-[150px]">{guest.id.substring(0, 8)}...</p>
                   </div>
                 </div>
-                <div className="col-span-3 space-y-1">
+                <div className="w-full md:col-span-3 space-y-1 pl-12 md:pl-0">
                   {guest.email && (
                     <div className="flex items-center text-sm text-[var(--text-secondary)]">
                       <Mail className="w-3.5 h-3.5 mr-2 text-[var(--text-tertiary)]" /> {guest.email}
@@ -126,11 +126,11 @@ export default function SessionsGuestList() {
                   )}
                   {!guest.email && !guest.phone && <span className="text-xs text-[var(--text-tertiary)] italic">No contact info</span>}
                 </div>
-                <div className="col-span-2 text-sm text-[var(--text-secondary)] flex items-center">
+                <div className="w-full md:col-span-2 text-sm text-[var(--text-secondary)] flex items-center pl-12 md:pl-0">
                   <Calendar className="w-3.5 h-3.5 mr-2 text-[var(--text-tertiary)]" />
                   {new Date(guest.created_at).toLocaleDateString()}
                 </div>
-                <div className="col-span-2 flex justify-center">
+                <div className="w-full md:col-span-2 flex md:justify-center pl-12 md:pl-0 mt-2 md:mt-0">
                   <button
                     onClick={(e) => handleToggleLead(e, guest)}
                     disabled={togglingId === guest.id}
@@ -149,7 +149,7 @@ export default function SessionsGuestList() {
                     {guest.is_lead ? "Lead" : "Mark as Lead"}
                   </button>
                 </div>
-                <div className="col-span-1 flex justify-end pr-4">
+                <div className="hidden md:flex md:col-span-1 justify-end pr-4">
                   <button className="p-2 rounded-full hover:bg-[var(--border-subtle)] text-[var(--text-tertiary)] group-hover:text-[var(--brand-primary)] transition-colors">
                     <ChevronRight className="w-5 h-5" />
                   </button>

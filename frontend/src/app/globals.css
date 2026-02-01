@@ -338,6 +338,16 @@ a[aria-disabled="true"] {
     width: 40px;
     background: linear-gradient(to right, transparent, var(--bg-primary));
   }
+
+  /* Scrollbar Hide */
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* ===================================
