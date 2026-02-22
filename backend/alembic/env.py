@@ -1,5 +1,9 @@
 from logging.config import fileConfig
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 from sqlalchemy import engine_from_config, pool
 from alembic import context
@@ -13,6 +17,9 @@ from app.models.widget import WidgetSettings, GuestUser, GuestMessage
 from app.models.chat_session import ChatSession
 from app.models.analytics import AnalyticsDailySummary
 from app.models.escalation import Escalation
+from app.models.payment import PaymentTransaction
+from app.models.plan import Plan
+
 
 # Alembic Config object
 config = context.config

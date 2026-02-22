@@ -10,6 +10,8 @@ from app.core.response_wrapper import success_response
 from app.services.analysis_agent import generate_business_intents
 from app.core.security_utils import encrypt_string, decrypt_string
 
+from app.core.subscription import SubscriptionTier, TIER_LIMITS
+from datetime import datetime, timezone
 
 router = APIRouter()
 
@@ -35,7 +37,12 @@ async def create_business(
         logo_url=business_data.logo_url,
         gemini_api_key=encrypt_string(business_data.gemini_api_key) if business_data.gemini_api_key else None,
         is_escalation_enabled=business_data.is_escalation_enabled,
-        escalation_emails=business_data.escalation_emails
+        escalation_emails=business_data.escalation_emails,
+        # Subscription Defaults
+        subscription_tier=SubscriptionTier.SPARK.value,
+        credits_balance=TIER_LIMITS[SubscriptionTier.SPARK.value]["monthly_credits"],
+        credits_last_refilled=datetime.now(timezone.utc),
+        total_escalations_used=0
     )
     db.add(business)
     db.commit()

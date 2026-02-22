@@ -27,6 +27,8 @@ from pydantic import BaseModel
 
 from urllib.parse import urlparse
 from app.core.config import settings
+from app.core.subscription import TIER_LIMITS
+
 
 router = APIRouter()
 
@@ -410,9 +412,18 @@ async def init_guest_session(
             ChatSession.created_at >= today_start
         ).count()
         
-        limit = widget.max_sessions_per_day or 5
+        limit = 50 # Default fallback
+        user = db.query(User).filter(User.id == widget.user_id).first()
+        if user and user.business:
+            tier = user.business.subscription_tier
+            limit = TIER_LIMITS.get(tier, {}).get("max_daily_sessions", 50)
+        
+        # Optional: Also respect widget-specific setting if lower?
+        # if widget.max_sessions_per_day and widget.max_sessions_per_day < limit:
+        #     limit = widget.max_sessions_per_day
+            
         if sessions_today >= limit:
-             raise HTTPException(status_code=429, detail="Daily session limit reached")
+            raise HTTPException(status_code=429, detail="Daily session limit reached for this business.")
 
     session = ChatSession(
         guest_id=guest.id,
@@ -536,28 +547,44 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
 
     # 2. Get business context
     owner_user = db.query(User).filter(User.id == widget.user_id).first()
-    if not owner_user or not owner_user.business:
+    business = None
+    if owner_user and owner_user.business:
+        business = owner_user.business
+        business_name = business.business_name
+        instruction = business.custom_agent_instruction
+        intents = business.intents
+    else:
         business_name = "Taimako.AI"
         instruction = None
         intents = None
-    else:
-        business_name = owner_user.business.business_name
-        instruction = owner_user.business.custom_agent_instruction
-        intents = owner_user.business.intents
+        
+    # Credit Check
+    if business and business.credits_balance <= 0:
+        return WidgetChatResponse(
+            message=GuestMessageSchema.model_validate(guest_msg),
+            response=GuestMessageSchema(
+                id=str(uuid.uuid4()),
+                guest_id=guest.id,
+                session_id=session_id,
+                sender="ai",
+                message_text="Service unavailable: The business has insufficient AI credits.",
+                created_at=datetime.now(timezone.utc)
+            )
+        )
 
     # 3. Call AI
     # Check Message Limit
     if session_id:
         current_session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
         if current_session:
-             limit = widget.max_messages_per_session or 50
-             # user_messages is user only. total is user+ai. Requirement: "maximum messages per session per user" usually means user messages.
-             # or total? "Businesses should be able to se maximum messages per session per user"
-             # Let's limit USER messages.
-             if (current_session.user_messages or 0) >= limit:
-                 # We can silently ignore or return a system message.
-                 # Returning a system message as "AI" is easiest.
-                 return WidgetChatResponse(
+            limit = widget.max_messages_per_session or 50
+            # user_messages is user only. total is user+ai. Requirement: "maximum messages per session per user" usually means user messages.
+            # or total? "Businesses should be able to se maximum messages per session per user"
+            # Let's limit USER messages.
+            if (current_session.user_messages or 0) >= limit:
+                # We can silently ignore or return a system message.
+                # Returning a system message as "AI" is easiest.
+                return WidgetChatResponse(
                     message=GuestMessageSchema.model_validate(guest_msg),
                     response=GuestMessageSchema(
                         id=str(uuid.uuid4()),
@@ -567,28 +594,24 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
                         message_text="Session message limit reached. Please start a new session.",
                         created_at=datetime.now(timezone.utc)
                     )
-                 )
+                )
 
     # Decrypt API Key
+    # Decrypt API Key or Use System Key
     decrypted_key = None
-    if owner_user and owner_user.business and owner_user.business.gemini_api_key:
-        decrypted_key = decrypt_string(owner_user.business.gemini_api_key)
-        if not decrypted_key:
-            print(f"Failed to decrypt API key for business {widget.user_id}")
-            return WidgetChatResponse(
-                message=GuestMessageSchema.model_validate(guest_msg),
-                response=GuestMessageSchema(
-                    id=str(uuid.uuid4()),
-                    guest_id=guest.id,
-                    session_id=session_id,
-                    sender="ai",
-                    message_text="Service Unavailable: API Configuration Error (Key Corrupted). Please check business settings.",
-                    created_at=datetime.now(timezone.utc)
-                )
-            )
+    if business and business.gemini_api_key:
+        decrypted_key = decrypt_string(business.gemini_api_key)
     
+    # Fallback to System Key
     if not decrypted_key:
-        print(f"Missing API Key for business {widget.user_id}")
+        if settings.GOOGLE_API_KEY:
+            decrypted_key = settings.GOOGLE_API_KEY
+        else:
+            # Check if business has it (already checked)
+            pass
+            
+    if not decrypted_key:
+        print(f"Missing API Key for business {widget.user_id} and System")
         return WidgetChatResponse(
             message=GuestMessageSchema.model_validate(guest_msg),
             response=GuestMessageSchema(
@@ -596,7 +619,7 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
                 guest_id=guest.id,
                 session_id=session_id,
                 sender="ai",
-                message_text="Service unavailable: The business has not configured the AI service correctly (Missing API Key).",
+                message_text="Service unavailable: AI Configuration Error.",
                 created_at=datetime.now(timezone.utc)
             )
         )
@@ -636,6 +659,12 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
         message_text=ai_response_text
     )
     db.add(ai_msg)
+    
+    # Deduct Credit if success (which it is here)
+    if business and business.credits_balance > 0:
+        business.credits_balance -= 1
+        db.add(business) # Ensure update
+    
     db.commit()
     db.refresh(ai_msg)
 
@@ -658,30 +687,30 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
         now_aware = datetime.now(timezone.utc)
         
         if session.created_at:
-             created_at = session.created_at
-             if created_at.tzinfo is None:
-                 created_at = created_at.replace(tzinfo=timezone.utc)
-             
-             delta = now_aware - created_at
-             session.session_duration = int(delta.total_seconds())
+            created_at = session.created_at
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=timezone.utc)
+            
+            delta = now_aware - created_at
+            session.session_duration = int(delta.total_seconds())
         
         # First response time (if not set)
         if session.first_response_time is None:
-             # guest_msg.created_at and ai_msg.created_at might be naive or aware.
-             # They are freshly created so they might be naive if fetched back from SQLite immediately?
-             # Or they are the objects we just added? No, we queried messages or refreshed them.
-             
-             g_created = guest_msg.created_at
-             a_created = ai_msg.created_at
-             
-             if g_created and a_created:
-                 if g_created.tzinfo is None:
-                     g_created = g_created.replace(tzinfo=timezone.utc)
-                 if a_created.tzinfo is None:
-                     a_created = a_created.replace(tzinfo=timezone.utc)
-                     
-                 frt = a_created - g_created
-                 session.first_response_time = int(frt.total_seconds())
+            # guest_msg.created_at and ai_msg.created_at might be naive or aware.
+            # They are freshly created so they might be naive if fetched back from SQLite immediately?
+            # Or they are the objects we just added? No, we queried messages or refreshed them.
+            
+            g_created = guest_msg.created_at
+            a_created = ai_msg.created_at
+            
+            if g_created and a_created:
+                if g_created.tzinfo is None:
+                    g_created = g_created.replace(tzinfo=timezone.utc)
+                if a_created.tzinfo is None:
+                    a_created = a_created.replace(tzinfo=timezone.utc)
+                    
+                frt = a_created - g_created
+                session.first_response_time = int(frt.total_seconds())
 
         db.commit()
 

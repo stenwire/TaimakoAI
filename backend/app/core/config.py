@@ -17,10 +17,27 @@ class BaseConfig(BaseSettings):
     POSTGRES_PORT: str = os.getenv("POSTGRES_PORT", "")
     DATABASE_URL: Union[str, None] = None
 
+    # SMTP / Email
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", 587))
+    SMTP_USER: str = os.getenv("SMTP_USER", "")
+    SMTP_USE_TLS: bool = os.getenv("SMTP_USE_TLS", "true")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    EMAILS_FROM_EMAIL: str = os.getenv("EMAILS_FROM_EMAIL", "")
+    EMAILS_FROM_NAME: str = os.getenv("EMAILS_FROM_NAME", "Taimako AI")
+
     # Google OAuth
     GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
     GOOGLE_CLIENT_SECRET: str = os.getenv("GOOGLE_CLIENT_SECRET", "")
     GOOGLE_REDIRECT_URI: str = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/google/callback")
+    
+    # System AI Key
+    GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
+
+    # Paystack
+    PAYSTACK_SECRET_KEY: str = os.getenv("PAYSTACK_SECRET_KEY", "")
+    PAYSTACK_PUBLIC_KEY: str = os.getenv("PAYSTACK_PUBLIC_KEY", "")
+
     
     # JWT
     JWT_SECRET: str = os.getenv("JWT_SECRET", "supersecretkey") # Change in production!

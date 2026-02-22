@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Text, DateTime, ForeignKey, JSON, Boolean
+from sqlalchemy import Column, String, Text, DateTime, ForeignKey, JSON, Boolean, Integer
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from app.db.base import Base
@@ -28,6 +28,19 @@ class Business(Base):
     intents = Column(JSON, nullable=True)
     is_escalation_enabled = Column(Boolean, default=False)
     escalation_emails = Column(JSON, nullable=True) # List of emails
+    
+    # Subscription Fields
+    subscription_tier = Column(String, default="spark", nullable=False)
+    credits_balance = Column(Integer, default=100, nullable=False)
+    credits_last_refilled = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    total_escalations_used = Column(Integer, default=0, nullable=False)
+
+    # Payment / Subscription (Generic)
+    payment_provider = Column(String, default="paystack") # paystack, stripe
+    payment_customer_id = Column(String, nullable=True)     # generic customer id
+    payment_subscription_id = Column(String, nullable=True) # generic subscription id
+    subscription_status = Column(String, default="active")  # active, past_due, cancelled, trial
+
     logo_url = Column(String, nullable=True) # URL to business logo
     gemini_api_key = Column(String, nullable=True) # Encrypted API Key
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
@@ -35,3 +48,12 @@ class Business(Base):
 
     # Relationship
     user = relationship("User", back_populates="business")
+    transactions = relationship("PaymentTransaction", back_populates="business", cascade="all, delete-orphan")
+
+    # metadata = Column(JSON, nullable=True)
+
+from sqladmin import ModelView
+
+class BusinessAdmin(ModelView, model=Business):
+    column_list = [Business.id, Business.business_name, Business.user_id, Business.subscription_tier, Business.payment_provider]
+

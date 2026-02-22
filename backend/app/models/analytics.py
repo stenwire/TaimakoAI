@@ -39,3 +39,9 @@ class AnalyticsDailySummary(Base):
 
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+from sqladmin import ModelView
+
+class AnalyticsDailySummaryAdmin(ModelView, model=AnalyticsDailySummary):
+    column_list = [AnalyticsDailySummary.id, AnalyticsDailySummary.business_id, AnalyticsDailySummary.date, AnalyticsDailySummary.total_sessions]
+

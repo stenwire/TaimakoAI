@@ -30,6 +30,11 @@ class BusinessResponse(BusinessBase):
     id: str
     user_id: str
     is_api_key_set: bool = False
+    
+    subscription_tier: str
+    credits_balance: int
+    credits_last_refilled: Optional[datetime] = None
+    total_escalations_used: int
 
     created_at: datetime
     updated_at: datetime

@@ -30,3 +30,9 @@ class Escalation(Base):
     # Relationships
     business = relationship("Business", backref="escalations")
     session = relationship("ChatSession", backref="escalation")
+
+from sqladmin import ModelView
+
+class EscalationAdmin(ModelView, model=Escalation):
+    column_list = [Escalation.id, Escalation.business_id, Escalation.session_id, Escalation.status, Escalation.created_at]
+

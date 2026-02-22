@@ -15,6 +15,8 @@ from app.services.agent_system.tool_schemas import (
     EscalateToHumanInput, EscalateToHumanOutput
 )
 import json
+from app.core.subscription import TIER_LIMITS
+
 
 try:
     from google import genai
@@ -239,9 +241,17 @@ def escalate_to_human(reason: str, user_message: str, tool_context: ToolContext)
         
         print(f"Escalation: Business found. Name: {business.business_name}, Escalation enabled: {business.is_escalation_enabled}")
 
-        # 3. Check if enabled
+        # 3. Check if enabled and within limits
         if not business.is_escalation_enabled:
             return "I apologize, but human escalation is currently not available for this service."
+            
+        # Check limits
+        tier = business.subscription_tier or "spark"
+        max_escalations = TIER_LIMITS.get(tier, {}).get("max_monthly_escalations", 5)
+        
+        if business.total_escalations_used >= max_escalations:
+            print(f"Escalation Limit Reached for business {business.id}")
+            return "I apologize, but we cannot process further escalations at this time due to high volume."
 
         # 4. Create Escalation
         escalation = Escalation(
@@ -252,6 +262,12 @@ def escalate_to_human(reason: str, user_message: str, tool_context: ToolContext)
             status=EscalationStatus.PENDING.value
         )
         db.add(escalation)
+        db.add(escalation)
+        
+        # Increment usage
+        business.total_escalations_used += 1
+        db.add(business)
+        
         db.commit()
         db.refresh(escalation)
         

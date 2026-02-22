@@ -80,3 +80,15 @@ class GuestMessage(Base):
     # Relationships
     guest = relationship("GuestUser", back_populates="messages")
     session = relationship("ChatSession", back_populates="messages")
+
+from sqladmin import ModelView
+
+class WidgetSettingsAdmin(ModelView, model=WidgetSettings):
+    column_list = [WidgetSettings.id, WidgetSettings.user_id, WidgetSettings.public_widget_id, WidgetSettings.is_active]
+
+class GuestUserAdmin(ModelView, model=GuestUser):
+    column_list = [GuestUser.id, GuestUser.widget_id, GuestUser.name, GuestUser.created_at]
+
+class GuestMessageAdmin(ModelView, model=GuestMessage):
+    column_list = [GuestMessage.id, GuestMessage.guest_id, GuestMessage.sender, GuestMessage.created_at]
+

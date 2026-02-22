@@ -28,7 +28,7 @@ class RAGService:
         try:
             genai.configure(api_key=api_key)
             result = genai.embed_content(
-                model="models/text-embedding-004",
+                model="models/gemini-embedding-001",
                 content=text,
                 task_type="retrieval_document"
             )
@@ -45,7 +45,7 @@ class RAGService:
         try:
             genai.configure(api_key=api_key)
             result = genai.embed_content(
-                model="models/text-embedding-004",
+                model="models/gemini-embedding-001",
                 content=text,
                 task_type="retrieval_query"
             )

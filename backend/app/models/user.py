@@ -23,3 +23,9 @@ class User(Base):
     
     # Relationship
     business = relationship("Business", back_populates="user", uselist=False)
+
+from sqladmin import ModelView
+
+class UserAdmin(ModelView, model=User):
+    column_list = [User.id, User.email, User.is_active]
+

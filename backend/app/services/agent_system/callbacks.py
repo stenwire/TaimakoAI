@@ -125,8 +125,8 @@ def sanitize_model_response(
             print(f"--- Callback: Error in sanitization pattern '{pattern}': {e} ---")
             continue
     
-    # Clean up extra spaces
-    sanitized_text = re.sub(r'\s+', ' ', sanitized_text).strip()
+    # Clean up extra spaces (only horizontal whitespace)
+    sanitized_text = re.sub(r'[ \t]+', ' ', sanitized_text).strip()
     
     # Only return modified response if changes were made
     if sanitized_text != original_text:
