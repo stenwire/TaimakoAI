@@ -239,6 +239,9 @@ def escalate_to_human(reason: str, user_message: str, tool_context: ToolContext)
             print(f"Escalation Error: No business found for user {widget.user_id}")
             return "Error: Business not found."
         
+        import logging
+        logger = logging.getLogger(__name__)
+
         print(f"Escalation: Business found. Name: {business.business_name}, Escalation enabled: {business.is_escalation_enabled}")
 
         # 3. Check if enabled and within limits
@@ -254,20 +257,24 @@ def escalate_to_human(reason: str, user_message: str, tool_context: ToolContext)
             return "I apologize, but we cannot process further escalations at this time due to high volume."
 
         # 4. Create Escalation
-        escalation = Escalation(
-            business_id=business.id,
-            session_id=session_id,
-            summary=f"Escalation Triggered: {validated_input.reason}\nUser Message: {validated_input.user_message}",
-            sentiment="Negative", # Default or should be passed.
-            status=EscalationStatus.PENDING.value
-        )
-        db.add(escalation)
-        db.add(escalation)
-        
-        # Increment usage
-        business.total_escalations_used += 1
-        db.add(business)
-        
+        existing_escalation = db.query(Escalation).filter(Escalation.session_id == session_id).first()
+        if existing_escalation:
+            escalation = existing_escalation
+            logger.info(f"Escalation for session {session_id} already exists. Returning existing one.")
+        else:
+            escalation = Escalation(
+                business_id=business.id,
+                session_id=session_id,
+                summary=f"Escalation Triggered: {validated_input.reason}\nUser Message: {validated_input.user_message}",
+                sentiment="Negative", # Default or should be passed.
+                status=EscalationStatus.PENDING.value
+            )
+            db.add(escalation)
+            
+            # Increment usage only on new creation
+            business.total_escalations_used += 1
+            db.add(business)
+            
         db.commit()
         db.refresh(escalation)
         
@@ -282,7 +289,27 @@ def escalate_to_human(reason: str, user_message: str, tool_context: ToolContext)
                 f"Reason: {validated_input.reason}\n"
                 f"User Message: {validated_input.user_message}\n"
             )
-            email_service.send_email(emails, subject, body)
+            from app.services.email_service import EmailSchema
+            import asyncio
+            import threading
+
+            schema = EmailSchema(
+                subject=subject,
+                recipients=emails,
+                body=body
+            )
+
+            def send_in_thread(coro):
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    loop.run_until_complete(coro)
+                except Exception as e:
+                    print(f"Error sending escalation email: {e}")
+                finally:
+                    loop.close()
+
+            threading.Thread(target=send_in_thread, args=(email_service.send_email(schema),)).start()
             
         output = EscalateToHumanOutput(
             escalation_id=escalation.id,

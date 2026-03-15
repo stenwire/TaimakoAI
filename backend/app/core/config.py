@@ -35,8 +35,7 @@ class BaseConfig(BaseSettings):
     GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
 
     # Paystack
-    PAYSTACK_SECRET_KEY: str = os.getenv("PAYSTACK_SECRET_KEY", "")
-    PAYSTACK_PUBLIC_KEY: str = os.getenv("PAYSTACK_PUBLIC_KEY", "")
+    PAYSTACK_WEBHOOK_SECRET: str = os.getenv("PAYSTACK_WEBHOOK_SECRET", "")
 
     
     # JWT
@@ -63,6 +62,11 @@ class BaseConfig(BaseSettings):
 class LocalConfig(BaseConfig):
     FRONTEND_URI: str = os.getenv("FRONTEND_LOCAL_URI", "http://localhost:3000")
     FRONTEND_REDIRECT_URI: str = f"{os.getenv('FRONTEND_LOCAL_URI', 'http://localhost:3000')}/auth/callback"
+
+    # Paystack
+    PAYSTACK_SECRET_KEY: str = os.getenv("PAYSTACK_LOCAL_SECRET_KEY", "")
+    PAYSTACK_PUBLIC_KEY: str = os.getenv("PAYSTACK_LOCAL_PUBLIC_KEY", "")
+
     
     CORS_ORIGINS: List[str] = [
         "http://localhost:3000",
@@ -74,6 +78,10 @@ class LocalConfig(BaseConfig):
 class ProductionConfig(BaseConfig):
     FRONTEND_URI: str = os.getenv("FRONTEND_LIVE_URI", "https://taimako.dubem.xyz")
     FRONTEND_REDIRECT_URI: str = f"{os.getenv('FRONTEND_LIVE_URI', 'https://taimako.dubem.xyz')}/auth/callback"
+
+    # Paystack
+    PAYSTACK_SECRET_KEY: str = os.getenv("PAYSTACK_LIVE_SECRET_KEY", "")
+    PAYSTACK_PUBLIC_KEY: str = os.getenv("PAYSTACK_LIVE_PUBLIC_KEY", "")
     
     CORS_ORIGINS: List[str] = [
         "https://taimako.dubem.xyz", 

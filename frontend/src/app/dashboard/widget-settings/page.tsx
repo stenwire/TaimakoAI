@@ -45,6 +45,11 @@ export default function WidgetSettingsPage() {
 
   const [copied, setCopied] = useState(false);
   const [newDomain, setNewDomain] = useState('');
+  const [limits, setLimits] = useState<{
+    allocated_messages_per_session?: number;
+    allocated_daily_sessions?: number;
+    allocated_whitelisted_domains?: number;
+  } | null>(null);
 
   useEffect(() => {
     fetchSettings();
@@ -73,7 +78,14 @@ export default function WidgetSettingsPage() {
   const fetchBusiness = async () => {
     try {
       const res = await getBusinessProfile();
-      if (res.status === 'success' && res.data) setBusiness(res.data);
+      if (res.status === 'success' && res.data) {
+        setBusiness(res.data);
+        setLimits({
+          allocated_messages_per_session: (res.data as any).allocated_messages_per_session,
+          allocated_daily_sessions: (res.data as any).allocated_daily_sessions,
+          allocated_whitelisted_domains: (res.data as any).allocated_whitelisted_domains,
+        });
+      }
     } catch (e) { console.error(e); }
   }
 
@@ -415,57 +427,97 @@ export default function WidgetSettingsPage() {
                 <div className="border-t border-[var(--border-subtle)] pt-8 space-y-6">
                   <h3 className="text-sm font-bold text-[var(--brand-primary)] uppercase tracking-wider">Limits & Security</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Input
-                      label="Max Messages / Session"
-                      type="number"
-                      value={settings?.max_messages_per_session || 50}
-                      onChange={(e) => settings && setSettings({ ...settings, max_messages_per_session: parseInt(e.target.value) })}
-                    />
-                    <Input
-                      label="Max Sessions / Day"
-                      type="number"
-                      value={settings?.max_sessions_per_day || 5}
-                      onChange={(e) => settings && setSettings({ ...settings, max_sessions_per_day: parseInt(e.target.value) })}
-                    />
+                    <div>
+                      <Input
+                        label="Max Messages / Session"
+                        type="number"
+                        value={settings?.max_messages_per_session || 50}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value) || 0;
+                          const limit = limits?.allocated_messages_per_session || 50;
+                          settings && setSettings({ ...settings, max_messages_per_session: Math.min(val, limit) });
+                        }}
+                      />
+                      {limits?.allocated_messages_per_session !== undefined && (
+                        <p className="text-xs text-[var(--text-tertiary)] mt-1 ml-1 flex justify-between">
+                          <span>Current value</span>
+                          <span>Plan maximum: {limits.allocated_messages_per_session}</span>
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <Input
+                        label="Max Sessions / Day"
+                        type="number"
+                        value={settings?.max_sessions_per_day || 5}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value) || 0;
+                          const limit = limits?.allocated_daily_sessions || 5;
+                          settings && setSettings({ ...settings, max_sessions_per_day: Math.min(val, limit) });
+                        }}
+                      />
+                      {limits?.allocated_daily_sessions !== undefined && (
+                        <p className="text-xs text-[var(--text-tertiary)] mt-1 ml-1 flex justify-between">
+                          <span>Current value</span>
+                          <span>Plan maximum: {limits.allocated_daily_sessions}</span>
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Whitelisted Domains</label>
                   <div className="space-y-3">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="https://example.com"
-                        value={newDomain}
-                        onChange={(e) => setNewDomain(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            if (newDomain && settings) {
-                              const current = settings.whitelisted_domains || [];
-                              if (!current.includes(newDomain)) {
-                                setSettings({ ...settings, whitelisted_domains: [...current, newDomain] });
-                                setNewDomain('');
-                              }
-                            }
-                          }
-                        }}
-                      />
-                      <Button
-                        variant="secondary"
-                        onClick={() => {
-                          if (newDomain && settings) {
-                            const current = settings.whitelisted_domains || [];
-                            if (!current.includes(newDomain)) {
-                              setSettings({ ...settings, whitelisted_domains: [...current, newDomain] });
-                              setNewDomain('');
-                            }
-                          }
-                        }}
-                        disabled={!newDomain}
-                      >
-                        <Plus className="w-4 h-4" />
-                      </Button>
-                    </div>
+                    {(() => {
+                      const currentCount = settings?.whitelisted_domains?.length || 0;
+                      const maxAllowed = limits?.allocated_whitelisted_domains || 1;
+                      const isLimitReached = currentCount >= maxAllowed;
+
+                      return (
+                        <div className="w-full">
+                          <div className="flex gap-2">
+                            <Input
+                              placeholder="https://example.com"
+                              value={newDomain}
+                              disabled={isLimitReached}
+                              onChange={(e) => setNewDomain(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !isLimitReached) {
+                                  e.preventDefault();
+                                  if (newDomain && settings) {
+                                    const current = settings.whitelisted_domains || [];
+                                    if (!current.includes(newDomain)) {
+                                      setSettings({ ...settings, whitelisted_domains: [...current, newDomain] });
+                                      setNewDomain('');
+                                    }
+                                  }
+                                }
+                              }}
+                            />
+                            <Button
+                              variant="secondary"
+                              onClick={() => {
+                                if (newDomain && settings && !isLimitReached) {
+                                  const current = settings.whitelisted_domains || [];
+                                  if (!current.includes(newDomain)) {
+                                    setSettings({ ...settings, whitelisted_domains: [...current, newDomain] });
+                                    setNewDomain('');
+                                  }
+                                }
+                              }}
+                              disabled={!newDomain || isLimitReached}
+                            >
+                              <Plus className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          {isLimitReached ? (
+                            <p className="text-xs text-[var(--error)] mt-1.5 ml-1">Plan limit reached ({maxAllowed} domains max). Upgrade to add more.</p>
+                          ) : (
+                            <p className="text-xs text-[var(--text-tertiary)] mt-1.5 ml-1">{currentCount} of {maxAllowed} domains used</p>
+                          )}
+                        </div>
+                      );
+                    })()}
                     <div className="flex flex-wrap gap-2">
                       {(settings?.whitelisted_domains || []).map((domain) => (
                         <div

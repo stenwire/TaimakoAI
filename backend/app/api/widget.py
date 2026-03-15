@@ -176,6 +176,9 @@ def update_my_widget_settings(
         widget.max_sessions_per_day = settings.max_sessions_per_day
         
     if settings.whitelisted_domains is not None:
+        business = db.query(Business).filter(Business.user_id == current_user.id).first()
+        if business and len(settings.whitelisted_domains) > business.allocated_whitelisted_domains:
+            raise HTTPException(status_code=400, detail=f"Your plan allows a maximum of {business.allocated_whitelisted_domains} whitelisted domains.")
         widget.whitelisted_domains = settings.whitelisted_domains
         
     if settings.is_active is not None:
@@ -415,8 +418,7 @@ async def init_guest_session(
         limit = 50 # Default fallback
         user = db.query(User).filter(User.id == widget.user_id).first()
         if user and user.business:
-            tier = user.business.subscription_tier
-            limit = TIER_LIMITS.get(tier, {}).get("max_daily_sessions", 50)
+            limit = user.business.allocated_daily_sessions
         
         # Optional: Also respect widget-specific setting if lower?
         # if widget.max_sessions_per_day and widget.max_sessions_per_day < limit:
@@ -558,8 +560,8 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
         instruction = None
         intents = None
         
-    # Credit Check
-    if business and business.credits_balance <= 0:
+    # AI Responses Check
+    if business and (business.allocated_ai_responses - business.used_ai_responses) <= 0:
         return WidgetChatResponse(
             message=GuestMessageSchema.model_validate(guest_msg),
             response=GuestMessageSchema(
@@ -578,6 +580,8 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
         current_session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
         if current_session:
             limit = widget.max_messages_per_session or 50
+            if business and getattr(business, "allocated_messages_per_session", None):
+                limit = min(limit, business.allocated_messages_per_session)
             # user_messages is user only. total is user+ai. Requirement: "maximum messages per session per user" usually means user messages.
             # or total? "Businesses should be able to se maximum messages per session per user"
             # Let's limit USER messages.
@@ -660,9 +664,9 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
     )
     db.add(ai_msg)
     
-    # Deduct Credit if success (which it is here)
-    if business and business.credits_balance > 0:
-        business.credits_balance -= 1
+    # Increment used AI responses if success
+    if business:
+        business.used_ai_responses += 1
         db.add(business) # Ensure update
     
     db.commit()

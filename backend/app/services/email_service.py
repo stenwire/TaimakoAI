@@ -58,7 +58,7 @@ class SMTPEmailService(EmailService):
                 port=settings.SMTP_PORT,
                 username=settings.SMTP_USER,
                 password=settings.SMTP_PASSWORD,
-                start_tls=True, # ZOHO usually requires TLS/STARTTLS
+                start_tls=True,
             )
             logger.info(f"Email sent successfully to {email.recipients}")
             return True
@@ -73,7 +73,7 @@ class EmailServiceFactory:
     def get_service(cls) -> EmailService:
         if cls._service_instance is None:
             if settings.SMTP_HOST and settings.SMTP_USER:
-                 cls._service_instance = SMTPEmailService()
+                cls._service_instance = SMTPEmailService()
             else:
                 logger.warning("SMTP not configured, using DummyEmailService")
                 cls._service_instance = DummyEmailService()

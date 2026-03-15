@@ -32,8 +32,8 @@ function DashboardLayoutInner({
   // Redirect if locked and trying to access other pages
   useEffect(() => {
     if (!isLoading && !isApiKeySet) {
-      if (pathname !== '/dashboard/business') {
-        router.push('/dashboard/business');
+      if (!pathname.startsWith('/dashboard/settings/general')) {
+        router.push('/dashboard/settings/general');
       }
     }
   }, [isApiKeySet, isLoading, pathname, router]);
@@ -51,7 +51,15 @@ function DashboardLayoutInner({
         { label: 'Widget', href: '/dashboard/widget-settings', icon: Settings },
         { label: 'Escalations', href: '/dashboard/handoff', icon: Users },
         { label: 'Playground', href: '/dashboard/chat', icon: Bot },
-        { label: 'Settings', href: '/dashboard/business', icon: Settings },
+        {
+          label: 'Settings',
+          icon: Settings,
+          href: '/dashboard/settings',
+          subItems: [
+            { label: 'General', href: '/dashboard/settings/general' },
+            { label: 'Subscription', href: '/dashboard/settings/subscription' }
+          ]
+        },
       ],
     },
   ];
@@ -61,7 +69,11 @@ function DashboardLayoutInner({
     ...section,
     items: section.items.map(item => ({
       ...item,
-      disabled: apiKeyMissing && item.href !== '/dashboard/business'
+      disabled: apiKeyMissing && !item.href?.startsWith('/dashboard/settings/general'),
+      subItems: item.subItems?.map(sub => ({
+        ...sub,
+        disabled: apiKeyMissing && !sub.href.startsWith('/dashboard/settings/general')
+      }))
     }))
   }));
 
@@ -192,7 +204,7 @@ function DashboardLayoutInner({
                 <div className="ml-3">
                   <p className="text-sm text-[var(--warning-text)]">
                     <span className="font-bold">Action Required: </span>
-                    You must set your Google Gemini API Key in <span className="font-bold cursor-pointer underline hover:text-opacity-80" onClick={() => router.push('/dashboard/business')}>Settings</span> to use AI features.
+                    You must set your Google Gemini API Key in <span className="font-bold cursor-pointer underline hover:text-opacity-80" onClick={() => router.push('/dashboard/settings/general')}>Settings</span> to use AI features.
                   </p>
                 </div>
               </div>

@@ -4,11 +4,12 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from app.db.base import Base
+from app.models.mixins import SerializerMixin
 
 def generate_uuid():
     return str(uuid.uuid4())
 
-class User(Base):
+class User(Base, SerializerMixin):
     __tablename__ = "users"
 
     id = Column(String, primary_key=True, default=generate_uuid)

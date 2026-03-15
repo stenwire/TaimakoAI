@@ -3,6 +3,7 @@ from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Boolean, Enum
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from app.db.base import Base
+from app.models.mixins import SerializerMixin
 import enum
 
 def generate_uuid():
@@ -13,7 +14,7 @@ class SessionOrigin(str, enum.Enum):
     AUTO_START = "auto-start"
     RESUMED = "resumed"
 
-class ChatSession(Base):
+class ChatSession(Base, SerializerMixin):
     __tablename__ = "chat_sessions"
 
     id = Column(String, primary_key=True, default=generate_uuid)

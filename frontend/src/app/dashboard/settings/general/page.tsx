@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Building2, Save, Edit2, AlertCircle, CheckCircle } from 'lucide-react';
+import { Building2, Save, Edit2, AlertCircle, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -20,6 +20,7 @@ export default function BusinessProfilePage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [personality, setPersonality] = useState('custom');
+  const [isAgentOpen, setIsAgentOpen] = useState(false);
 
   // Get the refresh function from context to update global API key state
   const { refreshBusinessProfile } = useBusiness();
@@ -321,42 +322,62 @@ export default function BusinessProfilePage() {
 
             {/* Agent Configuration Section */}
             <div className="space-y-4">
-              <h3 className="text-lg font-space font-semibold text-[var(--brand-primary)] border-b border-[var(--border-subtle)] pb-2 flex justify-between items-center">
-                Agent Configuration
-                {editing && (
-                  <div className="flex gap-2">
-                    {['professional', 'sales', 'support'].map(p => (
-                      <button
-                        key={p}
-                        onClick={() => handlePersonalityChange(p)}
-                        className={`px-3 py-1 text-xs rounded-full border transition-all ${personality === p ? 'bg-[var(--brand-primary)] text-white border-[var(--brand-primary)]' : 'border-[var(--border-strong)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]'}`}
-                      >
-                        {p.charAt(0).toUpperCase() + p.slice(1)} Mode
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </h3>
+              <button
+                onClick={() => setIsAgentOpen(!isAgentOpen)}
+                className="w-full flex justify-between items-center text-left group border-b border-[var(--border-subtle)] pb-2"
+                type="button"
+              >
+                <h3 className="text-lg font-space font-semibold text-[var(--brand-primary)] group-hover:text-[var(--brand-primary)]/80 transition-colors flex items-center gap-2">
+                  Agent Configuration
+                  {editing && (
+                    <div className="flex gap-2 ml-4">
+                      {['professional', 'sales', 'support'].map(p => (
+                        <span
+                          key={p}
+                          onClick={(e) => { e.stopPropagation(); handlePersonalityChange(p); }}
+                          className={`px-3 py-1 text-xs rounded-full border transition-all cursor-pointer ${personality === p ? 'bg-[var(--brand-primary)] text-white border-[var(--brand-primary)]' : 'border-[var(--border-strong)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]'}`}
+                        >
+                          {p.charAt(0).toUpperCase() + p.slice(1)} Mode
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </h3>
+                <div className="p-1 rounded-full bg-[var(--bg-secondary)] group-hover:bg-[var(--brand-primary)]/10 transition-colors">
+                  {isAgentOpen ? (
+                    <ChevronUp className="w-5 h-5 text-[var(--text-secondary)] group-hover:text-[var(--brand-primary)]" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-[var(--text-secondary)] group-hover:text-[var(--brand-primary)]" />
+                  )}
+                </div>
+              </button>
 
-              <div>
-                <label className="block text-[var(--text-secondary)] text-[13px] font-medium mb-2">
-                  Custom Agent Instructions
-                </label>
-                <textarea
-                  placeholder="Always be professional and mention our 24/7 support availability..."
-                  value={formData.custom_agent_instruction}
-                  onChange={(e) => {
-                    setFormData({ ...formData, custom_agent_instruction: e.target.value });
-                    setPersonality('custom');
-                  }}
-                  disabled={!editing}
-                  rows={6}
-                  className="w-full px-3 py-2 text-[14px] bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] placeholder:text-[var(--text-tertiary)] focus-ring transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed font-mono text-xs"
-                />
-                <p className="text-[12px] text-[var(--text-tertiary)] mt-2">
-                  These instructions will override default behaviors. Select a mode above to start with a template.
-                </p>
-              </div>
+              {isAgentOpen && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="pt-2"
+                >
+                  <label className="block text-[var(--text-secondary)] text-[13px] font-medium mb-2">
+                    Custom Agent Instructions
+                  </label>
+                  <textarea
+                    placeholder="Always be professional and mention our 24/7 support availability..."
+                    value={formData.custom_agent_instruction}
+                    onChange={(e) => {
+                      setFormData({ ...formData, custom_agent_instruction: e.target.value });
+                      setPersonality('custom');
+                    }}
+                    disabled={!editing}
+                    rows={6}
+                    className="w-full px-3 py-2 text-[14px] bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] placeholder:text-[var(--text-tertiary)] focus-ring transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed font-mono text-xs"
+                  />
+                  <p className="text-[12px] text-[var(--text-tertiary)] mt-2">
+                    These instructions will override default behaviors. Select a mode above to start with a template.
+                  </p>
+                </motion.div>
+              )}
             </div>
 
 

@@ -1,8 +1,9 @@
 from sqlalchemy import Column, Integer, String, Text, Boolean, JSON, DateTime
 from datetime import datetime
 from app.db.base import Base
+from app.models.mixins import SerializerMixin
 
-class Plan(Base):
+class Plan(Base, SerializerMixin):
     __tablename__ = "plans"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -11,6 +12,8 @@ class Plan(Base):
     description = Column(Text, nullable=True)
     price = Column(Integer, default=0, nullable=False)
     currency = Column(String, default="NGN", nullable=False)
+    interval = Column(String, default="monthly", nullable=False)  # monthly, annually
+    tier = Column(Integer, default=0, server_default="0", nullable=False)
     features = Column(JSON, nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -19,5 +22,5 @@ class Plan(Base):
 from sqladmin import ModelView
 
 class PlanAdmin(ModelView, model=Plan):
-    column_list = [Plan.id, Plan.name, Plan.plan_code, Plan.price, Plan.is_active]
+    column_list = [Plan.id, Plan.name, Plan.plan_code, Plan.price, Plan.tier, Plan.is_active]
 

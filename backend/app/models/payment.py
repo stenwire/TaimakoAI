@@ -3,11 +3,12 @@ from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from app.db.base import Base
+from app.models.mixins import SerializerMixin
 
 def generate_uuid():
     return str(uuid.uuid4())
 
-class PaymentTransaction(Base):
+class PaymentTransaction(Base, SerializerMixin):
     __tablename__ = "payment_transactions"
 
     id = Column(String, primary_key=True, default=generate_uuid)
@@ -23,6 +24,7 @@ class PaymentTransaction(Base):
     transaction_type = Column(String, nullable=False) # subscription_creation, renewal
     
     transaction_metadata = Column(JSON, nullable=True)
+    raw_webhook_payload = Column(JSON, nullable=True)
     
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     

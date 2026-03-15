@@ -2,11 +2,12 @@ import uuid
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Date
 from datetime import datetime, timezone
 from app.db.base import Base
+from app.models.mixins import SerializerMixin
 
 def generate_uuid():
     return str(uuid.uuid4())
 
-class AnalyticsDailySummary(Base):
+class AnalyticsDailySummary(Base, SerializerMixin):
     __tablename__ = "analytics_daily_summary"
 
     id = Column(String, primary_key=True, default=generate_uuid)

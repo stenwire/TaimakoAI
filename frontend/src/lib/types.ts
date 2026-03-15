@@ -19,6 +19,22 @@ export interface BusinessProfile {
   is_api_key_set?: boolean;
   is_escalation_enabled?: boolean;
   escalation_emails?: string[];
+  subscription_tier?: string;
+  subscription_status?: string;
+  allocated_ai_responses?: number;
+  used_ai_responses?: number;
+  allocated_escalations?: number;
+  used_escalations?: number;
+  allocated_messages_per_session?: number;
+  allocated_daily_sessions?: number;
+  allocated_whitelisted_domains?: number;
+  last_payment_date?: string;
+  plan_name?: string;
+  plan_code?: string;
+  plan_price?: number;
+  plan_currency?: string;
+  plan_interval?: string;
+  plan_features?: Record<string, any>;
   created_at: string;
   updated_at: string;
 }

@@ -30,11 +30,29 @@ class BusinessResponse(BusinessBase):
     id: str
     user_id: str
     is_api_key_set: bool = False
-    
+
     subscription_tier: str
-    credits_balance: int
+    subscription_status: Optional[str] = None
+
+    allocated_ai_responses: int
+    used_ai_responses: int
     credits_last_refilled: Optional[datetime] = None
-    total_escalations_used: int
+
+    allocated_escalations: int
+    used_escalations: int
+
+    allocated_messages_per_session: int
+    allocated_daily_sessions: int
+    allocated_whitelisted_domains: int
+
+    last_payment_date: Optional[datetime] = None
+
+    plan_name: Optional[str] = None
+    plan_code: Optional[str] = None
+    plan_price: Optional[int] = None
+    plan_currency: Optional[str] = None
+    plan_interval: Optional[str] = None
+    plan_features: Optional[dict] = None
 
     created_at: datetime
     updated_at: datetime

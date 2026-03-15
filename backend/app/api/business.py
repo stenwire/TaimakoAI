@@ -4,6 +4,7 @@ from app.db.session import get_db
 from app.auth.router import get_current_user
 from app.models.user import User
 from app.models.business import Business
+from app.models.plan import Plan
 from app.models.widget import WidgetSettings
 from app.schemas.business import BusinessCreate, BusinessUpdate, BusinessResponse
 from app.core.response_wrapper import success_response
@@ -58,7 +59,8 @@ async def create_business(
     
     response = BusinessResponse.model_validate(business)
     response.is_api_key_set = bool(business.gemini_api_key)
-    
+    _enrich_plan_fields(response, business, db)
+
     return success_response(
         message="Business profile created successfully",
         data=response
@@ -76,6 +78,7 @@ async def get_business(
     
     response = BusinessResponse.model_validate(business)
     response.is_api_key_set = bool(business.gemini_api_key)
+    _enrich_plan_fields(response, business, db)
     return success_response(data=response)
 
 @router.put("/business", response_model=None)
@@ -124,11 +127,31 @@ async def update_business(
     
     response = BusinessResponse.model_validate(business)
     response.is_api_key_set = bool(business.gemini_api_key)
+    _enrich_plan_fields(response, business, db)
 
     return success_response(
         message="Business profile updated successfully",
         data=response
     )
+
+def _enrich_plan_fields(response: BusinessResponse, business: Business, db: Session):
+    """Look up the Plan by subscription_tier and populate plan fields on the response."""
+    plan = db.query(Plan).filter(Plan.name.ilike(business.subscription_tier)).first()
+    if plan:
+        response.plan_name = plan.name
+        response.plan_code = plan.plan_code
+        response.plan_price = plan.price
+        response.plan_currency = plan.currency
+        response.plan_interval = plan.interval
+        features = plan.features
+        if isinstance(features, str):
+            import ast
+            try:
+                features = ast.literal_eval(features)
+            except Exception:
+                features = {}
+        response.plan_features = features
+
 
 @router.post("/business/validate-key", response_model=None)
 async def validate_api_key(
