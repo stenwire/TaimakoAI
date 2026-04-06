@@ -16,7 +16,7 @@ export interface BusinessProfile {
   custom_agent_instruction: string;
   intents?: string[];
   logo_url?: string;
-  is_api_key_set?: boolean;
+
   is_escalation_enabled?: boolean;
   escalation_emails?: string[];
   subscription_tier?: string;
@@ -47,7 +47,6 @@ export interface CreateBusinessProfileData {
   custom_agent_instruction: string;
   intents?: string[];
   logo_url?: string;
-  gemini_api_key?: string;
   is_escalation_enabled?: boolean;
   escalation_emails?: string[];
 }
@@ -59,7 +58,6 @@ export interface UpdateBusinessProfileData {
   custom_agent_instruction?: string;
   intents?: string[];
   logo_url?: string;
-  gemini_api_key?: string;
   is_escalation_enabled?: boolean;
   escalation_emails?: string[];
 }
@@ -156,6 +154,9 @@ export interface WidgetSettings {
   send_initial_message_automatically?: boolean;
   whatsapp_enabled?: boolean;
   whatsapp_number?: string;
+  whatsapp_phone_number_id?: string;
+  whatsapp_business_account_id?: string;
+  whatsapp_api_configured?: boolean;
   max_messages_per_session?: number;
   max_sessions_per_day?: number;
   whitelisted_domains?: string[];
@@ -170,6 +171,9 @@ export interface UpdateWidgetSettings {
   send_initial_message_automatically?: boolean;
   whatsapp_enabled?: boolean;
   whatsapp_number?: string;
+  whatsapp_phone_number_id?: string;
+  whatsapp_business_account_id?: string;
+  whatsapp_access_token?: string;
   max_messages_per_session?: number;
   max_sessions_per_day?: number;
   whitelisted_domains?: string[];
@@ -250,6 +254,7 @@ export interface GuestSession {
   created_at: string;
   last_message_at: string;
   origin: string;
+  channel?: string | null;
   summary: string | null;
   top_intent: string | null;
   country?: string | null;

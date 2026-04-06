@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { LayoutDashboard, Building2, FileText, MessageSquare, LogOut, Menu, X, Settings, Users, AlertTriangle, Bot, AlignLeft, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Building2, FileText, MessageSquare, LogOut, Menu, X, Settings, Users, Bot, AlignLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import Sidebar, { SidebarSection } from '@/components/ui/Sidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBusiness, BusinessProvider } from '@/contexts/BusinessContext';
@@ -20,26 +20,14 @@ function DashboardLayoutInner({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const { isApiKeySet, isLoading, refreshBusinessProfile } = useBusiness();
+  const { refreshBusinessProfile } = useBusiness();
 
-  // Check for API key status on mount and when user changes
+  // Refresh business profile on mount and when user changes
   useEffect(() => {
     if (user) {
       refreshBusinessProfile();
     }
   }, [user, refreshBusinessProfile]);
-
-  // Redirect if locked and trying to access other pages
-  useEffect(() => {
-    if (!isLoading && !isApiKeySet) {
-      if (!pathname.startsWith('/dashboard/settings/general')) {
-        router.push('/dashboard/settings/general');
-      }
-    }
-  }, [isApiKeySet, isLoading, pathname, router]);
-
-  const apiKeyMissing = !isApiKeySet;
-  const checkingKey = isLoading;
 
   const baseSidebarSections = [
     {
@@ -57,25 +45,15 @@ function DashboardLayoutInner({
           href: '/dashboard/settings',
           subItems: [
             { label: 'General', href: '/dashboard/settings/general' },
-            { label: 'Subscription', href: '/dashboard/settings/subscription' }
+            { label: 'Subscription', href: '/dashboard/settings/subscription' },
+            { label: 'WhatsApp', href: '/dashboard/settings/whatsapp' }
           ]
         },
       ],
     },
   ];
 
-  // Apply lockout to sidebar
-  const sidebarSections: SidebarSection[] = baseSidebarSections.map(section => ({
-    ...section,
-    items: section.items.map(item => ({
-      ...item,
-      disabled: apiKeyMissing && !item.href?.startsWith('/dashboard/settings/general'),
-      subItems: item.subItems?.map(sub => ({
-        ...sub,
-        disabled: apiKeyMissing && !sub.href.startsWith('/dashboard/settings/general')
-      }))
-    }))
-  }));
+  const sidebarSections: SidebarSection[] = baseSidebarSections;
 
   return (
     <ProtectedRoute>
@@ -193,23 +171,6 @@ function DashboardLayoutInner({
 
         {/* Main Content Area */}
         <main className="flex-1 flex flex-col min-w-0 bg-[var(--bg-secondary)] overflow-hidden relative">
-
-          {/* Missing Key Warning */}
-          {apiKeyMissing && !checkingKey && (
-            <div className="bg-[var(--warning-bg)] border-l-4 border-[var(--warning)] p-4 shadow-sm z-30 flex-shrink-0">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <AlertTriangle className="h-5 w-5 text-[var(--warning)]" aria-hidden="true" />
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-[var(--warning-text)]">
-                    <span className="font-bold">Action Required: </span>
-                    You must set your Google Gemini API Key in <span className="font-bold cursor-pointer underline hover:text-opacity-80" onClick={() => router.push('/dashboard/settings/general')}>Settings</span> to use AI features.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Scrollable Content */}
           <div className="flex-1 overflow-y-auto scroll-smooth">
