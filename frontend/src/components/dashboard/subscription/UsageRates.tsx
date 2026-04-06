@@ -9,10 +9,10 @@ interface UsageRatesProps {
   usedAiResponses: number;
   allocatedEscalations: number;
   usedEscalations: number;
-  planFeatures: Record<string, any> | null;
+  planFeatures: Record<string, unknown> | null;
 }
 
-export default function UsageRates({ tier, allocatedAiResponses, usedAiResponses, allocatedEscalations, usedEscalations, planFeatures }: UsageRatesProps) {
+export default function UsageRates({ allocatedAiResponses, usedAiResponses, allocatedEscalations, usedEscalations }: UsageRatesProps) {
   const totalCredits = allocatedAiResponses || 0;
   const isUnlimitedCredits = totalCredits === -1 || totalCredits > 99999;
 
@@ -23,7 +23,6 @@ export default function UsageRates({ tier, allocatedAiResponses, usedAiResponses
   const totalEscalationsUsed = usedEscalations || 0;
 
   const isUnlimitedEscalations = maxEscalations >= 99999;
-  const escalationsPercent = isUnlimitedEscalations || maxEscalations === 0 ? 0 : Math.min(100, Math.round((totalEscalationsUsed / maxEscalations) * 100));
 
   const isNearLimit = !isUnlimitedCredits && creditsPercent > 85;
 

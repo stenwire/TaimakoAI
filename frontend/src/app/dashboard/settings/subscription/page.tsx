@@ -26,7 +26,7 @@ interface SubscriptionData {
   plan_price?: number;
   plan_currency?: string;
   plan_interval?: string;
-  plan_features?: Record<string, any>;
+  plan_features?: Record<string, unknown>;
 }
 
 function SubscriptionPageContent() {

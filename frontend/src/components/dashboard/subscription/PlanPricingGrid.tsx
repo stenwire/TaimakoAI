@@ -29,7 +29,6 @@ export default function PlanPricingGrid({
   currentTier,
   hasSavedCard,
   onPlanChangeStarted,
-  onPlanChangeSuccess,
   onPlanChangeError
 }: PlanPricingGridProps) {
 
@@ -43,10 +42,10 @@ export default function PlanPricingGrid({
       let res;
       if (hasSavedCard) {
         // Upgrade flow using saved card
-        res = await upgradeSubscription(planId, 'paystack') as any;
+        res = await upgradeSubscription(planId, 'paystack') as { data?: { authorization_url?: string } };
       } else {
         // Checkout flow for new card / initial sub
-        res = await initializeSubscription(planId, 'paystack') as any;
+        res = await initializeSubscription(planId, 'paystack') as { data?: { authorization_url?: string } };
       }
 
       if (res.data?.authorization_url) {
@@ -159,7 +158,7 @@ export default function PlanPricingGrid({
           <h3 className="text-xl font-space font-bold text-[var(--text-primary)] mb-2">Looking for More Power?</h3>
           <p className="text-[var(--text-secondary)] mb-6 max-w-2xl mx-auto">
             You are currently on our highest standard plan. If you need custom integration,
-            higher volume limits, or dedicated SLAs, let's talk about an Enterprise plan.
+            higher volume limits, or dedicated SLAs, let&apos;s talk about an Enterprise plan.
           </p>
           <Button
             variant="primary"

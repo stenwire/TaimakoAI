@@ -6,7 +6,6 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Textarea from '@/components/ui/Textarea';
 import Select from '@/components/ui/Select';
-import Card from '@/components/ui/Card';
 import { getAccessToken, getBusinessProfile, updateBusinessProfile, generateIntents } from '@/lib/api';
 import { useToast } from '@/contexts/ToastContext';
 import { BusinessProfile } from '@/lib/types';
@@ -36,7 +35,7 @@ type Tab = 'business' | 'appearance' | 'installation';
 export default function WidgetSettingsPage() {
   const [settings, setSettings] = useState<WidgetSettings | null>(null);
   const { success, error } = useToast();
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [business, setBusiness] = useState<BusinessProfile | null>(null);
   const [generatingIntents, setGeneratingIntents] = useState(false);
@@ -81,9 +80,9 @@ export default function WidgetSettingsPage() {
       if (res.status === 'success' && res.data) {
         setBusiness(res.data);
         setLimits({
-          allocated_messages_per_session: (res.data as any).allocated_messages_per_session,
-          allocated_daily_sessions: (res.data as any).allocated_daily_sessions,
-          allocated_whitelisted_domains: (res.data as any).allocated_whitelisted_domains,
+          allocated_messages_per_session: (res.data as Record<string, unknown>).allocated_messages_per_session,
+          allocated_daily_sessions: (res.data as Record<string, unknown>).allocated_daily_sessions,
+          allocated_whitelisted_domains: (res.data as Record<string, unknown>).allocated_whitelisted_domains,
         });
       }
     } catch (e) { console.error(e); }
@@ -139,7 +138,7 @@ export default function WidgetSettingsPage() {
         intents: business.intents
       });
       success("Business profile updated!");
-    } catch (e) {
+    } catch {
       error("Failed to update business profile");
     } finally {
       setBusinessUpdating(false);
@@ -158,7 +157,7 @@ export default function WidgetSettingsPage() {
         setBusiness({ ...business, intents: res.data.intents });
         success("Intents generated!");
       }
-    } catch (e) { error("Generaton failed"); } finally { setGeneratingIntents(false); }
+    } catch { error("Generaton failed"); } finally { setGeneratingIntents(false); }
   }
 
   const copyEmbedCode = () => {
@@ -435,7 +434,7 @@ export default function WidgetSettingsPage() {
                         onChange={(e) => {
                           const val = parseInt(e.target.value) || 0;
                           const limit = limits?.allocated_messages_per_session || 50;
-                          settings && setSettings({ ...settings, max_messages_per_session: Math.min(val, limit) });
+                          if (settings) setSettings({ ...settings, max_messages_per_session: Math.min(val, limit) });
                         }}
                       />
                       {limits?.allocated_messages_per_session !== undefined && (
@@ -453,7 +452,7 @@ export default function WidgetSettingsPage() {
                         onChange={(e) => {
                           const val = parseInt(e.target.value) || 0;
                           const limit = limits?.allocated_daily_sessions || 5;
-                          settings && setSettings({ ...settings, max_sessions_per_day: Math.min(val, limit) });
+                          if (settings) setSettings({ ...settings, max_sessions_per_day: Math.min(val, limit) });
                         }}
                       />
                       {limits?.allocated_daily_sessions !== undefined && (
@@ -623,6 +622,7 @@ export default function WidgetSettingsPage() {
                     <div className="flex-1 p-6 flex flex-col justify-center bg-white">
                       <div className="text-center space-y-2 mb-6">
                         <div className="inline-flex items-center justify-center w-14 h-14 rounded-full text-white shadow-lg mb-2" style={{ backgroundColor: settings?.primary_color || '#0E3F34' }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           {business?.logo_url ? <img src={business.logo_url} className="w-8 h-8 object-contain" alt="" /> : <MessageSquare className="w-6 h-6" />}
                         </div>
                         <h2 className="text-xl font-bold text-gray-900 leading-tight">How would you like to connect?</h2>
@@ -707,6 +707,7 @@ export default function WidgetSettingsPage() {
                 {/* Launcher */}
                 <div className="w-14 h-14 rounded-full shadow-xl flex items-center justify-center text-white cursor-pointer hover:scale-105 transition-transform active:scale-95 ring-4 ring-white/30 shrink-0" style={{ backgroundColor: settings?.primary_color || '#0E3F34' }}>
                   {settings?.icon_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img src={settings.icon_url} className="w-7 h-7 object-contain" alt="Widget Icon" />
                   ) : (
                     <MessageSquare strokeWidth={2} className="w-7 h-7" />

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { getAccessToken, generateFollowUp } from '@/lib/api';
 import Card from '@/components/ui/Card';
 import Modal from '@/components/ui/Modal';
-import { User, MessageSquare, Clock, Smartphone, RefreshCw, RotateCcw, Sparkles, ChevronLeft } from 'lucide-react';
+import { MessageSquare, Clock, Smartphone, RefreshCw, RotateCcw, Sparkles, ChevronLeft } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 

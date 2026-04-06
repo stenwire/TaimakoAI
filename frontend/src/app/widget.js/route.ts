@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { BACKEND_URL, FRONTEND_URL } from '@/config';
 
 export async function GET() {

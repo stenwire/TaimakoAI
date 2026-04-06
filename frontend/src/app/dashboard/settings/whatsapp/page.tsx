@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { MessageSquare, Save, AlertCircle, CheckCircle, Copy, Check, ExternalLink } from 'lucide-react';
+import { MessageSquare, Save, AlertCircle, CheckCircle, Copy, Check } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';

@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { LayoutDashboard, Building2, FileText, MessageSquare, LogOut, Menu, X, Settings, Users, Bot, AlignLeft, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Building2, FileText, MessageSquare, LogOut, X, Settings, Users, Bot, AlignLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import Sidebar, { SidebarSection } from '@/components/ui/Sidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBusiness, BusinessProvider } from '@/contexts/BusinessContext';
@@ -15,8 +14,6 @@ function DashboardLayoutInner({
   children: React.ReactNode;
 }) {
   const { user, logout } = useAuth();
-  const router = useRouter();
-  const pathname = usePathname();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
