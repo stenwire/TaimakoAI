@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import uuid
@@ -9,7 +9,7 @@ from app.db.session import get_db
 from app.models.widget import WidgetSettings, GuestUser, GuestMessage
 from app.models.user import User
 from app.models.business import Business
-from app.models.chat_session import ChatSession, SessionOrigin
+from app.models.chat_session import ChatSession
 from app.schemas.widget import (
     GuestStartRequest, GuestStartResponse,
     WidgetChatRequest, WidgetChatResponse, GuestMessageSchema,
@@ -19,14 +19,11 @@ from app.schemas.widget import (
 from app.services.agent_service import run_conversation
 from app.auth.router import get_current_user
 from app.core.response_wrapper import success_response
-from datetime import timedelta
 
 # Additional Schema for Updating Settings
 from pydantic import BaseModel
 
-from urllib.parse import urlparse
 from app.core.config import settings
-from app.core.subscription import TIER_LIMITS
 
 
 router = APIRouter()
@@ -499,7 +496,7 @@ async def init_guest_session(
                 print(f"Skipping geolocation for localhost IP: {client_ip}")
                 
         except httpx.TimeoutException:
-            print(f"GeoIP Lookup Timeout")
+            print("GeoIP Lookup Timeout")
         except httpx.HTTPError as e:
             print(f"GeoIP HTTP Error: {e}")
         except Exception as e:
@@ -674,9 +671,12 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
     # 5. Update Session Stats
     session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
     if session:
-        if session.total_messages is None: session.total_messages = 0
-        if session.user_messages is None: session.user_messages = 0
-        if session.ai_messages is None: session.ai_messages = 0
+        if session.total_messages is None:
+            session.total_messages = 0
+        if session.user_messages is None:
+            session.user_messages = 0
+        if session.ai_messages is None:
+            session.ai_messages = 0
         
         session.total_messages += 2 # 1 user + 1 AI
         session.user_messages += 1

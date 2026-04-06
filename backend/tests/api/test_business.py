@@ -1,5 +1,3 @@
-import pytest
-from fastapi.testclient import TestClient
 from app.models.business import Business
 from app.models.user import User
 from app.core.security import create_access_token
@@ -101,21 +99,22 @@ def test_get_business(client, db_session):
     assert data["data"]["description"] == "Test description"
 
 def test_get_business_not_found(client, db_session):
-    """Test getting business when none exists."""
+    """Test getting business when none exists returns 200 with data=None."""
     user = User(email="nobus@test.com", name="Test User", is_active=True)
     db_session.add(user)
     db_session.commit()
     db_session.refresh(user)
-    
+
     token = create_access_token(subject=user.id)
-    
+
     response = client.get(
         "/business",
         headers={"Authorization": f"Bearer {token}"}
     )
-    
-    assert response.status_code == 404
-    assert "not found" in response.json()["message"]
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["data"] is None
 
 def test_update_business(client, db_session):
     """Test updating a business profile."""

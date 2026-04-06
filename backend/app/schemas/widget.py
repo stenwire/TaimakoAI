@@ -1,7 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from datetime import datetime
-from uuid import UUID
 
 # Guest Start
 class GuestStartRequest(BaseModel):

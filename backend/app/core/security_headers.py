@@ -1,5 +1,5 @@
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp
 import os
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):

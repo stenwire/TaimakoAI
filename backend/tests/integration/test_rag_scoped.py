@@ -2,7 +2,6 @@ import pytest
 from unittest.mock import MagicMock, patch
 from app.services.rag_service import rag_service
 from app.models.document import Document
-from app.models.user import User
 
 @pytest.fixture
 def mock_file_storage(monkeypatch):
@@ -74,12 +73,14 @@ def test_list_documents_scoped(db_session):
     db_session.add(Document(user_id="u1", filename="a.txt", file_path="p", status="processed"))
     db_session.add(Document(user_id="u2", filename="b.txt", file_path="p", status="processed"))
     db_session.commit()
-    
+
     docs1 = rag_service.list_documents("u1", db_session)
-    assert docs1 == ["a.txt"]
-    
+    assert len(docs1) == 1
+    assert docs1[0]["filename"] == "a.txt"
+
     docs2 = rag_service.list_documents("u2", db_session)
-    assert docs2 == ["b.txt"]
+    assert len(docs2) == 1
+    assert docs2[0]["filename"] == "b.txt"
 
 def test_query_scoped(mock_vector_db_service):
     rag_service.query("check", "u1")

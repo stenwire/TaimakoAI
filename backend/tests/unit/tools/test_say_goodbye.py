@@ -2,7 +2,6 @@
 Tests for the say_goodbye tool.
 Validates farewell functionality and output format.
 """
-import pytest
 from app.services.agent_system.tools import say_goodbye
 
 

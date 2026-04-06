@@ -1,13 +1,10 @@
 import pytest
 import asyncio
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import Mock, patch
 from app.services.agent_system.callbacks import trigger_session_analysis, _run_analysis_in_background
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models.llm_response import LlmResponse
 from google.genai import types
-
-# Use anyio marker for async tests (already installed)
-pytestmark = pytest.mark.anyio
 
 class TestAutomatedAnalysis:
     """Test suite for automated session analysis workflow."""
@@ -53,58 +50,47 @@ class TestAutomatedAnalysis:
         result = trigger_session_analysis(mock_context, mock_response)
         assert result is None
     
-    async def test_analysis_persists_to_db(self):
+    async def test_analysis_persists_to_db(self, db_session):
         """Test that analysis results are persisted to database."""
-        from app.db.session import SessionLocal
         from app.models.chat_session import ChatSession
         from app.models.widget import GuestUser
         from app.services.analysis_agent import persist_analysis
         import uuid
-        
-        db = SessionLocal()
-        
-        try:
-            # Create test guest user
-            guest = GuestUser(
-                id=str(uuid.uuid4()),
-                widget_id=str(uuid.uuid4()),
-                name="Test User"
-            )
-            db.add(guest)
-            db.commit()
-            
-            # Create test session
-            session = ChatSession(
-                id=str(uuid.uuid4()),
-                guest_id=guest.id
-            )
-            db.add(session)
-            db.commit()
-            db.refresh(session)
-            
-            # Persist analysis
-            test_summary = "User asked about product features"
-            test_intent = "Support"
-            
-            updated_session = await persist_analysis(
-                db, 
-                session.id, 
-                test_summary, 
-                test_intent
-            )
-            
-            # Verify persistence
-            assert updated_session is not None
-            assert updated_session.summary == test_summary
-            assert updated_session.top_intent == test_intent
-            assert updated_session.summary_generated_at is not None
-            
-        finally:
-            # Cleanup
-            db.query(ChatSession).filter(ChatSession.id == session.id).delete()
-            db.query(GuestUser).filter(GuestUser.id == guest.id).delete()
-            db.commit()
-            db.close()
+
+        # Create test guest user
+        guest = GuestUser(
+            id=str(uuid.uuid4()),
+            widget_id=str(uuid.uuid4()),
+            name="Test User"
+        )
+        db_session.add(guest)
+        db_session.commit()
+
+        # Create test session
+        session = ChatSession(
+            id=str(uuid.uuid4()),
+            guest_id=guest.id
+        )
+        db_session.add(session)
+        db_session.commit()
+        db_session.refresh(session)
+
+        # Persist analysis
+        test_summary = "User asked about product features"
+        test_intent = "Support"
+
+        updated_session = await persist_analysis(
+            db_session,
+            session.id,
+            test_summary,
+            test_intent
+        )
+
+        # Verify persistence
+        assert updated_session is not None
+        assert updated_session.summary == test_summary
+        assert updated_session.top_intent == test_intent
+        assert updated_session.summary_generated_at is not None
     
     async def test_analysis_non_blocking(self):
         """Test that analysis runs in background without blocking."""
@@ -152,7 +138,6 @@ class TestAutomatedAnalysis:
     
     async def test_background_analysis_timeout(self):
         """Test that background analysis has timeout protection."""
-        from app.db.session import SessionLocal
         
         # Mock analyze_session to take too long
         async def slow_analysis(*args, **kwargs):

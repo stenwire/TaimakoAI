@@ -46,7 +46,6 @@ class TestAnalyzeSentiment:
                 mock_genai.Client.return_value = mock_client
                 mock_client.models.generate_content.side_effect = Exception("API Error")
                 
-                from importlib import reload
                 import app.services.agent_system.tools as tools_module
                 
                 result = tools_module.analyze_sentiment(

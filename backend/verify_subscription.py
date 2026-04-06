@@ -1,9 +1,6 @@
 from app.models.business import Business
 from app.models.user import User
-from app.models.payment import PaymentTransaction
-from app.core.subscription import SubscriptionTier
 from app.db.session import SessionLocal
-import uuid
 
 # Mock the database session
 db = SessionLocal()

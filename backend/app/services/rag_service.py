@@ -1,16 +1,13 @@
 import uuid
 import os
-import shutil
 from typing import List, Optional
 from fastapi import UploadFile
 from pypdf import PdfReader
-import io
 import google.generativeai as genai
 from app.services.vector_db import vector_db
 from app.utils.text_splitter import recursive_character_text_splitter
 from app.schemas.document import IngestResponse
 from app.models.document import Document
-from app.models.business import Business
 from app.services.file_storage import file_storage
 from app.core.config import settings
 from sqlalchemy.orm import Session

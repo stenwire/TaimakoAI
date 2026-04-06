@@ -6,7 +6,7 @@ from app.models.user import User
 from app.models.plan import Plan
 from app.core.response_wrapper import success_response, error_response
 from app.services.subscription.factory import SubscriptionServiceFactory
-from typing import List, Dict, Any, Optional
+from typing import Dict, Any, Optional
 from pydantic import BaseModel
 import logging
 
@@ -20,7 +20,7 @@ def get_plans(db: Session = Depends(get_db)):
     Retrieve all active plans (public endpoint, no auth required).
     """
     try:
-        plans = db.query(Plan).filter(Plan.is_active == True).order_by(Plan.tier.asc()).all()
+        plans = db.query(Plan).filter(Plan.is_active.is_(True)).order_by(Plan.tier.asc()).all()
 
         plans_data = []
         for p in plans:

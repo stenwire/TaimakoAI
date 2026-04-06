@@ -1,6 +1,4 @@
-import pytest
-from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from app.main import app
 from app.core.config import settings
 from app.core.security import create_access_token
@@ -40,7 +38,6 @@ def test_google_callback(mock_get_user_info, mock_exchange_code, client):
     assert "access_token" in response.headers["location"]
     assert "refresh_token" in response.headers["location"]
 
-from app.db.session import SessionLocal
 from app.models.user import User
 
 def test_get_me_unauthorized(client):

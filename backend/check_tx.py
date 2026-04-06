@@ -6,10 +6,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.db.session import engine
 from sqlalchemy.orm import sessionmaker
 
-from app.models.user import User
-from app.models.business import Business
 from app.models.payment import PaymentTransaction
-from app.models.plan import Plan
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 db = SessionLocal()
@@ -22,7 +19,7 @@ for tx in txs:
         if isinstance(meta, str):
             try:
                 meta = json.loads(meta)
-            except:
+            except (ValueError, TypeError):
                 pass
         
         data = meta.get('data', {}) if isinstance(meta, dict) else {}

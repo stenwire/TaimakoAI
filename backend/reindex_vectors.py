@@ -5,7 +5,6 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from app.db.session import SessionLocal
-from app.models.document import Document
 from app.services.vector_db import vector_db
 from app.services.rag_service import rag_service
 from sqlalchemy import text

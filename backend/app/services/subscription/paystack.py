@@ -192,12 +192,12 @@ class PaystackSubscriptionService(SubscriptionService):
 
     def verify_webhook_signature(self, request_headers: Dict[str, str], request_body: bytes) -> bool:
         signature = request_headers.get("x-paystack-signature")
-        logger.info(f"[PAYSTACK] Verifying webhook signature...")
+        logger.info("[PAYSTACK] Verifying webhook signature...")
         logger.info(f"[PAYSTACK] Received signature: {signature[:20] if signature else 'NONE'}...")
         logger.info(f"[PAYSTACK] Secret key present: {bool(self.secret_key)}, length: {len(self.secret_key) if self.secret_key else 0}")
 
         if not signature:
-            logger.warning(f"[PAYSTACK] ❌ No x-paystack-signature header found")
+            logger.warning("[PAYSTACK] ❌ No x-paystack-signature header found")
             return False
 
         calculated_hmac = hmac.new(

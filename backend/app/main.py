@@ -1,10 +1,8 @@
-import os
 from fastapi import FastAPI
 from fastapi.exceptions import HTTPException, RequestValidationError
 
 from app.api.routes import router as api_router
 from app.auth.router import router as auth_router
-from app.db.base import Base
 from app.db.session import engine
 from app.core.exception_handler import (
     http_exception_handler,
@@ -12,8 +10,7 @@ from app.core.exception_handler import (
     general_exception_handler
 )
 from app.core.middleware import register_middleware
-from app.models.user import User
-from sqladmin import Admin, ModelView
+from sqladmin import Admin
 
 
 # Create tables (if not using alembic, but we are. Keeping for dev convenience or removing if strictly alembic)

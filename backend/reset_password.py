@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 """Quick script to reset a user's password."""
 import sys
-import os
 
 # Add the app directory to the path
 sys.path.insert(0, '/app')
 
 from app.db.session import SessionLocal
 from app.models.user import User
-from app.models.business import Business  # Import to resolve relationship
 from app.core.security import get_password_hash
 
 def reset_password(email: str, new_password: str):

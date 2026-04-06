@@ -1,5 +1,4 @@
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from app.core.security import create_access_token
 from app.models.user import User
 
@@ -60,18 +59,22 @@ def test_api_process_documents_scoped(client, db_session):
         assert kwargs['user_id'] == "u1"
 
 def test_api_chat_scoped(client, db_session):
+    from app.models.business import Business
+
     # 1. Auth Headers
     token = create_access_token(subject="u1")
     headers = {"Authorization": f"Bearer {token}"}
-    
-    # 2. Create User
+
+    # 2. Create User and Business
     db_session.add(User(id="u1", email="u1@test.com", google_id="g1"))
     db_session.commit()
-    
+    db_session.add(Business(user_id="u1", business_name="Test Biz"))
+    db_session.commit()
+
     # 3. Chat
     with patch("app.api.routes.run_conversation", return_value="Bot says hi") as mock_chat:
         response = client.post("/chat", json={"message": "hello"}, headers=headers)
-        
+
         assert response.status_code == 200
         mock_chat.assert_called_once()
         args, kwargs = mock_chat.call_args

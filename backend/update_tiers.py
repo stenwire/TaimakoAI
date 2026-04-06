@@ -1,5 +1,3 @@
-import os
-import sys
 
 from app.db.session import SessionLocal
 from app.models.plan import Plan

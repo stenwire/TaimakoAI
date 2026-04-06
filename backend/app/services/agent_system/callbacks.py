@@ -262,7 +262,7 @@ def sanitize_model_response(
 
     # Only return modified response if changes were made
     if sanitized_text != original_text:
-        print(f"--- Callback: sanitize_model_response modified response ---")
+        print("--- Callback: sanitize_model_response modified response ---")
         return LlmResponse(
             content=types.Content(
                 role="model",

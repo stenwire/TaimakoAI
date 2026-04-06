@@ -12,14 +12,13 @@ from app.models.plan import Plan
 from app.models.payment import PaymentTransaction
 from app.core.config import settings
 from app.core.response_wrapper import success_response
-from app.core.subscription import TIER_LIMITS, TIER_HIERARCHY
+from app.core.subscription import TIER_LIMITS
 from app.services.subscription.factory import SubscriptionServiceFactory
 from app.utils.email_helpers import (
     send_subscription_created_email,
     send_subscription_cancelled_email,
     send_payment_success_email,
     send_payment_failed_email,
-    send_plan_upgraded_email,
 )
 from datetime import datetime, timezone
 
@@ -74,7 +73,7 @@ async def initialize_subscription(
     business = _get_user_business(db, current_user)
 
     # Look up plan from DB
-    plan = db.query(Plan).filter(Plan.id == req.plan_id, Plan.is_active == True).first()
+    plan = db.query(Plan).filter(Plan.id == req.plan_id, Plan.is_active.is_(True)).first()
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found or inactive")
 
@@ -165,7 +164,7 @@ async def upgrade_subscription(
     business = _get_user_business(db, current_user)
 
     # Validate new plan
-    new_plan = db.query(Plan).filter(Plan.id == req.new_plan_id, Plan.is_active == True).first()
+    new_plan = db.query(Plan).filter(Plan.id == req.new_plan_id, Plan.is_active.is_(True)).first()
     print(f"\n\n New Plan: {new_plan.to_dict()}\n\n")
     if not new_plan:
         raise HTTPException(status_code=404, detail="New plan not found or inactive")
@@ -319,7 +318,7 @@ async def enable_subscription_endpoint(
 
     # We must initialize a new subscription for Paystack
     tier_name = business.subscription_tier or "spark"
-    plan = db.query(Plan).filter(Plan.name.ilike(tier_name), Plan.is_active == True).first()
+    plan = db.query(Plan).filter(Plan.name.ilike(tier_name), Plan.is_active.is_(True)).first()
     if not plan:
         raise HTTPException(status_code=404, detail="Current plan not found or inactive")
 
@@ -386,7 +385,7 @@ async def subscription_webhook(
     payload = await request.json()
     event = service.parse_webhook_event(payload)
 
-    logger.info(f"[WEBHOOK] ✅ Signature verified successfully")
+    logger.info("[WEBHOOK] ✅ Signature verified successfully")
     logger.info(f"[WEBHOOK] Event type: {event['event_type']}")
     logger.info(f"[WEBHOOK] Customer email: {event.get('customer_email')}")
     logger.info(f"[WEBHOOK] Customer code: {event.get('customer_code')}")
@@ -507,7 +506,7 @@ def _find_business(db: Session, event: Dict[str, Any]) -> Optional[Business]:
             logger.info(f"[WEBHOOK] ✅ Found business {business.id} via customer_code")
             return business
         else:
-            logger.info(f"[WEBHOOK] Business lookup by customer_code: NOT FOUND")
+            logger.info("[WEBHOOK] Business lookup by customer_code: NOT FOUND")
 
     logger.error(f"[WEBHOOK] ❌ Business not found for email={email} / customer_code={customer_code}")
     return None
@@ -515,7 +514,7 @@ def _find_business(db: Session, event: Dict[str, Any]) -> Optional[Business]:
 
 def _process_subscription_created(db: Session, event: Dict[str, Any]) -> Optional[Business]:
     """Handle subscription.create — store subscription code, email token, authorization code."""
-    logger.info(f"[WEBHOOK] Processing SUBSCRIPTION_CREATED")
+    logger.info("[WEBHOOK] Processing SUBSCRIPTION_CREATED")
     business = _find_business(db, event)
     if not business:
         return None
@@ -536,7 +535,7 @@ def _process_subscription_created(db: Session, event: Dict[str, Any]) -> Optiona
         import json
         try:
             metadata = json.loads(metadata)
-        except:
+        except (ValueError, TypeError):
             metadata = {}
 
     is_upgrade = metadata.get("is_upgrade", False)
@@ -562,7 +561,7 @@ def _process_subscription_created(db: Session, event: Dict[str, Any]) -> Optiona
 
 def _process_renewal_success(db: Session, event: Dict[str, Any]) -> Optional[Business]:
     """Handle charge.success — refresh credits, store authorization code, update payment date."""
-    logger.info(f"[WEBHOOK] Processing RENEWAL_SUCCESS")
+    logger.info("[WEBHOOK] Processing RENEWAL_SUCCESS")
     business = _find_business(db, event)
     if not business:
         return None
@@ -574,7 +573,7 @@ def _process_renewal_success(db: Session, event: Dict[str, Any]) -> Optional[Bus
         business.payment_subscription_id = event["subscription_code"]
     if event.get("authorization_code"):
         business.authorization_code = event["authorization_code"]
-        logger.info(f"[WEBHOOK] Stored authorization_code for future upgrades")
+        logger.info("[WEBHOOK] Stored authorization_code for future upgrades")
 
     business.subscription_status = "active"
     business.last_payment_date = datetime.now(timezone.utc)
@@ -584,7 +583,7 @@ def _process_renewal_success(db: Session, event: Dict[str, Any]) -> Optional[Bus
         import json
         try:
             metadata = json.loads(metadata)
-        except:
+        except (ValueError, TypeError):
             metadata = {}
 
     is_upgrade = metadata.get("is_upgrade", False)

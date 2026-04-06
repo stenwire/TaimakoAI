@@ -1,7 +1,5 @@
 import chromadb
 from app.core.config import settings
-import shutil
-import os
 
 def reset_vector_db():
     print(f"Connecting to ChromaDB at {settings.CHROMA_DB_DIR}...")
@@ -10,7 +8,7 @@ def reset_vector_db():
         
         # Try to get the collection to see if it exists
         try:
-            collection = client.get_collection(name="rag_documents")
+            client.get_collection(name="rag_documents")
             print("Found existing collection 'rag_documents'. Deleting...")
             client.delete_collection(name="rag_documents")
             print("✅ Collection 'rag_documents' deleted.")

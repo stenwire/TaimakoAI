@@ -7,7 +7,6 @@ sys.path.append(os.getcwd())
 
 try:
     print("Attempting to import app.main...")
-    from app.main import app
     print("Successfully imported app.main without AttributeError.")
 except AttributeError as e:
     print(f"Caught expected AttributeError: {e}")

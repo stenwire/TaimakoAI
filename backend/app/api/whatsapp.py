@@ -7,7 +7,6 @@ from app.db.session import get_db
 from app.models.widget import WidgetSettings, GuestUser
 from app.models.chat_session import ChatSession, SessionChannel
 from app.models.user import User
-from app.models.business import Business
 from app.core.config import settings
 from app.services.whatsapp_service import send_whatsapp_message, verify_webhook_signature
 
@@ -37,7 +36,7 @@ async def whatsapp_incoming(request: Request):
     if settings.WHATSAPP_APP_SECRET:
         signature = request.headers.get("X-Hub-Signature-256", "")
         if not verify_webhook_signature(body, signature, settings.WHATSAPP_APP_SECRET):
-            print(f"WhatsApp webhook signature verification failed")
+            print("WhatsApp webhook signature verification failed")
             return Response(status_code=200)
 
     try:
@@ -78,7 +77,7 @@ async def whatsapp_incoming(request: Request):
             # Non-text message — send unsupported notice
             widget = db.query(WidgetSettings).filter(
                 WidgetSettings.whatsapp_phone_number_id == phone_number_id,
-                WidgetSettings.whatsapp_enabled == True,
+                WidgetSettings.whatsapp_enabled.is_(True),
             ).first()
             if widget and widget.whatsapp_access_token:
                 await send_whatsapp_message(
@@ -108,7 +107,7 @@ async def _process_whatsapp_message(
     # 1. Find widget by phone_number_id
     widget = db.query(WidgetSettings).filter(
         WidgetSettings.whatsapp_phone_number_id == phone_number_id,
-        WidgetSettings.whatsapp_enabled == True,
+        WidgetSettings.whatsapp_enabled.is_(True),
     ).first()
 
     if not widget:
@@ -140,7 +139,7 @@ async def _process_whatsapp_message(
     session = db.query(ChatSession).filter(
         ChatSession.guest_id == guest.id,
         ChatSession.channel == SessionChannel.WHATSAPP.value,
-        ChatSession.is_active == True,
+        ChatSession.is_active.is_(True),
         ChatSession.created_at >= cutoff,
     ).order_by(ChatSession.created_at.desc()).first()
 
