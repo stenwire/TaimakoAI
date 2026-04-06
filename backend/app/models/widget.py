@@ -26,6 +26,9 @@ class WidgetSettings(Base, SerializerMixin):
     send_initial_message_automatically = Column(Boolean, default=True)
     whatsapp_enabled = Column(Boolean, default=False)
     whatsapp_number = Column(String, nullable=True)
+    whatsapp_phone_number_id = Column(String, nullable=True)
+    whatsapp_business_account_id = Column(String, nullable=True)
+    whatsapp_access_token = Column(String, nullable=True)
     
     # Feature Flags
     is_active = Column(Boolean, default=True)  # Master toggle to enable/disable widget

@@ -14,6 +14,10 @@ class SessionOrigin(str, enum.Enum):
     AUTO_START = "auto-start"
     RESUMED = "resumed"
 
+class SessionChannel(str, enum.Enum):
+    WIDGET = "widget"
+    WHATSAPP = "whatsapp"
+
 class ChatSession(Base, SerializerMixin):
     __tablename__ = "chat_sessions"
 
@@ -26,6 +30,7 @@ class ChatSession(Base, SerializerMixin):
     summary_generated_at = Column(DateTime, nullable=True)
     top_intent = Column(String, nullable=True)
     sentiment_score = Column(Float, nullable=True)
+    channel = Column(String, default=SessionChannel.WIDGET.value)
     is_active = Column(Boolean, default=True)
 
     # Analytics - Context

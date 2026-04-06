@@ -83,6 +83,9 @@ app.include_router(subscription_router, tags=["subscription"])
 from app.api.plans import router as plans_router
 app.include_router(plans_router, tags=["plans"])
 
+from app.api.whatsapp import router as whatsapp_router
+app.include_router(whatsapp_router, prefix="/whatsapp", tags=["whatsapp"])
+
 from app.core.response_wrapper import success_response
 
 @app.get("/")

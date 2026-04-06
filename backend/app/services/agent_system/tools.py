@@ -252,7 +252,7 @@ def escalate_to_human(reason: str, user_message: str, tool_context: ToolContext)
         tier = business.subscription_tier or "spark"
         max_escalations = TIER_LIMITS.get(tier, {}).get("max_monthly_escalations", 5)
         
-        if business.total_escalations_used >= max_escalations:
+        if business.used_escalations >= max_escalations:
             print(f"Escalation Limit Reached for business {business.id}")
             return "I apologize, but we cannot process further escalations at this time due to high volume."
 
@@ -272,7 +272,7 @@ def escalate_to_human(reason: str, user_message: str, tool_context: ToolContext)
             db.add(escalation)
             
             # Increment usage only on new creation
-            business.total_escalations_used += 1
+            business.used_escalations += 1
             db.add(business)
             
         db.commit()

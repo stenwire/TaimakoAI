@@ -57,7 +57,6 @@ class Business(Base, SerializerMixin):
     last_payment_date = Column(DateTime, nullable=True)      # most recent successful charge
 
     logo_url = Column(String, nullable=True) # URL to business logo
-    gemini_api_key = Column(String, nullable=True) # Encrypted API Key
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 

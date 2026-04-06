@@ -19,7 +19,6 @@ from app.schemas.widget import (
 from app.services.agent_service import run_conversation
 from app.auth.router import get_current_user
 from app.core.response_wrapper import success_response
-from app.core.security_utils import decrypt_string
 from datetime import timedelta
 
 # Additional Schema for Updating Settings
@@ -43,6 +42,9 @@ class WidgetUpdate(BaseModel):
     send_initial_message_automatically: Optional[bool] = None
     whatsapp_enabled: Optional[bool] = None
     whatsapp_number: Optional[str] = None
+    whatsapp_phone_number_id: Optional[str] = None
+    whatsapp_business_account_id: Optional[str] = None
+    whatsapp_access_token: Optional[str] = None
     max_messages_per_session: Optional[int] = None
     max_sessions_per_day: Optional[int] = None
     max_sessions_per_day: Optional[int] = None
@@ -168,7 +170,16 @@ def update_my_widget_settings(
         
     if settings.whatsapp_number is not None:
         widget.whatsapp_number = settings.whatsapp_number
-        
+
+    if settings.whatsapp_phone_number_id is not None:
+        widget.whatsapp_phone_number_id = settings.whatsapp_phone_number_id or None
+
+    if settings.whatsapp_business_account_id is not None:
+        widget.whatsapp_business_account_id = settings.whatsapp_business_account_id or None
+
+    if settings.whatsapp_access_token is not None:
+        widget.whatsapp_access_token = settings.whatsapp_access_token or None
+
     if settings.max_messages_per_session is not None:
         widget.max_messages_per_session = settings.max_messages_per_session
         
@@ -600,20 +611,8 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
                     )
                 )
 
-    # Decrypt API Key
-    # Decrypt API Key or Use System Key
-    decrypted_key = None
-    if business and business.gemini_api_key:
-        decrypted_key = decrypt_string(business.gemini_api_key)
-    
-    # Fallback to System Key
-    if not decrypted_key:
-        if settings.GOOGLE_API_KEY:
-            decrypted_key = settings.GOOGLE_API_KEY
-        else:
-            # Check if business has it (already checked)
-            pass
-            
+    # Use system-level API key
+    decrypted_key = settings.GOOGLE_API_KEY
     if not decrypted_key:
         print(f"Missing API Key for business {widget.user_id} and System")
         return WidgetChatResponse(
@@ -788,7 +787,7 @@ async def analyze_chat_session(session_id: str, db: Session = Depends(get_db)):
 
     # Fetch intents and API key from business if available
     intents = None
-    decrypted_key = None
+    decrypted_key = settings.GOOGLE_API_KEY
     try:
         # ChatSession -> GuestUser -> WidgetSettings -> User -> Business
         guest = db.query(GuestUser).filter(GuestUser.id == session.guest_id).first()
@@ -799,10 +798,8 @@ async def analyze_chat_session(session_id: str, db: Session = Depends(get_db)):
                 if owner_user and owner_user.business:
                     if owner_user.business.intents:
                         intents = owner_user.business.intents
-                    if owner_user.business.gemini_api_key:
-                        decrypted_key = decrypt_string(owner_user.business.gemini_api_key)
     except Exception as e:
-        print(f"Error fetching intents/key: {e}")
+        print(f"Error fetching intents: {e}")
 
     # 2. Run analysis
     summary, intent = await analyze_session(db, session_id, intents=intents, api_key=decrypted_key)

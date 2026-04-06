@@ -37,6 +37,10 @@ class BaseConfig(BaseSettings):
     # Paystack
     PAYSTACK_WEBHOOK_SECRET: str = os.getenv("PAYSTACK_WEBHOOK_SECRET", "")
 
+    # WhatsApp Cloud API
+    WHATSAPP_VERIFY_TOKEN: str = os.getenv("WHATSAPP_VERIFY_TOKEN", "")
+    WHATSAPP_APP_SECRET: str = os.getenv("WHATSAPP_APP_SECRET", "")
+
     
     # JWT
     JWT_SECRET: str = os.getenv("JWT_SECRET", "supersecretkey") # Change in production!
@@ -51,7 +55,7 @@ class BaseConfig(BaseSettings):
     CORS_ALLOW_HEADERS: List[str] = ["*"]
     CORS_ALLOW_ORIGIN_REGEX: Union[str, None] = None
     
-    ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1"]
+    ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1", "*"]
     USE_HTTPS_REDIRECT: bool = False
     
     model_config = SettingsConfigDict(

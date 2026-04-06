@@ -64,7 +64,6 @@ class BusinessFactory(BaseFactory):
     is_escalation_enabled = False
     escalation_emails = None
     logo_url = None
-    gemini_api_key = None
     created_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
     updated_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
     
