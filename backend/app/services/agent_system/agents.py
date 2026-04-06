@@ -1,5 +1,4 @@
 from google.adk.agents import Agent
-from google.adk.models.lite_llm import LiteLlm 
 from app.services.agent_system.tools import (
     get_context, say_hello, say_goodbye, 
     analyze_sentiment, escalate_to_human

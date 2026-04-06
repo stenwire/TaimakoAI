@@ -18,6 +18,7 @@ const FormattedDate = ({ date }: { date: string }) => {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hydration guard pattern
     setMounted(true);
   }, []);
 
@@ -38,6 +39,7 @@ const FormattedTime = ({ date }: { date: string }) => {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line
     setMounted(true);
   }, []);
 

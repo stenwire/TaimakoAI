@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, RefreshCw, Database, Check } from 'lucide-react';
+import { FileText, RefreshCw, Database } from 'lucide-react';
 import { listDocuments, processDocuments } from '@/lib/api';
 import type { Document } from '@/lib/types';
 

@@ -156,12 +156,6 @@ export const updateBusinessProfile = async (
   return response.data;
 };
 
-export const validateApiKey = async (apiKey: string): Promise<ApiResponse<void>> => {
-  const response = await api.post('/business/validate-key', { api_key: apiKey });
-  return response.data;
-};
-
-
 export const generateIntents = async (): Promise<ApiResponse<{ intents: string[] }>> => {
   const response = await api.post('/business/generate-intents');
   return response.data;
@@ -294,5 +288,35 @@ export const resolveEscalation = async (escalationId: string): Promise<{ status:
   return response.data.data;
 };
 
-export default api;
+// Subscription endpoints
+export const initializeSubscription = async (planId: number, provider: string = 'paystack'): Promise<ApiResponse<{ authorization_url: string; access_code: string; reference: string }>> => {
+  const response = await api.post('/subscription/initialize', { plan_id: planId, provider });
+  return response.data;
+};
 
+export const cancelSubscription = async (provider: string = 'paystack'): Promise<ApiResponse<null>> => {
+  const response = await api.post('/subscription/cancel', { provider });
+  return response.data;
+};
+
+export const upgradeSubscription = async (newPlanId: number, provider: string = 'paystack'): Promise<ApiResponse<unknown>> => {
+  const response = await api.post('/subscription/upgrade', { new_plan_id: newPlanId, provider });
+  return response.data;
+};
+
+export const enableSubscription = async (provider: string = 'paystack'): Promise<ApiResponse<{ authorization_url?: string; access_code?: string; reference?: string } | null>> => {
+  const response = await api.post('/subscription/enable', { provider });
+  return response.data;
+};
+
+export const verifySubscriptionTransaction = async (reference: string, provider: string = 'paystack'): Promise<ApiResponse<unknown>> => {
+  const response = await api.post('/subscription/verify', { reference, provider });
+  return response.data;
+};
+
+export const getPublicPlans = async (): Promise<ApiResponse<unknown>> => {
+  const response = await api.get('/public/plans');
+  return response.data;
+};
+
+export default api;

@@ -4,7 +4,6 @@ from app.db.session import get_db
 from app.core.response_wrapper import success_response
 from app.models.escalation import Escalation, EscalationStatus
 from app.models.widget import GuestMessage
-from app.api.business import get_business
 
 router = APIRouter()
 

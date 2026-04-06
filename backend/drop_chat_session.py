@@ -35,7 +35,7 @@ def clean_db():
         print("Recreating guest_messages without session_id...")
         # Get schema
         cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='guest_messages'")
-        create_sql = cursor.fetchone()[0]
+        cursor.fetchone()[0]
         # create_sql has the session_id definition? maybe.
         # Easier: Rename table to _old, create new table (how to get schema?), copy, drop _old.
         # Actually, let's just use the fact that I can use python to do this cleanly if I had the Model.
