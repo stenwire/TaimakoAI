@@ -151,14 +151,16 @@ setup: install-hooks
 	@echo "Setup complete."
 
 # Create or promote admin user
-# Usage: make create-admin EMAIL=admin@example.com PASSWORD=securepass
-# Optional: make create-admin EMAIL=admin@example.com PASSWORD=securepass NAME="Admin"
+# Promote existing user: make create-admin EMAIL=user@example.com
+# Create new admin:      make create-admin EMAIL=admin@example.com PASSWORD=securepass NAME="Admin"
 create-admin:
-	@if [ -z "$(EMAIL)" ] || [ -z "$(PASSWORD)" ]; then \
-		echo "Error: EMAIL and PASSWORD are required. Usage: make create-admin EMAIL=admin@example.com PASSWORD=securepass"; \
+	@if [ -z "$(EMAIL)" ]; then \
+		echo "Error: EMAIL is required."; \
+		echo "  Promote existing user: make create-admin EMAIL=user@example.com"; \
+		echo "  Create new admin:      make create-admin EMAIL=admin@example.com PASSWORD=securepass"; \
 		exit 1; \
 	fi
-	docker-compose exec backend uv run python -m scripts.create_admin --email $(EMAIL) --password $(PASSWORD) $(if $(NAME),--name "$(NAME)")
+	docker-compose exec backend uv run python -m scripts.create_admin --email $(EMAIL) $(if $(PASSWORD),--password $(PASSWORD)) $(if $(NAME),--name "$(NAME)")
 
 # Show running containers
 ps:
