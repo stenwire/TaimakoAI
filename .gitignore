@@ -92,6 +92,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Bloats
+bloats/
+
 # Local env files
 .env*.local
 .env

@@ -12,8 +12,6 @@ APP_NAME = "agentic_rag_api"
 USER_ID = "test_user"
 SESSION_ID = "test_session"
 
-import os
-import asyncio
 from google.adk.runners import Runner
 from google.genai import types 
 import logging

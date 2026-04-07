@@ -1,8 +1,9 @@
 import uuid
-from sqlalchemy import Column, String, Text, DateTime, ForeignKey, JSON, Boolean
+from sqlalchemy import Column, String, Text, DateTime, ForeignKey, JSON, Boolean, Integer
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from app.db.base import Base
+from app.models.mixins import SerializerMixin
 
 # Detailed placeholder instruction used when a business does not provide a custom one.
 DEFAULT_AGENT_INSTRUCTION_PLACEHOLDER = (
@@ -16,7 +17,7 @@ DEFAULT_AGENT_INSTRUCTION_PLACEHOLDER = (
 def generate_uuid():
     return str(uuid.uuid4())
 
-class Business(Base):
+class Business(Base, SerializerMixin):
     __tablename__ = "businesses"
 
     id = Column(String, primary_key=True, default=generate_uuid)
@@ -28,10 +29,40 @@ class Business(Base):
     intents = Column(JSON, nullable=True)
     is_escalation_enabled = Column(Boolean, default=False)
     escalation_emails = Column(JSON, nullable=True) # List of emails
+    
+    # Subscription Fields
+    subscription_tier = Column(String, default="spark", nullable=False)
+    
+    # AI Responses
+    allocated_ai_responses = Column(Integer, default=0, nullable=False)
+    used_ai_responses = Column(Integer, default=0, nullable=False)
+    credits_last_refilled = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    # Escalations
+    allocated_escalations = Column(Integer, default=0, nullable=False)
+    used_escalations = Column(Integer, default=0, nullable=False)
+    
+    # Other Limits
+    allocated_messages_per_session = Column(Integer, default=0, nullable=False)
+    allocated_daily_sessions = Column(Integer, default=0, nullable=False)
+    allocated_whitelisted_domains = Column(Integer, default=0, nullable=False)
+
+    # Payment / Subscription (Generic)
+    payment_provider = Column(String, default="paystack") # paystack, stripe
+    payment_customer_id = Column(String, nullable=True)     # generic customer id
+    payment_subscription_id = Column(String, nullable=True) # generic subscription id
+    subscription_status = Column(String, default="active")  # active, non-renewing, attention, cancelled, trial
+    authorization_code = Column(String, nullable=True)       # saved card token for upgrades
+    subscription_email_token = Column(String, nullable=True) # required to cancel/disable subscription
+    last_payment_date = Column(DateTime, nullable=True)      # most recent successful charge
+
     logo_url = Column(String, nullable=True) # URL to business logo
-    gemini_api_key = Column(String, nullable=True) # Encrypted API Key
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationship
     user = relationship("User", back_populates="business")
+    transactions = relationship("PaymentTransaction", back_populates="business", cascade="all, delete-orphan")
+
+    # metadata = Column(JSON, nullable=True)
+

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import {
   Users, Search, ChevronRight, Mail, Phone, Calendar, Star, Loader2
 } from 'lucide-react';
-import Card from '@/components/ui/Card';
 import { getGuests, toggleLeadStatus } from '@/lib/api';
 import { Guest } from '@/lib/types';
 import { cn } from '@/lib/utils';

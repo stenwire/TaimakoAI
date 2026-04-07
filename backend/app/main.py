@@ -1,10 +1,9 @@
-import os
 from fastapi import FastAPI
 from fastapi.exceptions import HTTPException, RequestValidationError
+from starlette.middleware.sessions import SessionMiddleware
+from sqladmin import Admin
 
-from app.api.routes import router as api_router
-from app.auth.router import router as auth_router
-from app.db.base import Base
+from app.core.config import settings
 from app.db.session import engine
 from app.core.exception_handler import (
     http_exception_handler,
@@ -12,9 +11,13 @@ from app.core.exception_handler import (
     general_exception_handler
 )
 from app.core.middleware import register_middleware
-
-# Create tables (if not using alembic, but we are. Keeping for dev convenience or removing if strictly alembic)
-# Base.metadata.create_all(bind=engine)
+from app.admin.auth import AdminAuth
+from app.admin.views import (
+    UserAdmin, BusinessAdmin, PlanAdmin, PaymentTransactionAdmin,
+    ChatSessionAdmin, GuestMessageAdmin, EscalationAdmin,
+    WidgetSettingsAdmin, GuestUserAdmin, DocumentAdmin,
+    AnalyticsDailySummaryAdmin,
+)
 
 app = FastAPI(
     title="Taimako API",
@@ -24,6 +27,31 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
+# Session middleware (required for SQLAdmin cookie-based auth)
+app.add_middleware(SessionMiddleware, secret_key=settings.JWT_SECRET)
+
+# Admin panel at /hub with authentication
+authentication_backend = AdminAuth(secret_key=settings.JWT_SECRET)
+admin = Admin(
+    app,
+    engine,
+    authentication_backend=authentication_backend,
+    base_url="/hub",
+    title="Taimako Admin",
+)
+
+admin.add_view(UserAdmin)
+admin.add_view(BusinessAdmin)
+admin.add_view(PlanAdmin)
+admin.add_view(PaymentTransactionAdmin)
+admin.add_view(ChatSessionAdmin)
+admin.add_view(GuestMessageAdmin)
+admin.add_view(EscalationAdmin)
+admin.add_view(WidgetSettingsAdmin)
+admin.add_view(GuestUserAdmin)
+admin.add_view(DocumentAdmin)
+admin.add_view(AnalyticsDailySummaryAdmin)
+
 # Register Middleware (CORS, Security, Rate Limiting)
 register_middleware(app)
 
@@ -32,10 +60,11 @@ app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, general_exception_handler)
 
+from app.api.routes import router as api_router
+from app.auth.router import router as auth_router
 app.include_router(api_router)
 app.include_router(auth_router)
 
-# Import and include business router
 from app.api.business import router as business_router
 app.include_router(business_router)
 
@@ -47,6 +76,15 @@ app.include_router(analytics_router, prefix="/analytics", tags=["analytics"])
 
 from app.api.escalation import router as escalation_router
 app.include_router(escalation_router, prefix="/escalations", tags=["escalations"])
+
+from app.api.subscription import router as subscription_router
+app.include_router(subscription_router, tags=["subscription"])
+
+from app.api.plans import router as plans_router
+app.include_router(plans_router, tags=["plans"])
+
+from app.api.whatsapp import router as whatsapp_router
+app.include_router(whatsapp_router, prefix="/whatsapp", tags=["whatsapp"])
 
 from app.core.response_wrapper import success_response
 

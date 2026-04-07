@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import Tabs from '@/components/ui/Tabs';
-import { Activity, Users, Globe, Target } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import { getTopIntents, getTopLocations, getTrafficSources, getAnalyticsOverview } from '@/lib/api';
 import { IntentStat, TrafficSource, AnalyticsOverview, LocationStat } from '@/lib/types';

@@ -64,7 +64,7 @@ export default function HandoffPage() {
         escalation_emails: escalationEmails
       });
       success("Configuration saved successfully!");
-    } catch (e) {
+    } catch {
       toastError("Failed to save configuration");
     } finally {
       setSaving(false);

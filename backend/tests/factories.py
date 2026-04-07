@@ -12,6 +12,8 @@ from app.models.business import Business
 from app.models.widget import WidgetSettings, GuestUser, GuestMessage
 from app.models.chat_session import ChatSession, SessionOrigin
 from app.models.escalation import Escalation, EscalationStatus
+from app.models.plan import Plan
+from app.models.payment import PaymentTransaction
 
 
 class BaseFactory(SQLAlchemyModelFactory):
@@ -64,7 +66,6 @@ class BusinessFactory(BaseFactory):
     is_escalation_enabled = False
     escalation_emails = None
     logo_url = None
-    gemini_api_key = None
     created_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
     updated_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
     
@@ -176,10 +177,10 @@ class EscalationFactory(BaseFactory):
 
 class GuestMessageFactory(BaseFactory):
     """Factory for creating GuestMessage instances."""
-    
+
     class Meta:
         model = GuestMessage
-    
+
     id = factory.LazyFunction(lambda: str(uuid.uuid4()))
     guest_id = factory.SelfAttribute("guest.id")
     guest = factory.SubFactory(GuestUserFactory)
@@ -187,4 +188,44 @@ class GuestMessageFactory(BaseFactory):
     session = factory.SubFactory(ChatSessionFactory)
     sender = "guest"
     message_text = factory.Faker("sentence")
+    created_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
+
+
+class PlanFactory(BaseFactory):
+    """Factory for creating Plan instances."""
+
+    class Meta:
+        model = Plan
+
+    id = factory.Sequence(lambda n: n + 1)
+    plan_code = factory.Sequence(lambda n: f"PLN_test_{n}")
+    name = factory.Iterator(["spark", "nexus", "flux"])
+    description = "Test plan"
+    price = 5000
+    currency = "NGN"
+    interval = "monthly"
+    tier = factory.Sequence(lambda n: (n % 3) + 1)
+    features = factory.LazyFunction(dict)
+    is_active = True
+    created_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
+    updated_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
+
+
+class PaymentTransactionFactory(BaseFactory):
+    """Factory for creating PaymentTransaction instances."""
+
+    class Meta:
+        model = PaymentTransaction
+
+    id = factory.LazyFunction(lambda: str(uuid.uuid4()))
+    business_id = factory.SelfAttribute("business.id")
+    business = factory.SubFactory(BusinessFactory)
+    amount = 500000  # minor units
+    currency = "NGN"
+    status = "success"
+    reference = factory.Sequence(lambda n: f"ref_{n}")
+    provider = "paystack"
+    transaction_type = "RENEWAL_SUCCESS"
+    transaction_metadata = factory.LazyFunction(dict)
+    raw_webhook_payload = factory.LazyFunction(dict)
     created_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))

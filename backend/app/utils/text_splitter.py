@@ -1,4 +1,3 @@
-import re
 
 def recursive_character_text_splitter(text: str, chunk_size: int = 1000, chunk_overlap: int = 200) -> list[str]:
     if not text:
