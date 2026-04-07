@@ -12,7 +12,7 @@ POSTGRES_CONTAINER  ?= $(PROJECT_PREFIX)_postgres
 BACKEND_CONTAINER   ?= $(PROJECT_PREFIX)_backend
 FRONTEND_CONTAINER  ?= $(PROJECT_PREFIX)_frontend
 
-.PHONY: start start-d stop build logs migrate migrate-generate db-shell db-backup db-restore clean ps db-reset db-truncate logs-backend logs-frontend lint-be lint-be-fix lint-fe lint-fe-fix test-be test-be-unit test-be-api test-be-integration test-fe install-hooks setup
+.PHONY: start start-d stop build logs migrate migrate-generate db-shell db-backup db-restore clean ps db-reset db-truncate logs-backend logs-frontend lint-be lint-be-fix lint-fe lint-fe-fix test-be test-be-unit test-be-api test-be-integration test-fe install-hooks setup create-admin
 
 # Start all services (foreground)
 start:
@@ -149,6 +149,16 @@ setup: install-hooks
 	@echo "Installing frontend dependencies..."
 	cd frontend && npm ci
 	@echo "Setup complete."
+
+# Create or promote admin user
+# Usage: make create-admin EMAIL=admin@example.com PASSWORD=securepass
+# Optional: make create-admin EMAIL=admin@example.com PASSWORD=securepass NAME="Admin"
+create-admin:
+	@if [ -z "$(EMAIL)" ] || [ -z "$(PASSWORD)" ]; then \
+		echo "Error: EMAIL and PASSWORD are required. Usage: make create-admin EMAIL=admin@example.com PASSWORD=securepass"; \
+		exit 1; \
+	fi
+	docker-compose exec backend uv run python -m scripts.create_admin --email $(EMAIL) --password $(PASSWORD) $(if $(NAME),--name "$(NAME)")
 
 # Show running containers
 ps:
