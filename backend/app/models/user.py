@@ -17,15 +17,11 @@ class User(Base, SerializerMixin):
     name = Column(String, nullable=True)
     picture = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
+    is_admin = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     hashed_password = Column(String, nullable=True)
-    
+
     # Relationship
     business = relationship("Business", back_populates="user", uselist=False)
-
-from sqladmin import ModelView
-
-class UserAdmin(ModelView, model=User):
-    column_list = [User.id, User.email, User.is_active]
 

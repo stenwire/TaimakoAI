@@ -66,8 +66,3 @@ class Business(Base, SerializerMixin):
 
     # metadata = Column(JSON, nullable=True)
 
-from sqladmin import ModelView
-
-class BusinessAdmin(ModelView, model=Business):
-    column_list = [Business.id, Business.business_name, Business.user_id, Business.subscription_tier, Business.payment_provider]
-

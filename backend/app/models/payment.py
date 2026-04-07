@@ -31,8 +31,3 @@ class PaymentTransaction(Base, SerializerMixin):
     # Relationship
     business = relationship("Business", back_populates="transactions")
 
-from sqladmin import ModelView
-
-class PaymentTransactionAdmin(ModelView, model=PaymentTransaction):
-    column_list = [PaymentTransaction.id, PaymentTransaction.business_id, PaymentTransaction.amount, PaymentTransaction.status, PaymentTransaction.reference, PaymentTransaction.transaction_type]
-
