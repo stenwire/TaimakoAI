@@ -16,8 +16,9 @@ from tests.factories import (
 
 pytestmark = pytest.mark.api
 
-# Shared mock target
+# Shared mock targets
 RUN_CONVERSATION = "app.api.widget.run_conversation"
+SETTINGS = "app.api.widget.settings"
 
 
 @pytest.fixture
@@ -89,8 +90,10 @@ class TestStartGuestSession:
 class TestInitGuestSession:
     """Tests for POST /widgets/guest/session/init/{public_widget_id}."""
 
+    @patch(SETTINGS)
     @patch(RUN_CONVERSATION, new_callable=AsyncMock, return_value="Hello from AI")
-    def test_init_session_with_first_message(self, mock_ai, client, db_session, widget_env):
+    def test_init_session_with_first_message(self, mock_ai, mock_settings, client, db_session, widget_env):
+        mock_settings.GOOGLE_API_KEY = "test-key"
         widget = widget_env["widget"]
         guest = GuestUserFactory(widget=widget, widget_id=widget.id)
         db_session.commit()
@@ -150,8 +153,10 @@ class TestInitGuestSession:
 class TestChatInSession:
     """Tests for POST /widgets/chat/{public_widget_id}/session/{session_id}."""
 
+    @patch(SETTINGS)
     @patch(RUN_CONVERSATION, new_callable=AsyncMock, return_value="AI reply")
-    def test_send_message(self, mock_ai, client, db_session, widget_env):
+    def test_send_message(self, mock_ai, mock_settings, client, db_session, widget_env):
+        mock_settings.GOOGLE_API_KEY = "test-key"
         widget = widget_env["widget"]
         guest = GuestUserFactory(widget=widget, widget_id=widget.id)
         session = ChatSessionFactory(guest=guest, guest_id=guest.id)

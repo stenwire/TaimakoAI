@@ -71,8 +71,10 @@ def test_api_chat_scoped(client, db_session):
     db_session.add(Business(user_id="u1", business_name="Test Biz"))
     db_session.commit()
 
-    # 3. Chat
-    with patch("app.api.routes.run_conversation", return_value="Bot says hi") as mock_chat:
+    # 3. Chat — patch API key so it reaches the mocked run_conversation
+    with patch("app.api.routes.settings") as mock_settings, \
+         patch("app.api.routes.run_conversation", return_value="Bot says hi") as mock_chat:
+        mock_settings.GOOGLE_API_KEY = "test-key"
         response = client.post("/chat", json={"message": "hello"}, headers=headers)
 
         assert response.status_code == 200

@@ -41,15 +41,17 @@ def test_upload_document_scoped(db_session, mock_file_storage):
 def test_process_documents_scoped(db_session, mock_file_storage, mock_vector_db_service):
     user1 = "u1"
     user2 = "u2"
-    
+
     # Setup DB with pending docs for both users
     doc1 = Document(user_id=user1, filename="doc1.txt", file_path="p1", status="pending")
     doc2 = Document(user_id=user2, filename="doc2.txt", file_path="p2", status="pending")
     db_session.add_all([doc1, doc2])
     db_session.commit()
-    
-    # Mock file content
-    with patch("builtins.open", new_callable=MagicMock) as mock_open:
+
+    # Mock file content and API key
+    with patch("builtins.open", new_callable=MagicMock) as mock_open, \
+         patch("app.services.rag_service.settings") as mock_settings:
+        mock_settings.GOOGLE_API_KEY = "test-key"
         mock_open.return_value.__enter__.return_value.read.return_value = "content"
         with patch("os.path.exists", return_value=True):
             # Process for User 1
@@ -83,8 +85,10 @@ def test_list_documents_scoped(db_session):
     assert docs2[0]["filename"] == "b.txt"
 
 def test_query_scoped(mock_vector_db_service):
-    rag_service.query("check", "u1")
-    
+    with patch("app.services.rag_service.settings") as mock_settings:
+        mock_settings.GOOGLE_API_KEY = "test-key"
+        rag_service.query("check", "u1")
+
     mock_vector_db_service.query.assert_called_once()
     args, kwargs = mock_vector_db_service.query.call_args
     assert kwargs['where'] == {"user_id": "u1"}
