@@ -18,8 +18,3 @@ class Document(Base, SerializerMixin):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     error_message = Column(String, nullable=True)
 
-from sqladmin import ModelView
-
-class DocumentAdmin(ModelView, model=Document):
-    column_list = [Document.id, Document.user_id, Document.filename, Document.status, Document.created_at]
-

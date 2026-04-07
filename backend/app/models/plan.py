@@ -19,8 +19,3 @@ class Plan(Base, SerializerMixin):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-from sqladmin import ModelView
-
-class PlanAdmin(ModelView, model=Plan):
-    column_list = [Plan.id, Plan.name, Plan.plan_code, Plan.price, Plan.tier, Plan.is_active]
-

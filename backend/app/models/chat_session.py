@@ -56,8 +56,3 @@ class ChatSession(Base, SerializerMixin):
     guest = relationship("GuestUser", back_populates="sessions")
     messages = relationship("GuestMessage", back_populates="session")
 
-from sqladmin import ModelView
-
-class ChatSessionAdmin(ModelView, model=ChatSession):
-    column_list = [ChatSession.id, ChatSession.guest_id, ChatSession.created_at, ChatSession.is_active]
-

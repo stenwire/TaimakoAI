@@ -24,6 +24,7 @@ dependencies = [
     "slowapi>=0.1.9",
     "aiosmtplib>=3.0.1",
     "sqladmin>=0.23.0",
+    "itsdangerous>=2.2.0",
 ]
 
 [dependency-groups]
