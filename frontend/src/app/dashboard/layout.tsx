@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Building2, FileText, MessageSquare, LogOut, X, Settings, Users, Bot, AlignLeft, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Building2, FileText, MessageSquare, LogOut, X, Settings, Users, Bot, AlignLeft, ChevronLeft, ChevronRight, Send } from 'lucide-react';
 import Sidebar, { SidebarSection } from '@/components/ui/Sidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBusiness, BusinessProvider } from '@/contexts/BusinessContext';
@@ -37,6 +37,16 @@ function DashboardLayoutInner({
         { label: 'Escalations', href: '/dashboard/handoff', icon: Users },
         { label: 'Playground', href: '/dashboard/chat', icon: Bot },
         {
+          label: 'WhatsApp',
+          icon: Send,
+          href: '/dashboard/whatsapp',
+          subItems: [
+            { label: 'Templates', href: '/dashboard/whatsapp/templates' },
+            { label: 'Contacts', href: '/dashboard/whatsapp/contacts' },
+            { label: 'Campaigns', href: '/dashboard/whatsapp/campaigns' },
+          ],
+        },
+        {
           label: 'Settings',
           icon: Settings,
           href: '/dashboard/settings',
@@ -58,7 +68,7 @@ function DashboardLayoutInner({
 
         {/* Mobile Header */}
         <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-[var(--bg-primary)] border-b border-[var(--border-subtle)] px-4 py-3 flex items-center justify-between h-16">
-          <h1 className="text-xl font-space tracking-tight text-[var(--brand-primary)] font-bold">Taimako</h1>
+          <h1 className="text-xl font-display tracking-tight text-[var(--brand-primary)] font-bold">Taimako</h1>
           <button
             onClick={() => setMobileMenuOpen(true)}
             className="p-2 hover:bg-[var(--bg-secondary)] rounded-[var(--radius-sm)] transition-colors text-[var(--text-primary)]"
@@ -76,7 +86,7 @@ function DashboardLayoutInner({
           {/* Sidebar Header */}
           <div className="h-16 flex items-center justify-between px-4 border-b border-[var(--border-subtle)] flex-shrink-0">
             {!sidebarCollapsed && (
-              <h1 className="text-xl font-space font-bold text-[var(--brand-primary)] tracking-tight truncate">Taimako</h1>
+              <h1 className="text-xl font-display font-bold text-[var(--brand-primary)] tracking-tight truncate">Taimako</h1>
             )}
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -134,7 +144,7 @@ function DashboardLayoutInner({
             >
               <div className="flex flex-col h-full">
                 <div className="h-16 flex items-center justify-between px-6 border-b border-[var(--border-subtle)]">
-                  <h1 className="text-xl font-space font-bold text-[var(--brand-primary)]">Taimako</h1>
+                  <h1 className="text-xl font-display font-bold text-[var(--brand-primary)]">Taimako</h1>
                   <button
                     onClick={() => setMobileMenuOpen(false)}
                     className="p-2 -mr-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-md"

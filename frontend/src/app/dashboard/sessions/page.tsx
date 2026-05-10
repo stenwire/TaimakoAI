@@ -8,27 +8,53 @@ import {
 import { getGuests, toggleLeadStatus } from '@/lib/api';
 import { Guest } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import Pagination from '@/components/ui/Pagination';
+
+const PAGE_SIZE = 20;
 
 export default function SessionsGuestList() {
   const router = useRouter();
   const [guests, setGuests] = useState<Guest[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [offset, setOffset] = useState(0);
+  const [total, setTotal] = useState(0);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
   useEffect(() => {
+    const handle = setTimeout(() => {
+      setDebouncedSearch(searchTerm.trim());
+      setOffset(0);
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    let cancelled = false;
     async function loadGuests() {
       try {
-        const data = await getGuests();
-        setGuests(data);
+        setLoading(true);
+        const params: { q?: string; limit: number; offset: number } = {
+          limit: PAGE_SIZE,
+          offset,
+        };
+        if (debouncedSearch) params.q = debouncedSearch;
+        const page = await getGuests(params);
+        if (cancelled) return;
+        setGuests(page.items);
+        setTotal(page.total);
       } catch (e) {
         console.error(e);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     loadGuests();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedSearch, offset]);
 
   const handleToggleLead = async (e: React.MouseEvent, guest: Guest) => {
     e.stopPropagation(); // Prevent row click navigation
@@ -43,16 +69,11 @@ export default function SessionsGuestList() {
     }
   };
 
-  const filteredGuests = guests.filter(g =>
-    (g.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-    (g.email?.toLowerCase() || '').includes(searchTerm.toLowerCase())
-  );
-
   return (
     <div className="max-w-[1600px] mx-auto h-[calc(100vh-140px)] flex flex-col">
       <div className="mb-6 flex-shrink-0 flex justify-between items-end">
         <div>
-          <h1 className="text-2xl font-space font-bold text-[var(--brand-primary)]">Customer Sessions</h1>
+          <h1 className="text-2xl font-display font-bold text-[var(--brand-primary)]">Customer Sessions</h1>
           <p className="text-[var(--text-secondary)]">Browse interactions by customer.</p>
         </div>
         <div className="relative w-64">
@@ -81,13 +102,13 @@ export default function SessionsGuestList() {
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="p-12 text-center text-[var(--text-tertiary)]">Loading customers...</div>
-          ) : filteredGuests.length === 0 ? (
+          ) : guests.length === 0 ? (
             <div className="p-12 text-center text-[var(--text-tertiary)] flex flex-col items-center">
               <Users className="w-12 h-12 mb-3 opacity-20" />
               <p>No customers found matching your search.</p>
             </div>
           ) : (
-            filteredGuests.map(guest => (
+            guests.map(guest => (
               <div
                 key={guest.id}
                 onClick={() => router.push(`/dashboard/sessions/${guest.id}`)}
@@ -179,6 +200,16 @@ export default function SessionsGuestList() {
             ))
           )}
         </div>
+        {!loading && (
+          <div className="px-4 py-3 border-t border-[var(--border-subtle)]">
+            <Pagination
+              total={total}
+              limit={PAGE_SIZE}
+              offset={offset}
+              onPageChange={setOffset}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

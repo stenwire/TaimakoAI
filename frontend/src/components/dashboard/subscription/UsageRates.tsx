@@ -28,7 +28,7 @@ export default function UsageRates({ allocatedAiResponses, usedAiResponses, allo
 
   return (
     <Card className="h-full">
-      <h3 className="text-lg font-space font-semibold text-[var(--text-primary)] border-b border-[var(--border-subtle)] pb-3 mb-5 flex items-center gap-2">
+      <h3 className="text-lg font-display font-semibold text-[var(--text-primary)] border-b border-[var(--border-subtle)] pb-3 mb-5 flex items-center gap-2">
         <Zap className="w-5 h-5 text-yellow-500" />
         Plan Usage Rates
       </h3>
@@ -66,7 +66,7 @@ export default function UsageRates({ allocatedAiResponses, usedAiResponses, allo
               <Users className="w-4 h-4" />
               Human Escalations
             </span>
-            <span className="font-space font-medium text-[var(--text-primary)]">
+            <span className="font-display font-medium text-[var(--text-primary)]">
               {maxEscalations === 0 ? 'N/A' : (isUnlimitedEscalations ? totalEscalationsUsed.toLocaleString() : `${totalEscalationsUsed.toLocaleString()} / ${maxEscalations.toLocaleString()}`)}
             </span>
           </div>

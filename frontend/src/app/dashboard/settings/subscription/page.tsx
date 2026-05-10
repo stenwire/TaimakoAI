@@ -184,7 +184,7 @@ function SubscriptionPageContent() {
           onClick={() => setIsPricingOpen(!isPricingOpen)}
           className="w-full flex items-center justify-between py-4 text-left group"
         >
-          <h2 className="text-2xl font-space font-bold text-[var(--text-primary)] group-hover:text-[var(--brand-primary)] transition-colors">
+          <h2 className="text-2xl font-display font-bold text-[var(--text-primary)] group-hover:text-[var(--brand-primary)] transition-colors">
             Ready to scale your AI agent?
           </h2>
           <div className="p-2 rounded-full bg-[var(--bg-secondary)] group-hover:bg-[var(--brand-primary)]/10 transition-colors">

@@ -39,6 +39,14 @@ from app.models.escalation import Escalation  # noqa: F401, E402
 from app.models.plan import Plan  # noqa: F401, E402
 from app.models.payment import PaymentTransaction  # noqa: F401, E402
 from app.models.analytics import AnalyticsDailySummary  # noqa: F401, E402
+from app.models.whatsapp_broadcast import (  # noqa: F401, E402
+    WhatsAppContact,
+    WhatsAppContactList,
+    WhatsAppContactListMember,
+    WhatsAppTemplate,
+    WhatsAppCampaign,
+    WhatsAppCampaignMessage,
+)
 
 
 # ===== Core Fixtures =====

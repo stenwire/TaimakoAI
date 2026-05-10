@@ -186,7 +186,7 @@ export default function WidgetSettingsPage() {
   return (
     <div className="max-w-[1600px] mx-auto h-[calc(100vh-140px)] flex flex-col">
       <div className="mb-6 flex-shrink-0">
-        <h1 className="text-2xl font-space font-bold text-[var(--brand-primary)]">Widget Customization</h1>
+        <h1 className="text-2xl font-display font-bold text-[var(--brand-primary)]">Widget Customization</h1>
         <p className="text-[var(--text-secondary)] mt-1">Customize your chat widget&apos;s appearance, behavior, and business knowledge.</p>
       </div>
 
@@ -220,7 +220,7 @@ export default function WidgetSettingsPage() {
               <div className="space-y-6 animate-in fade-in duration-300">
                 <div className="flex justify-between items-start mb-6">
                   <div>
-                    <h2 className="text-lg font-space font-bold text-[var(--text-primary)]">Business Context</h2>
+                    <h2 className="text-lg font-display font-bold text-[var(--text-primary)]">Business Context</h2>
                     <p className="text-sm text-[var(--text-secondary)] mt-1">Define how the AI understands your business to answer customer queries.</p>
                   </div>
                   <Button
@@ -279,7 +279,7 @@ export default function WidgetSettingsPage() {
               <div className="space-y-8 animate-in fade-in duration-300">
                 <div className="flex justify-between items-start mb-6">
                   <div>
-                    <h2 className="text-lg font-space font-bold text-[var(--text-primary)]">Appearance & Behavior</h2>
+                    <h2 className="text-lg font-display font-bold text-[var(--text-primary)]">Appearance & Behavior</h2>
                     <p className="text-sm text-[var(--text-secondary)] mt-1">Customize the look and feel of the chat widget.</p>
                   </div>
                   <Button
@@ -550,7 +550,7 @@ export default function WidgetSettingsPage() {
               <div className="space-y-6 animate-in fade-in duration-300">
                 <div className="flex justify-between items-start mb-6">
                   <div>
-                    <h2 className="text-lg font-space font-bold text-[var(--text-primary)]">Installation</h2>
+                    <h2 className="text-lg font-display font-bold text-[var(--text-primary)]">Installation</h2>
                     <p className="text-sm text-[var(--text-secondary)] mt-1">Add the widget to your website.</p>
                   </div>
                 </div>
@@ -614,7 +614,7 @@ export default function WidgetSettingsPage() {
                     {/* Header */}
                     <div className="h-14 flex items-center px-5 justify-between text-white shadow-sm z-10 shrink-0 mb-0" style={{ backgroundColor: settings?.primary_color || '#0E3F34' }}>
                       <div className="flex items-center gap-3">
-                        <span className="font-space font-bold tracking-tight text-md">👋 Welcome</span>
+                        <span className="font-display font-bold tracking-tight text-md">👋 Welcome</span>
                       </div>
                     </div>
 
@@ -671,7 +671,7 @@ export default function WidgetSettingsPage() {
                           <div className="w-2 h-2 rounded-full bg-green-400 border border-white/20" />
                           <div className="absolute inset-0 w-2 h-2 rounded-full bg-green-400 animate-ping opacity-75" />
                         </div>
-                        <span className="font-space font-bold tracking-tight text-md">Support</span>
+                        <span className="font-display font-bold tracking-tight text-md">Support</span>
                       </div>
                     </div>
 

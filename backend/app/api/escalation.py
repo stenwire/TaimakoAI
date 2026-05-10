@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.core.response_wrapper import success_response
@@ -8,23 +8,42 @@ from app.models.widget import GuestMessage
 router = APIRouter()
 
 @router.get("/", response_model=None)
-async def get_escalations(business_id: str, db: Session = Depends(get_db)):
-    """List escalations for a business."""
+async def get_escalations(
+    business_id: str,
+    status: str | None = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+):
+    """List escalations for a business with pagination."""
     # Security note: In production, verify current_user owns business_id
-    escalations = db.query(Escalation).filter(Escalation.business_id == business_id).order_by(Escalation.created_at.desc()).all()
-    
-    results = []
-    for esc in escalations:
-        results.append({
+    query = db.query(Escalation).filter(Escalation.business_id == business_id)
+    if status:
+        query = query.filter(Escalation.status == status)
+
+    total = query.count()
+    escalations = (
+        query.order_by(Escalation.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+    items = [
+        {
             "id": esc.id,
             "business_id": esc.business_id,
             "session_id": esc.session_id,
             "status": esc.status,
             "summary": esc.summary,
             "sentiment": esc.sentiment,
-            "created_at": esc.created_at.isoformat() if esc.created_at else ""
-        })
-    return success_response(data=results)
+            "created_at": esc.created_at.isoformat() if esc.created_at else "",
+        }
+        for esc in escalations
+    ]
+    return success_response(
+        data={"items": items, "total": total, "limit": limit, "offset": offset}
+    )
 
 @router.get("/{escalation_id}", response_model=None)
 async def get_escalation_details(escalation_id: str, db: Session = Depends(get_db)):

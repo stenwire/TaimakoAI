@@ -143,7 +143,7 @@ export default function EscalationDetailPage() {
             <ArrowLeft className="w-5 h-5 text-[var(--text-secondary)]" />
           </Button>
           <div>
-            <h1 className="text-2xl font-space font-bold text-[var(--brand-primary)] flex items-center gap-3">
+            <h1 className="text-2xl font-display font-bold text-[var(--brand-primary)] flex items-center gap-3">
               Escalation Details
               <span className={cn(
                 "text-xs px-2.5 py-0.5 rounded-full border font-normal",

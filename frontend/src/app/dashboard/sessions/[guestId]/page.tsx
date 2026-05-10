@@ -7,9 +7,12 @@ import {
   ChevronRight, Sparkles, Star, Loader2
 } from 'lucide-react';
 import Button from '@/components/ui/Button';
-import { getGuestSessions, getGuests, toggleLeadStatus } from '@/lib/api';
+import Pagination from '@/components/ui/Pagination';
+import { getGuestSessions, getGuest, toggleLeadStatus } from '@/lib/api';
 import { GuestSession, Guest } from '@/lib/types';
 import { cn } from '@/lib/utils';
+
+const PAGE_SIZE = 20;
 
 export default function GuestSessionsList() {
   const router = useRouter();
@@ -19,30 +22,51 @@ export default function GuestSessionsList() {
   const [sessions, setSessions] = useState<GuestSession[]>([]);
   const [guest, setGuest] = useState<Guest | null>(null);
   const [loading, setLoading] = useState(true);
+  const [offset, setOffset] = useState(0);
+  const [total, setTotal] = useState(0);
   const [togglingLead, setTogglingLead] = useState(false);
 
   useEffect(() => {
-    async function loadData() {
+    let cancelled = false;
+    async function loadGuest() {
       if (!guestId) return;
       try {
-        const [sessionsData, guestsData] = await Promise.all([
-          getGuestSessions(guestId),
-          getGuests()
-        ]);
-        setSessions(sessionsData);
-        // Find the current guest from the list
-        const currentGuest = guestsData.find((g: Guest) => g.id === guestId);
-        if (currentGuest) {
-          setGuest(currentGuest);
-        }
+        const guestData = await getGuest(guestId);
+        if (!cancelled) setGuest(guestData);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    loadGuest();
+    return () => {
+      cancelled = true;
+    };
+  }, [guestId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSessions() {
+      if (!guestId) return;
+      try {
+        setLoading(true);
+        const page = await getGuestSessions(guestId, {
+          limit: PAGE_SIZE,
+          offset,
+        });
+        if (cancelled) return;
+        setSessions(page.items);
+        setTotal(page.total);
       } catch (e) {
         console.error(e);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
-    loadData();
-  }, [guestId]);
+    loadSessions();
+    return () => {
+      cancelled = true;
+    };
+  }, [guestId, offset]);
 
   const handleToggleLead = async () => {
     if (!guest) return;
@@ -66,7 +90,7 @@ export default function GuestSessionsList() {
           </Button>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-space font-bold text-[var(--brand-primary)]">
+              <h1 className="text-2xl font-display font-bold text-[var(--brand-primary)]">
                 {guest?.name || 'Guest History'}
               </h1>
               {guest?.is_lead && (
@@ -165,6 +189,14 @@ export default function GuestSessionsList() {
               </div>
             </div>
           ))
+        )}
+        {!loading && (
+          <Pagination
+            total={total}
+            limit={PAGE_SIZE}
+            offset={offset}
+            onPageChange={setOffset}
+          />
         )}
       </div>
     </div>

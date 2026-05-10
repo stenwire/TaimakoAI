@@ -40,6 +40,8 @@ class BaseConfig(BaseSettings):
     # WhatsApp Cloud API
     WHATSAPP_VERIFY_TOKEN: str = os.getenv("WHATSAPP_VERIFY_TOKEN", "")
     WHATSAPP_APP_SECRET: str = os.getenv("WHATSAPP_APP_SECRET", "")
+    WHATSAPP_CAMPAIGN_POLL_INTERVAL_SECONDS: int = int(os.getenv("WHATSAPP_CAMPAIGN_POLL_INTERVAL_SECONDS", "10"))
+    WHATSAPP_CAMPAIGN_SEND_RATE_PER_SECOND: int = int(os.getenv("WHATSAPP_CAMPAIGN_SEND_RATE_PER_SECOND", "20"))
 
     
     # JWT

@@ -74,7 +74,7 @@ export default function SubscriptionOverview({ tier, status, lastPaymentDate, on
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-4 flex-1">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-space font-semibold text-[var(--text-primary)] flex items-center gap-2">
+              <h3 className="text-lg font-display font-semibold text-[var(--text-primary)] flex items-center gap-2">
                 <CreditCard className="w-5 h-5 text-[var(--brand-primary)]" />
                 Current Plan
               </h3>
@@ -84,7 +84,7 @@ export default function SubscriptionOverview({ tier, status, lastPaymentDate, on
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-[13px] text-[var(--text-tertiary)] font-medium uppercase tracking-wider mb-1">Plan Tier</p>
-                <p className="text-2xl font-space font-bold text-[var(--text-primary)] capitalize">
+                <p className="text-2xl font-display font-bold text-[var(--text-primary)] capitalize">
                   {tier || 'Spark'}
                 </p>
               </div>

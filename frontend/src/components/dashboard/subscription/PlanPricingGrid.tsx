@@ -70,14 +70,14 @@ export default function PlanPricingGrid({
   };
 
   const renderPrice = (price: number, currency: string, interval: string) => {
-    if (price === 0) return <span className="text-3xl font-space font-bold text-[var(--text-primary)]">Free</span>;
+    if (price === 0) return <span className="text-3xl font-display font-bold text-[var(--text-primary)]">Free</span>;
     // Format NGN 1000000 -> 10,000 / month
     // Paystack returns price in kobo/cents usually, but let's assume raw amount represents major currency if formatted by backend, actually Paystack uses kobo. Assuming backend divides by 100 before sending, or if not we format it raw. If backend returns 10000 for N10,000, we format the number.
     const formatted = new Intl.NumberFormat('en-NG', { style: 'currency', currency: currency || 'NGN', maximumFractionDigits: 0 }).format(price);
 
     return (
       <div className="flex items-baseline gap-1">
-        <span className="text-3xl font-space font-bold text-[var(--text-primary)]">{formatted}</span>
+        <span className="text-3xl font-display font-bold text-[var(--text-primary)]">{formatted}</span>
         <span className="text-sm font-medium text-[var(--text-tertiary)]">/{interval.toLowerCase() === 'annually' ? 'yr' : 'mo'}</span>
       </div>
     );
@@ -117,7 +117,7 @@ export default function PlanPricingGrid({
               )}
 
               <div className="mb-6 flex-1">
-                <h3 className="text-xl font-space font-bold text-[var(--text-primary)] capitalize mb-2">{plan.name}</h3>
+                <h3 className="text-xl font-display font-bold text-[var(--text-primary)] capitalize mb-2">{plan.name}</h3>
                 <p className="text-sm text-[var(--text-secondary)] mb-6 h-10">
                   {plan.price === 0 ? "Perfect for testing the platform." : "For growing businesses needing AI automation at scale."}
                 </p>
@@ -155,7 +155,7 @@ export default function PlanPricingGrid({
 
       {isMaxPlan && (
         <div className="mt-8 p-6 bg-[var(--brand-primary)]/5 border border-[var(--brand-primary)]/20 rounded-xl text-center">
-          <h3 className="text-xl font-space font-bold text-[var(--text-primary)] mb-2">Looking for More Power?</h3>
+          <h3 className="text-xl font-display font-bold text-[var(--text-primary)] mb-2">Looking for More Power?</h3>
           <p className="text-[var(--text-secondary)] mb-6 max-w-2xl mx-auto">
             You are currently on our highest standard plan. If you need custom integration,
             higher volume limits, or dedicated SLAs, let&apos;s talk about an Enterprise plan.

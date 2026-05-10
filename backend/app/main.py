@@ -86,6 +86,15 @@ app.include_router(plans_router, tags=["plans"])
 from app.api.whatsapp import router as whatsapp_router
 app.include_router(whatsapp_router, prefix="/whatsapp", tags=["whatsapp"])
 
+from app.api.whatsapp_templates import router as whatsapp_templates_router
+app.include_router(whatsapp_templates_router, prefix="/whatsapp", tags=["whatsapp"])
+
+from app.api.whatsapp_contacts import router as whatsapp_contacts_router
+app.include_router(whatsapp_contacts_router, prefix="/whatsapp", tags=["whatsapp"])
+
+from app.api.whatsapp_campaigns import router as whatsapp_campaigns_router
+app.include_router(whatsapp_campaigns_router, prefix="/whatsapp", tags=["whatsapp"])
+
 from app.core.response_wrapper import success_response
 
 @app.get("/")
