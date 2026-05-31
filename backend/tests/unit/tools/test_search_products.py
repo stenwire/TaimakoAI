@@ -2,7 +2,6 @@
 Tests for the search_products tool.
 Validates product catalogue searching functionality for the sales agent.
 """
-import pytest
 import json
 from unittest.mock import MagicMock
 from app.services.agent_system.tools import search_products

@@ -1,17 +1,17 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import NextImage from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ShoppingBag, 
-  Plus, 
-  Search, 
-  Filter, 
-  MoreVertical, 
-  Edit2, 
-  Trash2, 
-  Upload, 
-  Download, 
+import {
+  ShoppingBag,
+  Plus,
+  Search,
+  Filter,
+  Edit2,
+  Trash2,
+  Upload,
+  Download,
   RefreshCw,
   Package,
   AlertCircle,
@@ -58,6 +58,7 @@ export default function CataloguePage() {
 
   useEffect(() => {
     fetchProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryFilter]);
 
   const fetchProducts = async () => {
@@ -68,7 +69,7 @@ export default function CataloguePage() {
         category: categoryFilter === 'All' ? '' : categoryFilter 
       });
       // Handle both paginated and non-paginated responses
-      const items = Array.isArray(res) ? res : (res as any)?.items || [];
+      const items = Array.isArray(res) ? res : (res as { items: Product[] })?.items || [];
       setProducts(items);
     } catch (error) {
       console.error('Failed to fetch products:', error);
@@ -97,7 +98,7 @@ export default function CataloguePage() {
       setIsAddModalOpen(false);
       resetForm();
       fetchProducts();
-    } catch (error) {
+    } catch {
       showNotification('error', 'Failed to create product');
     }
   };
@@ -111,7 +112,7 @@ export default function CataloguePage() {
       setIsEditModalOpen(false);
       resetForm();
       fetchProducts();
-    } catch (error) {
+    } catch {
       showNotification('error', 'Failed to update product');
     }
   };
@@ -122,7 +123,7 @@ export default function CataloguePage() {
       await deleteProduct(id);
       showNotification('success', 'Product deleted');
       fetchProducts();
-    } catch (error) {
+    } catch {
       showNotification('error', 'Failed to delete product');
     }
   };
@@ -162,7 +163,7 @@ export default function CataloguePage() {
       showNotification('success', `Imported ${res.imported} and updated ${res.updated} products`);
       setIsBulkModalOpen(false);
       fetchProducts();
-    } catch (error) {
+    } catch {
       showNotification('error', 'Failed to upload CSV');
     }
   };
@@ -296,9 +297,9 @@ export default function CataloguePage() {
                   <tr key={product.id} className="hover:bg-[var(--bg-secondary)]/50 transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-md bg-[var(--bg-tertiary)] flex items-center justify-center overflow-hidden flex-shrink-0">
+                        <div className="relative w-10 h-10 rounded-md bg-[var(--bg-tertiary)] flex items-center justify-center overflow-hidden flex-shrink-0">
                           {product.image_urls?.[0] ? (
-                            <img src={product.image_urls[0]} alt={product.name} className="w-full h-full object-cover" />
+                            <NextImage src={product.image_urls[0]} alt={product.name} fill className="object-cover" />
                           ) : (
                             <ImageIcon className="w-5 h-5 text-[var(--text-tertiary)]" />
                           )}
