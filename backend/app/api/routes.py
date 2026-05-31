@@ -10,8 +10,10 @@ from app.schemas.chat import ChatRequest, ChatResponse
 from app.core.config import settings
 
 from app.core.response_wrapper import success_response
+from app.api.products import router as products_router
 
 router = APIRouter()
+router.include_router(products_router)
 
 
 @router.post("/documents/upload", response_model=None)

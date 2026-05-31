@@ -2,7 +2,8 @@ from google.adk.agents import Agent
 from google.adk.models.lite_llm import LiteLlm 
 from app.services.agent_system.tools import (
     get_context, say_hello, say_goodbye, 
-    analyze_sentiment, escalate_to_human
+    analyze_sentiment, escalate_to_human,
+    search_products
 )
 from app.services.agent_system.callbacks import (
     block_unsafe_content, 
@@ -93,9 +94,35 @@ class AgentFactory:
             before_model_callback=block_unsafe_content,
             after_model_callback=chain_callbacks(sanitize_model_response, trigger_session_analysis)
         )
-    
+
+    @staticmethod
+    def create_sales_agent(business_name: str = "our company", api_key: Optional[str] = None):
+        """Create the sales sub-agent for product inquiries and assisted selling."""
+        instruction = (
+            f"You are a sales specialist for {business_name}. Your goal is to help users find products and answer questions about them.\n\n"
+            f"1. Use 'search_products' for ANY query related to products, prices, stock, or categories.\n"
+            f"2. Provide clear, concise product information. Always include price and availability if known.\n"
+            f"3. If a product is out of stock, suggest looking for similar items.\n"
+            f"4. If no products match the query, politely inform the user and ask if they'd like to try a different search term.\n"
+            f"5. Be persuasive but helpful and professional. Your primary goal is to drive interest in {business_name}'s offerings.\n"
+            f"6. NEVER make up products, prices, or details. Only use what is returned by 'search_products'.\n"
+            f"7. NEVER mention internal tools or systems.\n"
+        )
+        
+        return Agent(
+            name="sales_agent",
+            model=AgentFactory._get_model(api_key),
+            description=f"Handles product searches and sales inquiries for {business_name}.",
+            instruction=instruction,
+            tools=[search_products],
+            before_model_callback=block_unsafe_content,
+            before_tool_callback=validate_tool_args,
+            after_model_callback=chain_callbacks(sanitize_model_response, trigger_session_analysis)
+        )
+
     @staticmethod
     def create_rag_agent(business_name: str, custom_instruction: Optional[str] = None, intents: Optional[list] = None, api_key: Optional[str] = None):
+
         """
         Create a RAG agent with business-specific configuration.
         This agent is a specialist in retrieving context and answering questions.
@@ -185,6 +212,7 @@ class AgentFactory:
         farewell_agent = AgentFactory.create_farewell_agent(business_name, api_key)
         rag_agent = AgentFactory.create_rag_agent(business_name, custom_instruction, intents, api_key)
         escalation_agent = AgentFactory.create_escalation_agent(business_name, api_key)
+        sales_agent = AgentFactory.create_sales_agent(business_name, api_key)
         
         instruction = (
             f"You are the main assistant for {business_name}. Provide helpful, professional support ONLY for {business_name}-related topics.\n\n"
@@ -197,7 +225,8 @@ class AgentFactory:
             f"- For greetings: Provide a warm welcome\n"
             f"- For farewells: Provide a polite goodbye\n"
             f"- For help/support needed/human requests: Delegate to 'escalation_agent'\n"
-            f"- For questions about {business_name}: Provide accurate, helpful information\n"
+            f"- For products, prices, stock, or purchasing questions: Delegate to 'sales_agent'\n"
+            f"- For general information/FAQ about {business_name}: Delegate to 'rag_agent'\n"
             f"- For questions about anything else: Politely decline\n\n"
             f"ESCALATION:\n"
             f"If the user asks to speak to a human, or expresses significant frustration, delegate to 'escalation_agent'.\n\n"
@@ -223,7 +252,7 @@ class AgentFactory:
             description=f"Chief Orchestrator Agent for {business_name}.",
             instruction=instruction,
             tools=[], 
-            sub_agents=[greeting_agent, farewell_agent, rag_agent, escalation_agent],
+            sub_agents=[greeting_agent, farewell_agent, rag_agent, escalation_agent, sales_agent],
             output_key="last_agent_response",
             before_model_callback=block_unsafe_content,
             after_model_callback=chain_callbacks(sanitize_model_response, trigger_session_analysis)

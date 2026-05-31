@@ -262,3 +262,44 @@ export interface GuestSession {
   device_type?: string | null;
   os?: string | null;
 }
+
+// Product types
+export interface Product {
+  id: string;
+  business_id: string;
+  name: string;
+  description?: string;
+  price: number;
+  currency: string;
+  sku: string;
+  stock_quantity: number;
+  category?: string;
+  image_urls?: string[];
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateProductData {
+  name: string;
+  description?: string;
+  price: number;
+  currency?: string;
+  sku: string;
+  stock_quantity?: number;
+  category?: string;
+  image_urls?: string[];
+  is_active?: boolean;
+}
+
+export interface UpdateProductData {
+  name?: string;
+  description?: string;
+  price?: number;
+  currency?: string;
+  sku?: string;
+  stock_quantity?: number;
+  category?: string;
+  image_urls?: string[];
+  is_active?: boolean;
+}

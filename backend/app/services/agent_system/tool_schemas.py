@@ -112,3 +112,22 @@ class EscalateToHumanOutput(BaseModel):
     escalation_id: str = Field(..., description="ID of the created escalation ticket")
     status: str = Field(..., description="Status of the escalation (e.g. pending)")
     message: str = Field(..., description="Message to display to the user confirming handoff")
+
+class SearchProductsInput(BaseModel):
+    """Input for product search tool."""
+    query: str = Field(..., description="Search term for products (name, category, or description)")
+
+class ProductToolSchema(BaseModel):
+    """Internal schema for product data returned to the agent."""
+    name: str
+    price: float
+    currency: str
+    sku: str
+    description: Optional[str] = None
+    stock_quantity: int
+    image_urls: Optional[list[str]] = None
+
+class SearchProductsOutput(BaseModel):
+    """Output for product search tool."""
+    products: list[ProductToolSchema]
+    count: int

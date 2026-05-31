@@ -16,7 +16,7 @@ from app.admin.views import (
     UserAdmin, BusinessAdmin, PlanAdmin, PaymentTransactionAdmin,
     ChatSessionAdmin, GuestMessageAdmin, EscalationAdmin,
     WidgetSettingsAdmin, GuestUserAdmin, DocumentAdmin,
-    AnalyticsDailySummaryAdmin,
+    AnalyticsDailySummaryAdmin, ProductAdmin,
 )
 
 app = FastAPI(
@@ -51,6 +51,7 @@ admin.add_view(WidgetSettingsAdmin)
 admin.add_view(GuestUserAdmin)
 admin.add_view(DocumentAdmin)
 admin.add_view(AnalyticsDailySummaryAdmin)
+admin.add_view(ProductAdmin)
 
 # Register Middleware (CORS, Security, Rate Limiting)
 register_middleware(app)

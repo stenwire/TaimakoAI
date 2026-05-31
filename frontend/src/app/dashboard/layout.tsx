@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Building2, FileText, MessageSquare, LogOut, X, Settings, Users, Bot, AlignLeft, ChevronLeft, ChevronRight, Send } from 'lucide-react';
+import { LayoutDashboard, Building2, FileText, MessageSquare, LogOut, X, Settings, Users, Bot, AlignLeft, ChevronLeft, ChevronRight, Send, ShoppingBag } from 'lucide-react';
 import Sidebar, { SidebarSection } from '@/components/ui/Sidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBusiness, BusinessProvider } from '@/contexts/BusinessContext';
@@ -31,6 +31,7 @@ function DashboardLayoutInner({
       items: [
         { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
         { label: 'Sessions', href: '/dashboard/sessions', icon: MessageSquare },
+        { label: 'Catalogue', href: '/dashboard/catalogue', icon: ShoppingBag },
         { label: 'Analytics', href: '/dashboard/analytics', icon: Building2 },
         { label: 'Knowledge Base', href: '/dashboard/documents', icon: FileText },
         { label: 'Widget', href: '/dashboard/widget-settings', icon: Settings },

@@ -20,6 +20,9 @@ import type {
   GuestSession,
   Escalation,
   EscalationDetail,
+  Product,
+  CreateProductData,
+  UpdateProductData,
 } from './types';
 
 import { BACKEND_URL } from '../config';
@@ -612,6 +615,45 @@ export const sendWhatsAppCampaign = async (
 
 export const cancelWhatsAppCampaign = async (id: string): Promise<WhatsAppCampaign> => {
   const res = await api.post(`/whatsapp/campaigns/${id}/cancel`);
+  return res.data.data;
+};
+
+// ---------------- Product Catalogue ----------------
+
+export const listProducts = async (
+  params: { q?: string; category?: string; limit?: number; offset?: number } = {},
+): Promise<Product[] | Paginated<Product>> => {
+  const res = await api.get('/products', { params });
+  return res.data.data;
+};
+
+export const getProduct = async (id: string): Promise<Product> => {
+  const res = await api.get(`/products/${id}`);
+  return res.data.data;
+};
+
+export const createProduct = async (data: CreateProductData): Promise<Product> => {
+  const res = await api.post('/products', data);
+  return res.data.data;
+};
+
+export const updateProduct = async (id: string, data: UpdateProductData): Promise<Product> => {
+  const res = await api.put(`/products/${id}`, data);
+  return res.data.data;
+};
+
+export const deleteProduct = async (id: string): Promise<void> => {
+  await api.delete(`/products/${id}`);
+};
+
+export const bulkUploadProducts = async (
+  file: File,
+): Promise<{ imported: number; updated: number; errors: string[] }> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await api.post('/products/bulk', formData, {
+    headers: { 'Content-Type': undefined },
+  });
   return res.data.data;
 };
 

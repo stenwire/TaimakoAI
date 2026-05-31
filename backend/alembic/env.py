@@ -12,6 +12,7 @@ from app.db.base import Base
 # Import all models so they are registered with Base.metadata
 from app.models.user import User  # noqa: F401
 from app.models.business import Business  # noqa: F401
+from app.models.product import Product  # noqa: F401
 from app.models.plan import Plan  # noqa: F401
 from app.models.payment import PaymentTransaction  # noqa: F401
 from app.models.chat_session import ChatSession  # noqa: F401

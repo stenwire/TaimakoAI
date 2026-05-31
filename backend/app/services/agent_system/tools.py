@@ -7,12 +7,14 @@ from app.services.agent_system.tool_schemas import (
 )
 from app.db.session import SessionLocal
 from app.models.business import Business
+from app.models.product import Product
 from app.models.escalation import Escalation, EscalationStatus
 from app.models.chat_session import ChatSession
 from app.services.email_service import EmailServiceFactory
 from app.services.agent_system.tool_schemas import (
     AnalyzeSentimentInput, AnalyzeSentimentOutput,
-    EscalateToHumanInput, EscalateToHumanOutput
+    EscalateToHumanInput, EscalateToHumanOutput,
+    SearchProductsInput, SearchProductsOutput, ProductToolSchema
 )
 import json
 from app.core.subscription import TIER_LIMITS
@@ -318,5 +320,66 @@ def escalate_to_human(reason: str, user_message: str, tool_context: ToolContext)
     except Exception as e:
         print(f"Escalation Error: {e}")
         return f"Error processing escalation: {str(e)}"
+    finally:
+        db.close()
+
+def search_products(query: str, tool_context: ToolContext) -> str:
+    """Searches the product catalogue for items matching the query.
+    
+    Args:
+        query: Search term (name, category, description).
+        tool_context: Context containing business user_id.
+        
+    Returns:
+        JSON string with list of matching products.
+    """
+    print(f"--- Tool: search_products called for: {query} ---")
+    
+    try:
+        validated_input = SearchProductsInput(query=query)
+    except Exception as e:
+        return f"Error: Invalid input - {str(e)}"
+
+    user_id = tool_context.state.get("user_id")
+    if not user_id:
+        return "Error: User ID not found in session state."
+
+    db = SessionLocal()
+    try:
+        # 1. Find business
+        business = db.query(Business).filter(Business.user_id == user_id).first()
+        if not business:
+            return "Error: Business not found for this session."
+
+        # 2. Search products
+        search_term = f"%{validated_input.query}%"
+        products = db.query(Product).filter(
+            Product.business_id == business.id,
+            Product.is_active,
+            (Product.name.ilike(search_term)) | 
+            (Product.category.ilike(search_term)) | 
+            (Product.description.ilike(search_term)) |
+            (Product.sku.ilike(search_term))
+        ).all()
+
+        # 3. Format output
+        product_list = [
+            ProductToolSchema(
+                name=p.name,
+                price=float(p.price),
+                currency=p.currency,
+                sku=p.sku,
+                description=p.description,
+                stock_quantity=p.stock_quantity,
+                image_urls=p.image_urls
+            ) for p in products
+        ]
+        
+        output = SearchProductsOutput(products=product_list, count=len(product_list))
+        return json.dumps(output.model_dump())
+
+    except Exception as e:
+        print(f"Search Products Error: {e}")
+        return f"Error searching products: {str(e)}"
     finally:
         db.close()
