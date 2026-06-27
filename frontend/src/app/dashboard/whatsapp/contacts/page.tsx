@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Upload, Users, Trash2, Search } from 'lucide-react';
 import Card from '@/components/ui/Card';
@@ -43,11 +43,7 @@ export default function WhatsAppContactsPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    fetchAll();
-  }, []);
-
-  const fetchAll = async () => {
+  const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
       const [c, l] = await Promise.all([
@@ -62,7 +58,11 @@ export default function WhatsAppContactsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [search]);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
 
   const handleAdd = async () => {
     if (!addForm.phone) return;

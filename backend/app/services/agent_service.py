@@ -37,16 +37,22 @@ async def call_agent_async(query: str, runner: Runner, user_id: str, session_id:
     print(f"\n>>> User Query: {query} (User: {user_id})")
 
     content = types.Content(role='user', parts=[types.Part(text=query)])
-    final_response_text = "Agent did not produce a final response." 
+    final_response_text = None
 
     async for event in runner.run_async(user_id=user_id, session_id=session_id, new_message=content):
-        # print(f"  [Event] {type(event).__name__}") # Uncomment for debug
         if event.is_final_response():
             if event.content and event.content.parts:
-                final_response_text = event.content.parts[0].text
+                text = event.content.parts[0].text
+                if text:
+                    final_response_text = text
+                    break
             elif event.actions and event.actions.escalate:
                 final_response_text = f"Agent escalated: {event.error_message or 'No specific message.'}"
-            break 
+                break
+
+    if not final_response_text:
+        print("<<< WARNING: No final response text produced by agent")
+        final_response_text = "I'm sorry, I didn't catch that. Could you try again?"
 
     print(f"<<< Agent Response: {final_response_text}")
     return final_response_text

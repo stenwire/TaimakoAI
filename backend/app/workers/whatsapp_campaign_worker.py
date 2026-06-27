@@ -27,6 +27,7 @@ from app.models.chat_session import ChatSession  # noqa: F401
 from app.models.escalation import Escalation  # noqa: F401
 from app.models.document import Document  # noqa: F401
 from app.models.analytics import AnalyticsDailySummary  # noqa: F401
+from app.models.order import Order, OrderItem  # noqa: F401
 from app.models.whatsapp_broadcast import CampaignStatus, WhatsAppCampaign
 from app.services.whatsapp import campaigns as campaign_service
 

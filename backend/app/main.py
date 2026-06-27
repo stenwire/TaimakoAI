@@ -96,6 +96,9 @@ app.include_router(whatsapp_contacts_router, prefix="/whatsapp", tags=["whatsapp
 from app.api.whatsapp_campaigns import router as whatsapp_campaigns_router
 app.include_router(whatsapp_campaigns_router, prefix="/whatsapp", tags=["whatsapp"])
 
+from app.api.orders import router as orders_router
+app.include_router(orders_router)
+
 from app.core.response_wrapper import success_response
 
 @app.get("/")

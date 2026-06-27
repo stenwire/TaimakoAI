@@ -131,3 +131,31 @@ class SearchProductsOutput(BaseModel):
     """Output for product search tool."""
     products: list[ProductToolSchema]
     count: int
+
+
+class OrderItemInput(BaseModel):
+    """A single line item when creating an order."""
+    product_name: str = Field(..., description="Product name")
+    product_sku: str = Field(..., description="Product SKU")
+    quantity: int = Field(..., ge=1, description="Quantity to order")
+    unit_price: float = Field(..., gt=0, description="Price per unit")
+    currency: str = Field(default="USD", description="Currency code")
+
+
+class CreateOrderInput(BaseModel):
+    """Input for the create_order tool."""
+    customer_name: str = Field(..., description="Customer's full name")
+    customer_email: Optional[str] = Field(None, description="Customer's email address")
+    customer_phone: Optional[str] = Field(None, description="Customer's phone number")
+    customer_address: Optional[str] = Field(None, description="Customer's shipping address")
+    items: list[OrderItemInput] = Field(..., description="List of items being ordered")
+    notes: Optional[str] = Field(None, description="Any additional notes")
+
+
+class CreateOrderOutput(BaseModel):
+    """Output for the create_order tool."""
+    order_id: str = Field(..., description="Unique order ID")
+    status: str = Field(..., description="Order status (pending)")
+    total_amount: float = Field(..., description="Total order value")
+    currency: str = Field(..., description="Currency code")
+    message: str = Field(..., description="Confirmation message for the user")

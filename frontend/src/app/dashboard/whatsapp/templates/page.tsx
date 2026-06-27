@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Download, Send as SendIcon, Trash2, RefreshCw, Pencil } from 'lucide-react';
+import { Plus, Download, Send as SendIcon, Trash2, Pencil } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';

@@ -14,10 +14,13 @@ from app.services.email_service import EmailServiceFactory
 from app.services.agent_system.tool_schemas import (
     AnalyzeSentimentInput, AnalyzeSentimentOutput,
     EscalateToHumanInput, EscalateToHumanOutput,
-    SearchProductsInput, SearchProductsOutput, ProductToolSchema
+    SearchProductsInput, SearchProductsOutput, ProductToolSchema,
+    CreateOrderInput, CreateOrderOutput,
 )
 import json
+from decimal import Decimal
 from app.core.subscription import TIER_LIMITS
+from app.core.config import settings
 
 
 try:
@@ -150,7 +153,7 @@ def analyze_sentiment(user_text: str, tool_context: ToolContext) -> str:
             Return JSON only: {{"sentiment": "Positive" | "Neutral" | "Negative", "score": 0.0 to 1.0}}
             """
             response = client.models.generate_content(
-                model="gemini-2.0-flash", 
+                model=settings.GEMINI_MODEL,
                 contents=prompt
             )
             text = response.text.replace("```json", "").replace("```", "").strip()
@@ -381,5 +384,169 @@ def search_products(query: str, tool_context: ToolContext) -> str:
     except Exception as e:
         print(f"Search Products Error: {e}")
         return f"Error searching products: {str(e)}"
+    finally:
+        db.close()
+
+
+def create_order(
+    customer_name: str,
+    items: list[dict],
+    tool_context: ToolContext,
+    customer_email: Optional[str] = None,
+    customer_phone: Optional[str] = None,
+    customer_address: Optional[str] = None,
+    notes: Optional[str] = None,
+) -> str:
+    """Creates a new order from a customer's purchase intent.
+
+    Args:
+        customer_name: Customer's full name.
+        items: List of order items. Each item is a dict with keys: product_name (str), product_sku (str), quantity (int), unit_price (float), currency (str).
+        tool_context: Context containing business user_id and session_id.
+        customer_email: Customer's email address.
+        customer_phone: Customer's phone number.
+        customer_address: Customer's shipping/delivery address.
+        notes: Any additional notes.
+
+    Returns:
+        JSON string with order confirmation details.
+    """
+    print(f"--- Tool: create_order called for customer: {customer_name} ---")
+
+    try:
+        validated = CreateOrderInput(
+            customer_name=customer_name,
+            customer_email=customer_email,
+            customer_phone=customer_phone,
+            customer_address=customer_address,
+            items=items,
+            notes=notes,
+        )
+    except Exception as e:
+        return f"Error: Invalid order input - {str(e)}"
+
+    user_id = tool_context.state.get("user_id")
+    session_id = tool_context.state.get("session_id")
+    if not user_id:
+        return "Error: User ID not found in session state."
+
+    from app.models.order import Order, OrderItem
+
+    db = SessionLocal()
+    try:
+        business = db.query(Business).filter(Business.user_id == user_id).first()
+        if not business:
+            return "Error: Business not found for this session."
+
+        total = Decimal("0.00")
+        order_items = []
+        currency = "USD"
+
+        for item_data in validated.items:
+            qty = item_data.quantity
+            unit_price = Decimal(str(item_data.unit_price))
+            line_total = unit_price * qty
+            total += line_total
+            currency = item_data.currency
+
+            # Try to resolve product_id by SKU
+            product = db.query(Product).filter(
+                Product.business_id == business.id,
+                Product.sku == item_data.product_sku,
+            ).first()
+
+            order_items.append(OrderItem(
+                product_id=product.id if product else None,
+                product_name=item_data.product_name,
+                product_sku=item_data.product_sku,
+                quantity=qty,
+                unit_price=unit_price,
+                total_price=line_total,
+                currency=currency,
+            ))
+
+        order = Order(
+            business_id=business.id,
+            session_id=session_id,
+            customer_name=validated.customer_name,
+            customer_email=validated.customer_email,
+            customer_phone=validated.customer_phone,
+            customer_address=validated.customer_address,
+            status="pending",
+            total_amount=total,
+            currency=currency,
+            notes=validated.notes,
+        )
+        db.add(order)
+        db.flush()  # get order.id before adding items
+
+        for oi in order_items:
+            oi.order_id = order.id
+            db.add(oi)
+
+        db.commit()
+        db.refresh(order)
+
+        print(f"--- Tool: Order {order.id} created for business {business.id} ---")
+
+        # Notify business owner by email
+        try:
+            email_service = EmailServiceFactory.get_service()
+            emails = business.escalation_emails or []
+            if emails:
+                from app.services.email_service import EmailSchema
+                import asyncio
+                import threading
+
+                item_lines = "\n".join(
+                    f"  - {oi.product_name} (SKU: {oi.product_sku}) x{oi.quantity} @ {oi.unit_price} {oi.currency}"
+                    for oi in order_items
+                )
+                body = (
+                    f"New Order Received!\n\n"
+                    f"Order ID: {order.id}\n"
+                    f"Customer: {validated.customer_name}\n"
+                    f"Email: {validated.customer_email or 'N/A'}\n"
+                    f"Phone: {validated.customer_phone or 'N/A'}\n"
+                    f"Address: {validated.customer_address or 'N/A'}\n\n"
+                    f"Items:\n{item_lines}\n\n"
+                    f"Total: {total} {currency}\n"
+                )
+                schema = EmailSchema(
+                    subject=f"New Order from {validated.customer_name} — {business.business_name}",
+                    recipients=emails,
+                    body=body,
+                )
+
+                def _send(coro):
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        loop.run_until_complete(coro)
+                    except Exception as err:
+                        print(f"Order email error: {err}")
+                    finally:
+                        loop.close()
+
+                threading.Thread(target=_send, args=(email_service.send_email(schema),)).start()
+        except Exception as email_err:
+            print(f"--- Tool: Order email notification failed: {email_err} ---")
+
+        output = CreateOrderOutput(
+            order_id=order.id,
+            status="pending",
+            total_amount=float(total),
+            currency=currency,
+            message=(
+                f"Your order has been placed successfully! Order ID: {order.id}. "
+                f"Total: {total} {currency}. "
+                f"Our team will contact you shortly to arrange payment and delivery."
+            ),
+        )
+        return json.dumps(output.model_dump())
+
+    except Exception as e:
+        print(f"Create Order Error: {e}")
+        return f"Error creating order: {str(e)}"
     finally:
         db.close()

@@ -34,6 +34,10 @@ class BaseConfig(BaseSettings):
     # System AI Key
     GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
 
+    # Gemini model configuration
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    GEMINI_EMBEDDING_MODEL: str = os.getenv("GEMINI_EMBEDDING_MODEL", "models/gemini-embedding-001")
+
     # Paystack
     PAYSTACK_WEBHOOK_SECRET: str = os.getenv("PAYSTACK_WEBHOOK_SECRET", "")
 

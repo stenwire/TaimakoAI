@@ -23,6 +23,8 @@ import type {
   Product,
   CreateProductData,
   UpdateProductData,
+  Order,
+  OrdersPage,
 } from './types';
 
 import { BACKEND_URL } from '../config';
@@ -654,6 +656,27 @@ export const bulkUploadProducts = async (
   const res = await api.post('/products/bulk', formData, {
     headers: { 'Content-Type': undefined },
   });
+  return res.data.data;
+};
+
+// ---------------- Orders ----------------
+
+export const listOrders = async (params: {
+  page?: number;
+  page_size?: number;
+  status?: string;
+} = {}): Promise<OrdersPage> => {
+  const res = await api.get('/orders', { params });
+  return res.data.data;
+};
+
+export const getOrder = async (id: string): Promise<Order> => {
+  const res = await api.get(`/orders/${id}`);
+  return res.data.data;
+};
+
+export const updateOrderStatus = async (id: string, status: string): Promise<Order> => {
+  const res = await api.patch(`/orders/${id}/status`, { status });
   return res.data.data;
 };
 

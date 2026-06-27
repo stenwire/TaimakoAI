@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
 
-export default function CatalogueRedirect() {
+export default function MarketplacePage() {
   redirect('/dashboard/marketplace/catalogue');
 }
