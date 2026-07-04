@@ -24,14 +24,11 @@ POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")  # fallback for local ru
 POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
 POSTGRES_DB = os.getenv("POSTGRES_DB")
 
-if all([POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB]):
+if os.getenv("DATABASE_URL"):
+    config.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL"))
+elif all([POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB]):
     database_url = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
     config.set_main_option("sqlalchemy.url", database_url)
-else:
-    # Fallback: if individual vars are missing, try the full DATABASE_URL (e.g., from Heroku, Render, Railway)
-    fallback_url = os.getenv("DATABASE_URL")
-    if fallback_url:
-        config.set_main_option("sqlalchemy.url", fallback_url)
 
 # Logging setup
 if config.config_file_name is not None:
