@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
 from fastapi.responses import RedirectResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.user import User
@@ -11,8 +12,6 @@ from app.core.config import settings
 from app.core.response_wrapper import success_response, error_response
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 security = HTTPBearer()
 

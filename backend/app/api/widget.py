@@ -20,6 +20,7 @@ from app.schemas.widget import (
 from app.services.agent_service import run_conversation
 from app.auth.router import get_current_user
 from app.core.response_wrapper import success_response
+from app.services.analysis_agent import analyze_session, persist_analysis
 
 # Additional Schema for Updating Settings
 from pydantic import BaseModel
@@ -862,8 +863,6 @@ def get_session_details_widget(
             for m in messages
         ]
     })
-
-from app.services.analysis_agent import analyze_session, persist_analysis
 
 @router.post("/session/{session_id}/analyze", response_model=None)
 async def analyze_chat_session(session_id: str, db: Session = Depends(get_db)):

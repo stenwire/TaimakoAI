@@ -8,7 +8,7 @@ const getBackendUrl = (): string => {
     case 'production':
       return process.env.NEXT_PUBLIC_BACKEND_URL_PROD || 'https://api.taimako.dubem.xyz';
     case 'staging':
-      return process.env.NEXT_PUBLIC_BACKEND_URL_STAGING || 'https://api.staging.taimako.ai';
+      return process.env.NEXT_PUBLIC_BACKEND_URL_STAGING || 'https://taimako.onrender.com';
     case 'dev':
       return process.env.NEXT_PUBLIC_BACKEND_URL_DEV || 'https://api.dev.taimako.ai';
     case 'local':
@@ -22,7 +22,7 @@ const getFrontendUrl = (): string => {
     case 'production':
       return process.env.NEXT_PUBLIC_FRONTEND_URL_PROD || 'https://taimako.dubem.xyz';
     case 'staging':
-      return process.env.NEXT_PUBLIC_FRONTEND_URL_STAGING || 'https://app.staging.taimako.ai';
+      return process.env.NEXT_PUBLIC_FRONTEND_URL_STAGING || 'https://taimakoai.onrender.com';
     case 'dev':
       return process.env.NEXT_PUBLIC_FRONTEND_URL_DEV || 'https://app.dev.taimako.ai';
     case 'local':

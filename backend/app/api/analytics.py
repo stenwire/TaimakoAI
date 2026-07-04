@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from app.services.analysis_agent import generate_followup_content
 from app.models.widget import GuestMessage
 from app.core.response_wrapper import success_response
+from app.core.config import settings as app_settings
 
 router = APIRouter()
 
@@ -44,7 +45,7 @@ def get_analytics_overview(
     )
     
     total_sessions = query.count()
-    
+
     # Better: Count distinct Guest IDs in sessions query
     total_guests = query.with_entities(ChatSession.guest_id).distinct().count()
 
@@ -178,8 +179,6 @@ class FollowUpRequest(BaseModel):
     session_id: str
     type: str # "email" or "transcript"
     extra_info: Optional[str] = ""
-
-from app.core.config import settings as app_settings
 
 @router.post("/followup", response_model=None)
 async def generate_followup(

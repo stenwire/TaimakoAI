@@ -105,7 +105,7 @@ def test_escalate_to_human_tool(mock_db_session, mock_email_factory):
     assert "pending" in result_json
 
 def test_escalation_api():
-    # Only if we can spin up a real DB or mock everything. 
+    # Only if we can spin up a real DB or mock everything.
     # Validating the router exists and endpoint signature is correct.
     # The endpoint needs a real DB session.
     # Since I cannot easily setup a full integration test environment in this turn without checking concurrency,

@@ -2,6 +2,7 @@ from unittest.mock import patch
 from app.main import app
 from app.core.config import settings
 from app.core.security import create_access_token
+from app.models.user import User  # noqa: F401
 
 def test_login_google_redirect(client):
     # Debug: Print all routes
@@ -37,8 +38,6 @@ def test_google_callback(mock_get_user_info, mock_exchange_code, client):
     assert settings.FRONTEND_REDIRECT_URI in response.headers["location"]
     assert "access_token" in response.headers["location"]
     assert "refresh_token" in response.headers["location"]
-
-from app.models.user import User
 
 def test_get_me_unauthorized(client):
     response = client.get("/auth/me")

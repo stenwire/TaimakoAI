@@ -10,15 +10,15 @@ POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")  # fallback for local ru
 POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
 POSTGRES_DB = os.getenv("POSTGRES_DB")
 
-# Build PostgreSQL URL if all required parts are present
-if all([POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB]):
+# DATABASE_URL takes priority — cloud platforms (Render, Railway, Heroku) provide this directly
+if os.getenv("DATABASE_URL"):
+    SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
+# Build from individual vars when DATABASE_URL is absent (docker-compose local dev)
+elif all([POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB]):
     SQLALCHEMY_DATABASE_URL = (
         f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
     )
-# Allow direct DATABASE_URL override (common on Heroku, Render, Railway, etc.)
-elif os.getenv("DATABASE_URL"):
-    SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
-# Final fallback: SQLite for quick local development, cause why not, eh?
+# Final fallback: SQLite for quick local development
 else:
     DATABASE_PATH = os.getenv("DATABASE_PATH", "./sql_app.db")
     SQLALCHEMY_DATABASE_URL = f"sqlite:///{DATABASE_PATH}"

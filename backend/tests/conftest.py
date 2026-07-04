@@ -51,7 +51,6 @@ from app.models.whatsapp_broadcast import (  # noqa: F401, E402
 
 # ===== Core Fixtures =====
 
-
 @pytest.fixture(scope="function")
 def db_session():
     """Fresh in-memory SQLite database per test."""

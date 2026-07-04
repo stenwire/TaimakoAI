@@ -142,6 +142,29 @@ def _enrich_plan_fields(response: BusinessResponse, business: Business, db: Sess
         response.plan_features = features
 
 
+@router.post("/business/validate-key", response_model=None)
+async def validate_api_key(
+    key_data: dict, # Using dict to avoid importing ValidateKeyRequest for now or just generic
+    current_user: User = Depends(get_current_user)
+):
+    """Validate a Google Gemini API Key."""
+    api_key = key_data.get("api_key")
+    if not api_key:
+        raise HTTPException(status_code=400, detail="API Key is required")
+
+    try:
+        from google import genai
+        client = genai.Client(api_key=api_key)
+        client.models.generate_content(
+            model='gemini-2.0-flash',
+            contents='Test'
+        )
+
+    except Exception as e:
+        print(f"Key Validation Failed: {e}")
+        raise HTTPException(status_code=400, detail=f"Invalid API Key: {str(e)}")
+
+
 @router.post("/business/generate-intents", response_model=None)
 async def generate_intents(
     current_user: User = Depends(get_current_user),
