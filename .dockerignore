@@ -1,6 +1,38 @@
+# Dependencies
 **/node_modules
 **/.venv
-**/.git
-**/__pycache__
+
+# Build outputs
 **/.next
+**/__pycache__
+**/*.pyc
+**/*.pyo
+
+# Version control
+**/.git
+**/.gitignore
+
+# Test artifacts
 **/.pytest_cache
+**/tests
+**/test_*.py
+**/*_test.py
+**/.coverage
+
+# Dev-only data
+**/chroma_db
+**/uploads
+**/sql_app.db
+
+# Secrets — pass at runtime via env_file or environment
+**/.env
+**/.env.*
+
+# Misc
+**/bloats
+**/.vscode
+**/.claude
+**/postman_collection.json
+**/lint_results*.txt
+**/test_output.txt
+**/test.txt

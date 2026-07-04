@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import RedirectResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from fastapi.responses import RedirectResponse, JSONResponse
-from typing import Optional
 
 from app.db.session import get_db
 from app.models.user import User
@@ -13,18 +13,9 @@ from app.core.response_wrapper import success_response, error_response
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-# --- Dependency: Get Current User ---
-async def get_current_user(token: str = Depends(verify_token), db: Session = Depends(get_db)) -> User:
-    # Note: verify_token dependency above is a placeholder. 
-    # In FastAPI, we usually use OAuth2PasswordBearer to extract token.
-    # But for simplicity here, we'll extract manually or assume middleware.
-    # Let's fix this to be a proper dependency.
-    pass
-
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-
 security = HTTPBearer()
 
+# --- Dependency: Get Current User ---
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)) -> User:
     token = credentials.credentials
     payload = verify_token(token)
@@ -65,7 +56,25 @@ async def signup(user_in: UserSignup, db: Session = Depends(get_db)):
 @router.post("/login")
 async def login(user_in: UserLogin, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == user_in.email).first()
-    if not user or not user.hashed_password or not verify_password(user_in.password, user.hashed_password):
+    
+    # Debug logging
+    print(f"[LOGIN DEBUG] Email: {user_in.email}")
+    print(f"[LOGIN DEBUG] User found: {user is not None}")
+    if user:
+        print(f"[LOGIN DEBUG] Has hashed_password: {user.hashed_password is not None}")
+        if user.hashed_password:
+            try:
+                password_valid = verify_password(user_in.password, user.hashed_password)
+                print(f"[LOGIN DEBUG] Password valid: {password_valid}")
+            except Exception as e:
+                print(f"[LOGIN DEBUG] Password verification error: {e}")
+                password_valid = False
+        else:
+            password_valid = False
+    else:
+        password_valid = False
+    
+    if not user or not user.hashed_password or not password_valid:
         return error_response(message="Invalid credentials", status_code=401)
     
     access_token = create_access_token(subject=user.id)

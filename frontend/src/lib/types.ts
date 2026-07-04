@@ -16,9 +16,29 @@ export interface BusinessProfile {
   custom_agent_instruction: string;
   intents?: string[];
   logo_url?: string;
+
+  is_escalation_enabled?: boolean;
+  escalation_emails?: string[];
+  subscription_tier?: string;
+  subscription_status?: string;
+  allocated_ai_responses?: number;
+  used_ai_responses?: number;
+  allocated_escalations?: number;
+  used_escalations?: number;
+  allocated_messages_per_session?: number;
+  allocated_daily_sessions?: number;
+  allocated_whitelisted_domains?: number;
+  last_payment_date?: string;
+  plan_name?: string;
+  plan_code?: string;
+  plan_price?: number;
+  plan_currency?: string;
+  plan_interval?: string;
+  plan_features?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
+
 
 export interface CreateBusinessProfileData {
   business_name: string;
@@ -27,7 +47,8 @@ export interface CreateBusinessProfileData {
   custom_agent_instruction: string;
   intents?: string[];
   logo_url?: string;
-  gemini_api_key?: string;
+  is_escalation_enabled?: boolean;
+  escalation_emails?: string[];
 }
 
 export interface UpdateBusinessProfileData {
@@ -37,7 +58,8 @@ export interface UpdateBusinessProfileData {
   custom_agent_instruction?: string;
   intents?: string[];
   logo_url?: string;
-  gemini_api_key?: string;
+  is_escalation_enabled?: boolean;
+  escalation_emails?: string[];
 }
 
 // Document types
@@ -66,6 +88,35 @@ export interface Message {
 export interface ChatResponse {
   response: string;
   sources: string[];
+}
+
+// Escalation types
+export interface Escalation {
+  id: string;
+  business_id: string;
+  session_id: string;
+  status: 'pending' | 'in_progress' | 'resolved';
+  summary: string;
+  sentiment: 'positive' | 'neutral' | 'negative';
+  created_at: string;
+}
+
+export interface EscalationMessage {
+  id: string;
+  sender: 'user' | 'agent' | 'guest' | 'ai';
+  message: string;
+  created_at: string;
+}
+
+export interface EscalationDetail extends Escalation {
+  messages: EscalationMessage[];
+  guest?: {
+    name: string;
+    email: string | null;
+    phone: string | null;
+    location: string | null;
+  };
+  top_intent?: string;
 }
 
 // Auth types
@@ -103,6 +154,9 @@ export interface WidgetSettings {
   send_initial_message_automatically?: boolean;
   whatsapp_enabled?: boolean;
   whatsapp_number?: string;
+  whatsapp_phone_number_id?: string;
+  whatsapp_business_account_id?: string;
+  whatsapp_api_configured?: boolean;
   max_messages_per_session?: number;
   max_sessions_per_day?: number;
   whitelisted_domains?: string[];
@@ -117,6 +171,9 @@ export interface UpdateWidgetSettings {
   send_initial_message_automatically?: boolean;
   whatsapp_enabled?: boolean;
   whatsapp_number?: string;
+  whatsapp_phone_number_id?: string;
+  whatsapp_business_account_id?: string;
+  whatsapp_access_token?: string;
   max_messages_per_session?: number;
   max_sessions_per_day?: number;
   whitelisted_domains?: string[];
@@ -186,6 +243,7 @@ export interface Guest {
   name: string;
   email: string | null;
   phone: string | null;
+  is_lead: boolean;
   created_at: string;
   // last_seen_at? backend has it but schema might only return created_at?
   // GuestUserResponse in widget.py: id, name, email, phone, created_at.
@@ -196,10 +254,92 @@ export interface GuestSession {
   created_at: string;
   last_message_at: string;
   origin: string;
+  channel?: string | null;
   summary: string | null;
   top_intent: string | null;
   country?: string | null;
   city?: string | null;
   device_type?: string | null;
   os?: string | null;
+}
+
+// Product types
+export interface Product {
+  id: string;
+  business_id: string;
+  name: string;
+  description?: string;
+  price: number;
+  currency: string;
+  sku: string;
+  stock_quantity: number;
+  category?: string;
+  image_urls?: string[];
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateProductData {
+  name: string;
+  description?: string;
+  price: number;
+  currency?: string;
+  sku: string;
+  stock_quantity?: number;
+  category?: string;
+  image_urls?: string[];
+  is_active?: boolean;
+}
+
+export interface UpdateProductData {
+  name?: string;
+  description?: string;
+  price?: number;
+  currency?: string;
+  sku?: string;
+  stock_quantity?: number;
+  category?: string;
+  image_urls?: string[];
+  is_active?: boolean;
+}
+
+// Order types
+export type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+
+export interface OrderItem {
+  id: string;
+  order_id: string;
+  product_id?: string;
+  product_name: string;
+  product_sku: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  currency: string;
+}
+
+export interface Order {
+  id: string;
+  business_id: string;
+  session_id?: string;
+  customer_name: string;
+  customer_email?: string;
+  customer_phone?: string;
+  customer_address?: string;
+  status: OrderStatus;
+  total_amount: number;
+  currency: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  items: OrderItem[];
+}
+
+export interface OrdersPage {
+  items: Order[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
 }

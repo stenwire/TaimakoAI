@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import uuid
@@ -9,7 +10,7 @@ from app.db.session import get_db
 from app.models.widget import WidgetSettings, GuestUser, GuestMessage
 from app.models.user import User
 from app.models.business import Business
-from app.models.chat_session import ChatSession, SessionOrigin
+from app.models.chat_session import ChatSession
 from app.schemas.widget import (
     GuestStartRequest, GuestStartResponse,
     WidgetChatRequest, WidgetChatResponse, GuestMessageSchema,
@@ -19,11 +20,17 @@ from app.schemas.widget import (
 from app.services.agent_service import run_conversation
 from app.auth.router import get_current_user
 from app.core.response_wrapper import success_response
-from app.core.security_utils import decrypt_string
-from datetime import timedelta
+from app.services.analysis_agent import analyze_session, persist_analysis
 
 # Additional Schema for Updating Settings
 from pydantic import BaseModel
+
+from app.core.config import settings
+
+
+router = APIRouter()
+
+
 class WidgetUpdate(BaseModel):
     theme: Optional[str] = None
     primary_color: Optional[str] = None
@@ -34,13 +41,28 @@ class WidgetUpdate(BaseModel):
     send_initial_message_automatically: Optional[bool] = None
     whatsapp_enabled: Optional[bool] = None
     whatsapp_number: Optional[str] = None
+    whatsapp_phone_number_id: Optional[str] = None
+    whatsapp_business_account_id: Optional[str] = None
+    whatsapp_access_token: Optional[str] = None
+    whatsapp_send_rate_per_second: Optional[int] = None
     max_messages_per_session: Optional[int] = None
     max_sessions_per_day: Optional[int] = None
+    max_sessions_per_day: Optional[int] = None
     whitelisted_domains: Optional[List[str]] = None
+    is_active: Optional[bool] = None
 
 
-
-router = APIRouter()
+def normalize_url(url: str) -> str:
+    if not url:
+        return ""
+    url = str(url).strip().lower()
+    if url.startswith("https://"):
+        url = url[8:]
+    elif url.startswith("http://"):
+        url = url[7:]
+    if url.endswith("/"):
+        url = url[:-1]
+    return url
 
 @router.get("/config/{public_widget_id}", response_model=WidgetConfigResponse)
 def get_widget_config(
@@ -56,23 +78,40 @@ def get_widget_config(
     if widget.whitelisted_domains:
         origin = request.headers.get("origin")
         print(f"\n\nOrigin: {origin}\n\n")
-        # If origin is null (e.g. direct curl) or not in whitelist, strip or block?
-        # Requirement says "it will only work under the set domains".
-        # If strict, we raise 403.
-        # However, for local dev or if origin is missing, we might need care.
-        # Let's assume strict if list is present and origin is set.
+        
         if origin:
-            # Simple check: origin must match one of the entries exactly or maybe substring? 
-            # Usually exact match of scheme+domain+port.
-            # Allowing localhost for leniency if not explicit? No, user sets rules.
-            if origin not in widget.whitelisted_domains:
-                # We can either 403 or just not return config? 
-                # Better to 403 to indicate policy violation.
-                # But CORS might block it anyway if we configured CORS middleware dynamically.
-                # Since we likely have global CORS *, we enforce here.
+            normalized_origin = normalize_url(origin)
+            allowed = False
+            
+            # 1. Check User Whitelist
+            domains = widget.whitelisted_domains if isinstance(widget.whitelisted_domains, list) else []
+            for domain in domains:
+                if normalize_url(domain) == normalized_origin:
+                    allowed = True
+                    break
+            
+            # 2. Check System Origins (Frontend)
+            if not allowed:
+                # Extract host from FRONTEND_URI (e.g., http://localhost:3000/ -> localhost:3000)
+                try:
+                    system_url = settings.FRONTEND_URI
+                    if normalize_url(system_url) == normalized_origin:
+                        allowed = True
+                        print(f"Allowed System Origin: {origin}")
+                except Exception as e:
+                    print(f"Error checking system origin: {e}")
+
+                # explicit dev fallback
+                if not allowed and normalized_origin == "localhost:3000":
+                    allowed = True
+            
+            if not allowed:
+                print(f"Blocked Origin: {origin} (normalized: {normalized_origin})")
+                print(f"Allowed: {[normalize_url(d) for d in domains]}")
                 raise HTTPException(status_code=403, detail="Domain not allowed")
+
     
-    return widget
+    return WidgetConfigResponse.model_validate(widget)
 
 @router.get("/my-settings", response_model=None)
 def get_my_widget_settings(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -100,8 +139,11 @@ def update_my_widget_settings(
         widget.theme = settings.theme
     if settings.primary_color:
         widget.primary_color = settings.primary_color
-    if settings.icon_url:
-        widget.icon_url = settings.icon_url
+    if settings.icon_url is not None:
+        if settings.icon_url == "":
+            widget.icon_url = None
+        else:
+            widget.icon_url = settings.icon_url
     if settings.welcome_message is not None:
         val = settings.welcome_message.strip()
         if val == "":
@@ -128,7 +170,28 @@ def update_my_widget_settings(
         
     if settings.whatsapp_number is not None:
         widget.whatsapp_number = settings.whatsapp_number
-        
+
+    if settings.whatsapp_phone_number_id is not None:
+        widget.whatsapp_phone_number_id = settings.whatsapp_phone_number_id or None
+
+    if settings.whatsapp_business_account_id is not None:
+        widget.whatsapp_business_account_id = settings.whatsapp_business_account_id or None
+
+    if settings.whatsapp_access_token is not None:
+        widget.whatsapp_access_token = settings.whatsapp_access_token or None
+
+    if settings.whatsapp_send_rate_per_second is not None:
+        rate = settings.whatsapp_send_rate_per_second
+        if rate == 0:
+            widget.whatsapp_send_rate_per_second = None
+        elif rate < 1 or rate > 80:
+            raise HTTPException(
+                status_code=400,
+                detail="Send rate must be between 1 and 80 messages/second.",
+            )
+        else:
+            widget.whatsapp_send_rate_per_second = rate
+
     if settings.max_messages_per_session is not None:
         widget.max_messages_per_session = settings.max_messages_per_session
         
@@ -136,7 +199,13 @@ def update_my_widget_settings(
         widget.max_sessions_per_day = settings.max_sessions_per_day
         
     if settings.whitelisted_domains is not None:
+        business = db.query(Business).filter(Business.user_id == current_user.id).first()
+        if business and len(settings.whitelisted_domains) > business.allocated_whitelisted_domains:
+            raise HTTPException(status_code=400, detail=f"Your plan allows a maximum of {business.allocated_whitelisted_domains} whitelisted domains.")
         widget.whitelisted_domains = settings.whitelisted_domains
+        
+    if settings.is_active is not None:
+        widget.is_active = settings.is_active
         
     db.commit()
     db.refresh(widget)
@@ -145,13 +214,96 @@ def update_my_widget_settings(
     return success_response(data=WidgetConfigResponse.model_validate(widget))
 
 @router.get("/guests", response_model=None)
-def get_my_widget_guests(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_my_widget_guests(
+    q: str | None = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     widget = db.query(WidgetSettings).filter(WidgetSettings.user_id == current_user.id).first()
     if not widget:
-        return success_response(data=[])
+        return success_response(
+            data={"items": [], "total": 0, "limit": limit, "offset": offset}
+        )
+
+    query = db.query(GuestUser).filter(GuestUser.widget_id == widget.id)
+    if q:
+        like = f"%{q}%"
+        query = query.filter(
+            or_(
+                GuestUser.name.ilike(like),
+                GuestUser.email.ilike(like),
+                GuestUser.phone.ilike(like),
+            )
+        )
+
+    total = query.count()
+    guests = (
+        query.order_by(GuestUser.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+    return success_response(
+        data={
+            "items": [GuestUserResponse.model_validate(g) for g in guests],
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }
+    )
+
+
+@router.get("/guests/{guest_id}", response_model=None)
+def get_my_widget_guest(
+    guest_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    widget = db.query(WidgetSettings).filter(WidgetSettings.user_id == current_user.id).first()
+    if not widget:
+        raise HTTPException(status_code=404, detail="Widget not found")
+
+    guest = (
+        db.query(GuestUser)
+        .filter(GuestUser.id == guest_id, GuestUser.widget_id == widget.id)
+        .first()
+    )
+    if not guest:
+        raise HTTPException(status_code=404, detail="Guest not found")
+
+    return success_response(data=GuestUserResponse.model_validate(guest))
+
+class LeadStatusUpdate(BaseModel):
+    is_lead: bool
+
+@router.put("/guests/{guest_id}/lead", response_model=None)
+def toggle_lead_status(
+    guest_id: str,
+    lead_update: LeadStatusUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Toggle the lead status for a guest user."""
+    widget = db.query(WidgetSettings).filter(WidgetSettings.user_id == current_user.id).first()
+    if not widget:
+        raise HTTPException(status_code=404, detail="Widget not found")
     
-    guests = db.query(GuestUser).filter(GuestUser.widget_id == widget.id).order_by(GuestUser.created_at.desc()).all()
-    return success_response(data=[GuestUserResponse.model_validate(g) for g in guests])
+    guest = db.query(GuestUser).filter(
+        GuestUser.id == guest_id,
+        GuestUser.widget_id == widget.id
+    ).first()
+    
+    if not guest:
+        raise HTTPException(status_code=404, detail="Guest not found")
+    
+    guest.is_lead = lead_update.is_lead
+    db.commit()
+    db.refresh(guest)
+    
+    return success_response(data=GuestUserResponse.model_validate(guest))
 
 @router.get("/interactions/{guest_id}", response_model=List[GuestMessageSchema])
 def get_guest_interactions(
@@ -340,9 +492,17 @@ async def init_guest_session(
             ChatSession.created_at >= today_start
         ).count()
         
-        limit = widget.max_sessions_per_day or 5
+        limit = 50 # Default fallback
+        user = db.query(User).filter(User.id == widget.user_id).first()
+        if user and user.business:
+            limit = user.business.allocated_daily_sessions
+        
+        # Optional: Also respect widget-specific setting if lower?
+        # if widget.max_sessions_per_day and widget.max_sessions_per_day < limit:
+        #     limit = widget.max_sessions_per_day
+            
         if sessions_today >= limit:
-             raise HTTPException(status_code=429, detail="Daily session limit reached")
+            raise HTTPException(status_code=429, detail="Daily session limit reached for this business.")
 
     session = ChatSession(
         guest_id=guest.id,
@@ -405,7 +565,7 @@ async def init_guest_session(
                 print(f"Skipping geolocation for localhost IP: {client_ip}")
                 
         except httpx.TimeoutException:
-            print(f"GeoIP Lookup Timeout")
+            print("GeoIP Lookup Timeout")
         except httpx.HTTPError as e:
             print(f"GeoIP HTTP Error: {e}")
         except Exception as e:
@@ -466,28 +626,46 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
 
     # 2. Get business context
     owner_user = db.query(User).filter(User.id == widget.user_id).first()
-    if not owner_user or not owner_user.business:
+    business = None
+    if owner_user and owner_user.business:
+        business = owner_user.business
+        business_name = business.business_name
+        instruction = business.custom_agent_instruction
+        intents = business.intents
+    else:
         business_name = "Taimako.AI"
         instruction = None
         intents = None
-    else:
-        business_name = owner_user.business.business_name
-        instruction = owner_user.business.custom_agent_instruction
-        intents = owner_user.business.intents
+        
+    # AI Responses Check
+    if business and (business.allocated_ai_responses - business.used_ai_responses) <= 0:
+        return WidgetChatResponse(
+            message=GuestMessageSchema.model_validate(guest_msg),
+            response=GuestMessageSchema(
+                id=str(uuid.uuid4()),
+                guest_id=guest.id,
+                session_id=session_id,
+                sender="ai",
+                message_text="Service unavailable: The business has insufficient AI credits.",
+                created_at=datetime.now(timezone.utc)
+            )
+        )
 
     # 3. Call AI
     # Check Message Limit
     if session_id:
         current_session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
         if current_session:
-             limit = widget.max_messages_per_session or 50
-             # user_messages is user only. total is user+ai. Requirement: "maximum messages per session per user" usually means user messages.
-             # or total? "Businesses should be able to se maximum messages per session per user"
-             # Let's limit USER messages.
-             if (current_session.user_messages or 0) >= limit:
-                 # We can silently ignore or return a system message.
-                 # Returning a system message as "AI" is easiest.
-                 return WidgetChatResponse(
+            limit = widget.max_messages_per_session or 50
+            if business and getattr(business, "allocated_messages_per_session", None):
+                limit = min(limit, business.allocated_messages_per_session)
+            # user_messages is user only. total is user+ai. Requirement: "maximum messages per session per user" usually means user messages.
+            # or total? "Businesses should be able to se maximum messages per session per user"
+            # Let's limit USER messages.
+            if (current_session.user_messages or 0) >= limit:
+                # We can silently ignore or return a system message.
+                # Returning a system message as "AI" is easiest.
+                return WidgetChatResponse(
                     message=GuestMessageSchema.model_validate(guest_msg),
                     response=GuestMessageSchema(
                         id=str(uuid.uuid4()),
@@ -497,22 +675,50 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
                         message_text="Session message limit reached. Please start a new session.",
                         created_at=datetime.now(timezone.utc)
                     )
-                 )
+                )
 
-    # Decrypt API Key
-    decrypted_key = None
-    if owner_user and owner_user.business and owner_user.business.gemini_api_key:
-        decrypted_key = decrypt_string(owner_user.business.gemini_api_key)
+    # Use system-level API key
+    decrypted_key = settings.GOOGLE_API_KEY
+    if not decrypted_key:
+        print(f"Missing API Key for business {widget.user_id} and System")
+        return WidgetChatResponse(
+            message=GuestMessageSchema.model_validate(guest_msg),
+            response=GuestMessageSchema(
+                id=str(uuid.uuid4()),
+                guest_id=guest.id,
+                session_id=session_id,
+                sender="ai",
+                message_text="Service unavailable: AI Configuration Error.",
+                created_at=datetime.now(timezone.utc)
+            )
+        )
 
-    ai_response_text = await run_conversation(
-        message=message_text,
-        user_id=widget.user_id,
-        business_name=business_name,
-        custom_instruction=instruction,
-        session_id=session_id, # Use session_id for thread consistency
-        intents=intents,
-        api_key=decrypted_key
-    )
+
+    try:
+        print(f"Widget: Calling run_conversation with user_id={widget.user_id} (Type: {type(widget.user_id)})")
+        ai_response_text = await run_conversation(
+            message=message_text,
+            user_id=widget.user_id,
+            business_name=business_name,
+            custom_instruction=instruction,
+            session_id=session_id, # Use session_id for thread consistency
+            intents=intents,
+            api_key=decrypted_key
+        )
+    except Exception as e:
+        print(f"Agent Execution Error: {e}")
+        return WidgetChatResponse(
+            message=GuestMessageSchema.model_validate(guest_msg),
+            response=GuestMessageSchema(
+                id=str(uuid.uuid4()),
+                guest_id=guest.id,
+                session_id=session_id,
+                sender="ai",
+                message_text="I'm having trouble connecting right now. Please try again later.",
+                created_at=datetime.now(timezone.utc)
+            )
+        )
+
 
     # 4. Store AI response
     ai_msg = GuestMessage(
@@ -522,15 +728,24 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
         message_text=ai_response_text
     )
     db.add(ai_msg)
+    
+    # Increment used AI responses if success
+    if business:
+        business.used_ai_responses += 1
+        db.add(business) # Ensure update
+    
     db.commit()
     db.refresh(ai_msg)
 
     # 5. Update Session Stats
     session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
     if session:
-        if session.total_messages is None: session.total_messages = 0
-        if session.user_messages is None: session.user_messages = 0
-        if session.ai_messages is None: session.ai_messages = 0
+        if session.total_messages is None:
+            session.total_messages = 0
+        if session.user_messages is None:
+            session.user_messages = 0
+        if session.ai_messages is None:
+            session.ai_messages = 0
         
         session.total_messages += 2 # 1 user + 1 AI
         session.user_messages += 1
@@ -544,30 +759,30 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
         now_aware = datetime.now(timezone.utc)
         
         if session.created_at:
-             created_at = session.created_at
-             if created_at.tzinfo is None:
-                 created_at = created_at.replace(tzinfo=timezone.utc)
-             
-             delta = now_aware - created_at
-             session.session_duration = int(delta.total_seconds())
+            created_at = session.created_at
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=timezone.utc)
+            
+            delta = now_aware - created_at
+            session.session_duration = int(delta.total_seconds())
         
         # First response time (if not set)
         if session.first_response_time is None:
-             # guest_msg.created_at and ai_msg.created_at might be naive or aware.
-             # They are freshly created so they might be naive if fetched back from SQLite immediately?
-             # Or they are the objects we just added? No, we queried messages or refreshed them.
-             
-             g_created = guest_msg.created_at
-             a_created = ai_msg.created_at
-             
-             if g_created and a_created:
-                 if g_created.tzinfo is None:
-                     g_created = g_created.replace(tzinfo=timezone.utc)
-                 if a_created.tzinfo is None:
-                     a_created = a_created.replace(tzinfo=timezone.utc)
-                     
-                 frt = a_created - g_created
-                 session.first_response_time = int(frt.total_seconds())
+            # guest_msg.created_at and ai_msg.created_at might be naive or aware.
+            # They are freshly created so they might be naive if fetched back from SQLite immediately?
+            # Or they are the objects we just added? No, we queried messages or refreshed them.
+            
+            g_created = guest_msg.created_at
+            a_created = ai_msg.created_at
+            
+            if g_created and a_created:
+                if g_created.tzinfo is None:
+                    g_created = g_created.replace(tzinfo=timezone.utc)
+                if a_created.tzinfo is None:
+                    a_created = a_created.replace(tzinfo=timezone.utc)
+                    
+                frt = a_created - g_created
+                session.first_response_time = int(frt.total_seconds())
 
         db.commit()
 
@@ -577,9 +792,28 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
     )
 
 @router.get("/sessions/{guest_id}/history", response_model=None)
-def get_guest_session_history(guest_id: str, db: Session = Depends(get_db)):
-    sessions = db.query(ChatSession).filter(ChatSession.guest_id == guest_id).order_by(ChatSession.created_at.desc()).all()
-    return success_response(data=[SessionHistoryResponse.model_validate(s) for s in sessions])
+def get_guest_session_history(
+    guest_id: str,
+    limit: int = Query(default=20, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+):
+    query = db.query(ChatSession).filter(ChatSession.guest_id == guest_id)
+    total = query.count()
+    sessions = (
+        query.order_by(ChatSession.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+    return success_response(
+        data={
+            "items": [SessionHistoryResponse.model_validate(s) for s in sessions],
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }
+    )
 
 @router.get("/session/{session_id}/messages", response_model=List[GuestMessageSchema])
 def get_session_messages(session_id: str, db: Session = Depends(get_db)):
@@ -630,8 +864,6 @@ def get_session_details_widget(
         ]
     })
 
-from app.services.analysis_agent import analyze_session, persist_analysis
-
 @router.post("/session/{session_id}/analyze", response_model=None)
 async def analyze_chat_session(session_id: str, db: Session = Depends(get_db)):
     # 1. Verify session exists
@@ -639,8 +871,9 @@ async def analyze_chat_session(session_id: str, db: Session = Depends(get_db)):
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    # Fetch intents from business if available
+    # Fetch intents and API key from business if available
     intents = None
+    decrypted_key = settings.GOOGLE_API_KEY
     try:
         # ChatSession -> GuestUser -> WidgetSettings -> User -> Business
         guest = db.query(GuestUser).filter(GuestUser.id == session.guest_id).first()
@@ -648,13 +881,15 @@ async def analyze_chat_session(session_id: str, db: Session = Depends(get_db)):
             widget = db.query(WidgetSettings).filter(WidgetSettings.id == guest.widget_id).first()
             if widget:
                 owner_user = db.query(User).filter(User.id == widget.user_id).first()
-                if owner_user and owner_user.business and owner_user.business.intents:
-                    intents = owner_user.business.intents
+                if owner_user and owner_user.business:
+                    if owner_user.business.intents:
+                        intents = owner_user.business.intents
     except Exception as e:
         print(f"Error fetching intents: {e}")
 
     # 2. Run analysis
-    summary, intent = await analyze_session(db, session_id, intents=intents)
+    summary, intent = await analyze_session(db, session_id, intents=intents, api_key=decrypted_key)
+
     
     # 3. Persist
     updated_session = await persist_analysis(db, session_id, summary, intent)

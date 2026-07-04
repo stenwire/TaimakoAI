@@ -1,3 +1,15 @@
+import logging
+import warnings
+from typing import Optional
+
+from google.adk.runners import Runner
+from google.genai import types
+
+from app.services.agent_system.service import session_service, init_session
+from app.services.agent_system.agent_factory import AgentFactory
+
+warnings.filterwarnings("ignore")
+
 try:
     from app.services.rag_service import rag_service
 except ImportError:
@@ -12,24 +24,12 @@ APP_NAME = "agentic_rag_api"
 USER_ID = "test_user"
 SESSION_ID = "test_session"
 
-import os
-import asyncio
-from google.adk.runners import Runner
-from google.genai import types 
-import logging
-from typing import Optional
-
-# Import from new modular structure
-from app.services.agent_system.service import session_service, init_session
-from app.services.agent_system.agent_factory import AgentFactory
-
-import warnings
-warnings.filterwarnings("ignore")
-
 logging.basicConfig(level=logging.ERROR)
 
+
 print("Libraries imported.")
-print(f"Google API Key set: {'Yes' if os.environ.get('GOOGLE_API_KEY') and os.environ['GOOGLE_API_KEY'] != 'YOUR_GOOGLE_API_KEY' else 'No (REPLACE PLACEHOLDER!)'}")
+# print(f"Google API Key set: {'Yes' if os.environ.get('GOOGLE_API_KEY') and os.environ['GOOGLE_API_KEY'] != 'YOUR_GOOGLE_API_KEY' else 'No (REPLACE PLACEHOLDER!)'}")
+
 
 
 async def call_agent_async(query: str, runner: Runner, user_id: str, session_id: str):
@@ -37,16 +37,22 @@ async def call_agent_async(query: str, runner: Runner, user_id: str, session_id:
     print(f"\n>>> User Query: {query} (User: {user_id})")
 
     content = types.Content(role='user', parts=[types.Part(text=query)])
-    final_response_text = "Agent did not produce a final response." 
+    final_response_text = None
 
     async for event in runner.run_async(user_id=user_id, session_id=session_id, new_message=content):
-        # print(f"  [Event] {type(event).__name__}") # Uncomment for debug
         if event.is_final_response():
             if event.content and event.content.parts:
-                final_response_text = event.content.parts[0].text
+                text = event.content.parts[0].text
+                if text:
+                    final_response_text = text
+                    break
             elif event.actions and event.actions.escalate:
                 final_response_text = f"Agent escalated: {event.error_message or 'No specific message.'}"
-            break 
+                break
+
+    if not final_response_text:
+        print("<<< WARNING: No final response text produced by agent")
+        final_response_text = "I'm sorry, I didn't catch that. Could you try again?"
 
     print(f"<<< Agent Response: {final_response_text}")
     return final_response_text
@@ -81,7 +87,7 @@ async def run_conversation(
         session_id = user_id
     
     # Create agent dynamically based on business configuration
-    agent = AgentFactory.create_rag_agent(business_name, custom_instruction, intents=intents, api_key=api_key)
+    agent = AgentFactory.create_chief_agent(business_name, custom_instruction, intents=intents, api_key=api_key)
     
     # Create runner with dynamic agent
     runner = Runner(
@@ -93,7 +99,10 @@ async def run_conversation(
     # Initialize session with user_id in state
     initial_state = {
         "response_style": "concise",
-        "user_id": user_id  # Store user_id for tools to access
+        "user_id": user_id,  # Store user_id for tools to access
+        "api_key": api_key,   # Store api_key for tools (specifically RAG) to use
+        "session_id": session_id,  # Store session_id for analysis callback
+        "intents": intents  # Store intents for analysis callback
     }
     await init_session(business_name, user_id, session_id, initial_state)
     

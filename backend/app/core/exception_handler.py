@@ -2,7 +2,6 @@ from fastapi import Request, status
 from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.responses import JSONResponse
 from app.core.response_wrapper import error_response
-from typing import Union
 
 
 def get_error_code(status_code: int) -> str:

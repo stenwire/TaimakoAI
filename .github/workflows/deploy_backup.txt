@@ -1,0 +1,235 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - prod
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_ENV: >-
+    -e ENVIRONMENT="${{ secrets.ENVIRONMENT }}"
+    -e DATABASE_URL="postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@${{ secrets.POSTGRES_HOST }}:5432/${{ secrets.POSTGRES_DB }}"
+    -e GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}"
+    -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}"
+    -e GOOGLE_REDIRECT_URI="${{ secrets.GOOGLE_REDIRECT_URI }}"
+    -e FRONTEND_REDIRECT_URI="${{ secrets.FRONTEND_REDIRECT_URI }}"
+  FRONTEND_ENV: >-
+    -e NODE_ENV="${{ secrets.NODE_ENV }}"
+    -e NEXT_PUBLIC_ENVIRONMENT="${{ secrets.NEXT_PUBLIC_ENVIRONMENT }}"
+    -e NEXT_PUBLIC_API_URL="${{ secrets.NEXT_PUBLIC_API_URL }}"
+    -e NEXT_PUBLIC_BACKEND_URL_PROD="${{ secrets.NEXT_PUBLIC_BACKEND_URL_PROD }}"
+    -e NEXT_PUBLIC_FRONTEND_URL_PROD="${{ secrets.NEXT_PUBLIC_FRONTEND_URL_PROD }}"
+
+jobs:
+  build-and-push-backend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Set lowercase image names
+        id: image-names
+        run: |
+          echo "backend_image=$(echo '${{ github.repository }}-backend' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+          echo "frontend_image=$(echo '${{ github.repository }}-frontend' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        run: |
+          echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build and push Backend image
+        run: |
+          cd backend
+
+          docker build \
+            -t ${{ env.REGISTRY }}/${{ steps.image-names.outputs.backend_image }}:latest \
+            -t ${{ env.REGISTRY }}/${{ steps.image-names.outputs.backend_image }}:${{ github.sha }} \
+            -f Dockerfile.prod \
+            .
+
+          docker push ${{ env.REGISTRY }}/${{ steps.image-names.outputs.backend_image }}:latest
+          docker push ${{ env.REGISTRY }}/${{ steps.image-names.outputs.backend_image }}:${{ github.sha }}
+
+          # Clean up immediately
+          docker rmi ${{ env.REGISTRY }}/${{ steps.image-names.outputs.backend_image }}:${{ github.sha }} || true
+
+  build-and-push-frontend:
+    needs: [build-and-push-backend]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Set lowercase image names
+        id: image-names
+        run: |
+          echo "backend_image=$(echo '${{ github.repository }}-backend' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+          echo "frontend_image=$(echo '${{ github.repository }}-frontend' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        run: |
+          echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build and push Frontend image
+        run: |
+          cd frontend
+
+          docker build \
+            -t ${{ env.REGISTRY }}/${{ steps.image-names.outputs.frontend_image }}:latest \
+            -t ${{ env.REGISTRY }}/${{ steps.image-names.outputs.frontend_image }}:${{ github.sha }} \
+            -f Dockerfile.prod \
+            --build-arg NEXT_PUBLIC_ENVIRONMENT="${{ secrets.NEXT_PUBLIC_ENVIRONMENT }}" \
+            --build-arg NEXT_PUBLIC_API_URL="${{ secrets.NEXT_PUBLIC_API_URL }}" \
+            --build-arg NEXT_PUBLIC_BACKEND_URL_PROD="${{ secrets.NEXT_PUBLIC_BACKEND_URL_PROD }}" \
+            --build-arg NEXT_PUBLIC_FRONTEND_URL_PROD="${{ secrets.NEXT_PUBLIC_FRONTEND_URL_PROD }}" \
+            .
+
+          docker push ${{ env.REGISTRY }}/${{ steps.image-names.outputs.frontend_image }}:latest
+          docker push ${{ env.REGISTRY }}/${{ steps.image-names.outputs.frontend_image }}:${{ github.sha }}
+
+          docker rmi ${{ env.REGISTRY }}/${{ steps.image-names.outputs.frontend_image }}:${{ github.sha }} || true
+
+  deploy:
+    needs: [build-and-push-backend, build-and-push-frontend]
+    runs-on: ld-vps-runner
+
+    steps:
+      - name: Set lowercase image names
+        id: image-names
+        run: |
+          echo "backend_image=$(echo '${{ github.repository }}-backend' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+          echo "frontend_image=$(echo '${{ github.repository }}-frontend' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        run: |
+          echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Pull latest images
+        run: |
+          docker pull ${{ env.REGISTRY }}/${{ steps.image-names.outputs.backend_image }}:latest
+          docker pull ${{ env.REGISTRY }}/${{ steps.image-names.outputs.frontend_image }}:latest
+
+      - name: Create Docker network
+        run: |
+          docker network create taimako_network || true
+
+      - name: Deploy PostgreSQL container
+        run: |
+          mkdir -p /opt/taimako/postgres_data
+          mkdir -p /opt/taimako/backups
+
+          if docker ps -a --format '{{.Names}}' | grep -q "taimako_postgres"; then
+            echo "PostgreSQL container already exists, checking if running..."
+            if ! docker ps --format '{{.Names}}' | grep -q "taimako_postgres"; then
+              echo "Starting existing PostgreSQL container..."
+              docker start taimako_postgres
+            fi
+          else
+            echo "Creating new PostgreSQL container..."
+            docker run -d \
+              --name taimako_postgres \
+              --network taimako_network \
+              --restart unless-stopped \
+              -v /opt/taimako/postgres_data:/var/lib/postgresql/data \
+              -e POSTGRES_USER="${{ secrets.POSTGRES_USER }}" \
+              -e POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}" \
+              -e POSTGRES_DB="${{ secrets.POSTGRES_DB }}" \
+              postgres:16-alpine
+          fi
+
+          echo "Waiting for PostgreSQL to be ready..."
+          for i in {1..30}; do
+            if docker exec taimako_postgres pg_isready -U "${{ secrets.POSTGRES_USER }}" > /dev/null 2>&1; then
+              echo "PostgreSQL is ready!"
+              break
+            fi
+            echo "Waiting for PostgreSQL... ($i/30)"
+            sleep 2
+          done
+
+      - name: Deploy Backend container
+        run: |
+          docker stop taimako_backend || true
+          docker rm taimako_backend || true
+
+          # Run database migrations
+          docker run --rm \
+            --network taimako_network \
+            ${{ env.BACKEND_ENV }} \
+            ${{ env.REGISTRY }}/${{ steps.image-names.outputs.backend_image }}:latest \
+            alembic upgrade head
+
+          # Run the backend container
+          docker run -d \
+            --name taimako_backend \
+            --network taimako_network \
+            --restart unless-stopped \
+            -p 127.0.0.1:8000:8000 \
+            ${{ env.BACKEND_ENV }} \
+            ${{ env.REGISTRY }}/${{ steps.image-names.outputs.backend_image }}:latest
+
+      - name: Deploy Frontend container
+        run: |
+          docker stop taimako_frontend || true
+          docker rm taimako_frontend || true
+
+          # Run the frontend container
+          docker run -d \
+            --name taimako_frontend \
+            --network taimako_network \
+            --restart unless-stopped \
+            -p 127.0.0.1:3000:3000 \
+            ${{ env.FRONTEND_ENV }} \
+            ${{ env.REGISTRY }}/${{ steps.image-names.outputs.frontend_image }}:latest
+
+      - name: Wait for containers to be ready
+        run: sleep 10
+
+      - name: Check container health
+        run: |
+          docker ps -a --filter "name=taimako"
+
+          if ! docker ps --format '{{.Names}}' | grep -q "taimako_postgres"; then
+            echo "PostgreSQL container failed to start!"
+            docker logs taimako_postgres
+            exit 1
+          fi
+
+          if ! docker ps --format '{{.Names}}' | grep -q "taimako_backend"; then
+            echo "Backend container failed to start!"
+            docker logs taimako_backend
+            exit 1
+          fi
+
+          if ! docker ps --format '{{.Names}}' | grep -q "taimako_frontend"; then
+            echo "Frontend container failed to start!"
+            docker logs taimako_frontend
+            exit 1
+          fi
+
+          echo "All containers are running successfully!"
+
+      - name: Backup database
+        run: |
+          docker exec taimako_postgres pg_dump -U "${{ secrets.POSTGRES_USER }}" "${{ secrets.POSTGRES_DB }}" > /opt/taimako/backups/backup_$(date +%Y%m%d_%H%M%S).sql
+          ls -t /opt/taimako/backups/*.sql | tail -n +8 | xargs -r rm
+
+      - name: Final cleanup
+        if: always()
+        run: |
+          docker system prune -af --filter "until=24h"
+          echo "=== Final disk space ==="
+          df -h

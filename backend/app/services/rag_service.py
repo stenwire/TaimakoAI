@@ -1,29 +1,55 @@
 import uuid
 import os
-import shutil
-from typing import List
+from typing import List, Optional
 from fastapi import UploadFile
 from pypdf import PdfReader
-import io
-from app.services.vector_db import vector_db
-from app.utils.text_splitter import recursive_character_text_splitter
-from app.utils.text_splitter import recursive_character_text_splitter
-from app.schemas.document import IngestResponse
-
-from sqlalchemy.orm import Session
+import google.generativeai as genai
 from app.services.vector_db import vector_db
 from app.utils.text_splitter import recursive_character_text_splitter
 from app.schemas.document import IngestResponse
 from app.models.document import Document
 from app.services.file_storage import file_storage
-import os
-import uuid
-from pypdf import PdfReader
+from app.core.config import settings
+from sqlalchemy.orm import Session
 
 class RAGService:
     def __init__(self):
         self.vector_db = vector_db
         self.file_storage = file_storage
+
+    def _get_embedding(self, text: str, api_key: str) -> List[float]:
+        """Generate embedding using Google's Generative AI."""
+        if not api_key:
+            raise ValueError("API Key is required for generating embeddings.")
+        
+        try:
+            genai.configure(api_key=api_key)
+            result = genai.embed_content(
+                model=settings.GEMINI_EMBEDDING_MODEL,
+                content=text,
+                task_type="retrieval_document"
+            )
+            return result['embedding']
+        except Exception as e:
+            print(f"Error generating embedding: {e}")
+            raise e
+
+    def _get_query_embedding(self, text: str, api_key: str) -> List[float]:
+        """Generate query embedding."""
+        if not api_key:
+            raise ValueError("API Key is required for generating query embeddings.")
+            
+        try:
+            genai.configure(api_key=api_key)
+            result = genai.embed_content(
+                model=settings.GEMINI_EMBEDDING_MODEL,
+                content=text,
+                task_type="retrieval_query"
+            )
+            return result['embedding']
+        except Exception as e:
+            print(f"Error generating query embedding: {e}")
+            raise e
 
     async def upload_document(self, file: UploadFile, user_id: str, db: Session) -> str:
         # Save to file storage
@@ -44,6 +70,13 @@ class RAGService:
 
     def process_documents(self, user_id: str, db: Session) -> List[IngestResponse]:
         results = []
+        
+        # Use system-level API key
+        api_key = settings.GOOGLE_API_KEY
+        if not api_key:
+            print(f"Cannot process documents for user {user_id}: No system API Key configured.")
+            return [IngestResponse(filename="Error", chunks_created=0, status="Error: AI service not configured.")]
+
         # Fetch pending documents for user
         documents = db.query(Document).filter(
             Document.user_id == user_id, 
@@ -68,11 +101,15 @@ class RAGService:
                 
                 chunks = recursive_character_text_splitter(text)
                 ids = [str(uuid.uuid4()) for _ in chunks]
+                
+                # Generate embeddings for all chunks
+                embeddings = [self._get_embedding(chunk, api_key) for chunk in chunks]
+                
                 # Embed chunks with user_id metadata for filtering
                 metadatas = [{"filename": doc.filename, "chunk_index": i, "user_id": user_id} for i in range(len(chunks))]
                 
                 if chunks:
-                    self.vector_db.add_documents(documents=chunks, metadatas=metadatas, ids=ids)
+                    self.vector_db.add_documents(documents=chunks, metadatas=metadatas, ids=ids, embeddings=embeddings)
                 
                 doc.status = "processed"
                 results.append(IngestResponse(
@@ -107,21 +144,45 @@ class RAGService:
             for doc in docs
         ]
 
-    def query(self, text: str, user_id: str) -> List[str]:
-        # Query with user_id filter
-        results = self.vector_db.query(text, where={"user_id": user_id})
-        if results and results['documents']:
-            return results['documents'][0]
-        if results and results['documents']:
-            return results['documents'][0]
-        return []
+    def query(self, text: str, user_id: str, api_key: Optional[str] = None, db: Session = None) -> List[str]:
+        if not api_key:
+            api_key = settings.GOOGLE_API_KEY
+
+        if not api_key:
+            print(f"Query failed: No API Key available for user {user_id}")
+            return []
+
+        try:
+            print(f"RAG Service: Querying for user_id={user_id}")
+            query_embedding = self._get_query_embedding(text, api_key)
+            # Query with user_id filter and query_embedding
+            # Wrap in list as vector_db expects list of embeddings
+            
+            where_clause = {"user_id": user_id}
+            print(f"RAG Service: Executing vector_db.query with where={where_clause}")
+            
+            results = self.vector_db.query(query_embeddings=[query_embedding], where=where_clause)
+            
+            print(f"RAG Service: Raw results keys: {results.keys() if results else 'None'}")
+            if results and results.get('documents'):
+                doc_count = len(results['documents'][0])
+                print(f"RAG Service: Found {doc_count} documents.")
+                # console log first few chars of first doc if exists
+                if doc_count > 0:
+                    print(f"RAG Service: First doc snippet: {results['documents'][0][0][:50]}...")
+                return results['documents'][0]
+            
+            print("RAG Service: No documents found.")
+            return []
+        except Exception as e:
+            print(f"Error querying RAG: {e}")
+            return []
 
     def delete_document(self, document_id: str, user_id: str, db: Session) -> bool:
         doc = db.query(Document).filter(Document.id == document_id, Document.user_id == user_id).first()
         if not doc:
             return False
             
-        # Delete from Chroma
         # Delete from Chroma
         # Using $and operator for multiple conditions as required by newer Chroma versions
         self.vector_db.delete(where={"$and": [{"filename": doc.filename}, {"user_id": user_id}]})

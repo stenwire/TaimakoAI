@@ -6,13 +6,15 @@ from app.models.user import User
 from typing import List
 from app.services.rag_service import rag_service
 from app.services.agent_service import run_conversation
-from app.schemas.document import IngestResponse
 from app.schemas.chat import ChatRequest, ChatResponse
-import asyncio
+from app.core.config import settings
 
 from app.core.response_wrapper import success_response
+from app.api.products import router as products_router
 
 router = APIRouter()
+router.include_router(products_router)
+
 
 @router.post("/documents/upload", response_model=None)
 async def upload_documents(
@@ -78,12 +80,22 @@ async def chat_with_agent(
             detail="Business profile not found. Please create a business profile before using the chat."
         )
     
+    # Use system-level API key
+    decrypted_key = settings.GOOGLE_API_KEY
+    if not decrypted_key:
+        raise HTTPException(
+            status_code=500,
+            detail="AI service is not configured. Please contact support."
+        )
+
     # Use user.id as session_id for chat history per user
     response_text = await run_conversation(
         message=request.message,
         user_id=current_user.id,
         business_name=business.business_name,
         custom_instruction=business.custom_agent_instruction,
-        session_id=current_user.id
+        session_id=current_user.id,
+        intents=business.intents,
+        api_key=decrypted_key
     )
     return success_response(data=ChatResponse(response=response_text))

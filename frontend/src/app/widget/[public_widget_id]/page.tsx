@@ -6,7 +6,6 @@ import {
   MessageSquare,
   Phone,
   Clock,
-  RotateCcw,
   Menu as MenuIcon,
   X,
   Send
@@ -24,6 +23,7 @@ interface WidgetConfig {
   initial_ai_message?: string;
   whatsapp_enabled?: boolean;
   whatsapp_number?: string;
+  logo_url?: string;
 }
 
 interface Message {
@@ -107,7 +107,7 @@ export default function WidgetPage() {
       })
       .then(data => {
         setConfig(data);
-        const storedGuestId = localStorage.getItem(`sten_guest_${publicWidgetId}`);
+        const storedGuestId = localStorage.getItem(`taimako_guest_${publicWidgetId}`);
         if (storedGuestId) {
           setGuestId(storedGuestId);
           // On refresh, start FRESH (Clean Slate) even if we know the guest
@@ -257,7 +257,7 @@ export default function WidgetPage() {
             if (utmSource) Object.assign(context, { utm_source: utmSource });
             if (utmMedium) Object.assign(context, { utm_medium: utmMedium });
             if (utmCampaign) Object.assign(context, { utm_campaign: utmCampaign });
-          } catch (e) { }
+          } catch { }
         }
 
         // Start NEW session
@@ -362,8 +362,6 @@ export default function WidgetPage() {
     if (!config?.whatsapp_number) return;
 
     // Format message
-    const businessName = config.welcome_message?.includes("Hi there!") ? "the team" : "us"; // Fallback logic, ideally we have business name
-    // Actually we don't have business name in config, maybe just universal greeting
     const text = encodeURIComponent(`Hi, I would like to chat with you.`);
 
     // Open WhatsApp
@@ -473,7 +471,8 @@ export default function WidgetPage() {
         <div className="flex-1 p-6 flex flex-col justify-center animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="text-center space-y-2 mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[var(--primary-color)] text-white shadow-lg mb-4">
-              {config?.icon_url ? <img src={config.icon_url} className="w-10 h-10 object-contain" /> : <MessageSquare className="w-8 h-8" />}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {config?.logo_url ? <img src={config.logo_url} className="w-10 h-10 object-contain" alt="" /> : <MessageSquare className="w-8 h-8" />}
             </div>
             <h2 className="text-2xl font-bold text-gray-900">How would you like to connect?</h2>
             <p className="text-gray-500 max-w-[80%] mx-auto">Choose the channel that works best for you.</p>
@@ -655,11 +654,11 @@ export default function WidgetPage() {
                       remarkPlugins={[remarkGfm]}
                       components={{
                         // Force paragraphs to have minimal margins for chat compactness
-                        p: ({ node, ...props }) => <p className="mb-1 last:mb-0" {...props} />,
+                        p: ({ ...props }) => <p className="mb-1 last:mb-0" {...props} />,
                         // Ensure lists are compact
-                        ul: ({ node, ...props }) => <ul className="pl-4 mb-1 list-disc" {...props} />,
-                        ol: ({ node, ...props }) => <ol className="pl-4 mb-1 list-decimal" {...props} />,
-                        li: ({ node, ...props }) => <li className="mb-0.5" {...props} />
+                        ul: ({ ...props }) => <ul className="pl-4 mb-1 list-disc" {...props} />,
+                        ol: ({ ...props }) => <ol className="pl-4 mb-1 list-decimal" {...props} />,
+                        li: ({ ...props }) => <li className="mb-0.5" {...props} />
                       }}
                     >
                       {msg.message_text}

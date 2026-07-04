@@ -73,7 +73,7 @@ export default function DocumentsPage() {
       setSelectedFiles([]);
       await fetchDocuments();
       setTimeout(() => setMessage(null), 3000);
-    } catch (error) {
+    } catch {
       setMessage({ type: 'error', text: 'Failed to upload documents' });
     } finally {
       setUploading(false);
@@ -85,9 +85,9 @@ export default function DocumentsPage() {
     setMessage(null);
     try {
       await processDocuments();
-      setMessage({ type: 'success', text: 'Documents processed successfully!' });
+      setMessage({ type: 'success', text: 'Documents processed successfully, please refresh!' });
       setTimeout(() => setMessage(null), 3000);
-    } catch (error) {
+    } catch {
       setMessage({ type: 'error', text: 'Failed to process documents' });
     } finally {
       setProcessing(false);
@@ -105,7 +105,7 @@ export default function DocumentsPage() {
       setMessage({ type: 'success', text: 'Document deleted. Please run Process to update Knowledge Base.' });
       fetchDocuments();
       setTimeout(() => setMessage(null), 5000);
-    } catch (error) {
+    } catch {
       setMessage({ type: 'error', text: 'Failed to delete document' });
     } finally {
       setDeleteId(null);
@@ -169,7 +169,7 @@ export default function DocumentsPage() {
           <Card title="Upload Documents" subtitle="Add files to your knowledge base">
             <label
               htmlFor="file-upload"
-              className={`block border-2 border-dashed rounded-[var(--radius-md)] p-8 text-center transition-colors cursor-pointer ${isDragging
+              className={`block border-2 border-dashed rounded-[var(--radius-md)] p-4 lg:p-8 text-center transition-colors cursor-pointer ${isDragging
                 ? 'border-[var(--brand-primary)] bg-[var(--brand-primary)]/5'
                 : 'border-[var(--border-subtle)] hover:border-[var(--border-strong)]'
                 }`}
@@ -299,7 +299,7 @@ export default function DocumentsPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => confirmDelete(doc.id)}
-                      className="text-[var(--text-tertiary)] hover:text-red-600 hover:bg-red-50 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all"
+                      className="text-[var(--text-tertiary)] hover:text-red-600 hover:bg-red-50 flex-shrink-0 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>

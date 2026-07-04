@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import Tabs from '@/components/ui/Tabs';
-import { Activity, Users, Globe, Target } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import { getTopIntents, getTopLocations, getTrafficSources, getAnalyticsOverview } from '@/lib/api';
 import { IntentStat, TrafficSource, AnalyticsOverview, LocationStat } from '@/lib/types';
@@ -117,7 +116,7 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-6">
       <div className="mb-8">
-        <h1 className="text-2xl font-space font-bold text-[var(--brand-primary)]">Analytics</h1>
+        <h1 className="text-2xl font-display font-bold text-[var(--brand-primary)]">Analytics</h1>
         <p className="text-[var(--text-secondary)]">Deep insights into your customer interactions.</p>
       </div>
 
@@ -183,7 +182,7 @@ export default function AnalyticsPage() {
             content: (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <Card className="col-span-3">
-                  <h3 className="font-space font-bold mb-4">Traffic Sources</h3>
+                  <h3 className="font-display font-bold mb-4">Traffic Sources</h3>
                   <div className="grid grid-cols-1 gap-4">
                     {sources.map(s => (
                       <div key={s.source} className="p-4 border border-[var(--border-subtle)] rounded-lg">

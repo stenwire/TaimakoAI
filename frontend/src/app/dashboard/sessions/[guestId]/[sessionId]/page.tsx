@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
-  ArrowLeft, Sparkles, Wand2, Calendar, Users, Send, Bot, User as UserIcon
+  ArrowLeft, Sparkles, Wand2, Calendar, Users, Bot, User as UserIcon
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Button from '@/components/ui/Button';
@@ -11,14 +11,12 @@ import FollowUpModal from '@/components/dashboard/FollowUpModal';
 import { getSession, analyzeSession, generateFollowUp } from '@/lib/api';
 import { SessionDetail } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import Markdown from '@/components/ui/Markdown';
 
 export default function SessionDetailPage() {
   const router = useRouter();
   const params = useParams();
   const sessionId = params.sessionId as string;
-  const guestId = params.guestId as string;
 
   const [session, setSession] = useState<SessionDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -79,7 +77,7 @@ export default function SessionDetailPage() {
             <ArrowLeft className="w-5 h-5 text-[var(--text-secondary)]" />
           </Button>
           <div>
-            <h1 className="text-2xl font-space font-bold text-[var(--brand-primary)] flex items-center gap-2">
+            <h1 className="text-2xl font-display font-bold text-[var(--brand-primary)] flex items-center gap-2">
               Session Detail
               {session.sentiment_score !== null && (
                 <span className={cn(
@@ -158,15 +156,11 @@ export default function SessionDetailPage() {
                     ? "bg-[var(--brand-primary)] text-white rounded-tr-none"
                     : "bg-white text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-tl-none"
                 )}>
-                  {/* Use ReactMarkdown for safe HTML rendering */}
-                  <div className={cn(
-                    "prose prose-sm max-w-none break-words",
-                    msg.role === 'user' ? "prose-invert" : "text-[var(--text-primary)]"
-                  )}>
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {msg.content}
-                    </ReactMarkdown>
-                  </div>
+                  {/* Use Markdown component for safe HTML rendering */}
+                  <Markdown
+                    content={msg.content}
+                    variant={msg.role === 'user' ? 'inverted' : 'default'}
+                  />
                 </div>
                 <div className={cn(
                   "text-[10px] text-[var(--text-tertiary)] mt-1",

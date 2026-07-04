@@ -1,12 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Sparkles, Check, Copy, Plus, X } from 'lucide-react';
+import { Sparkles, Check, Copy, Plus, X, Phone, MessageSquare, Send } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Textarea from '@/components/ui/Textarea';
 import Select from '@/components/ui/Select';
-import Card from '@/components/ui/Card';
 import { getAccessToken, getBusinessProfile, updateBusinessProfile, generateIntents } from '@/lib/api';
 import { useToast } from '@/contexts/ToastContext';
 import { BusinessProfile } from '@/lib/types';
@@ -28,6 +27,7 @@ interface WidgetSettings {
   max_messages_per_session?: number;
   max_sessions_per_day?: number;
   whitelisted_domains?: string[];
+  is_active?: boolean;
 }
 
 type Tab = 'business' | 'appearance' | 'installation';
@@ -35,7 +35,7 @@ type Tab = 'business' | 'appearance' | 'installation';
 export default function WidgetSettingsPage() {
   const [settings, setSettings] = useState<WidgetSettings | null>(null);
   const { success, error } = useToast();
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [business, setBusiness] = useState<BusinessProfile | null>(null);
   const [generatingIntents, setGeneratingIntents] = useState(false);
@@ -44,6 +44,11 @@ export default function WidgetSettingsPage() {
 
   const [copied, setCopied] = useState(false);
   const [newDomain, setNewDomain] = useState('');
+  const [limits, setLimits] = useState<{
+    allocated_messages_per_session?: number;
+    allocated_daily_sessions?: number;
+    allocated_whitelisted_domains?: number;
+  } | null>(null);
 
   useEffect(() => {
     fetchSettings();
@@ -72,7 +77,14 @@ export default function WidgetSettingsPage() {
   const fetchBusiness = async () => {
     try {
       const res = await getBusinessProfile();
-      if (res.status === 'success' && res.data) setBusiness(res.data);
+      if (res.status === 'success' && res.data) {
+        setBusiness(res.data);
+        setLimits({
+          allocated_messages_per_session: (res.data as Record<string, unknown>).allocated_messages_per_session,
+          allocated_daily_sessions: (res.data as Record<string, unknown>).allocated_daily_sessions,
+          allocated_whitelisted_domains: (res.data as Record<string, unknown>).allocated_whitelisted_domains,
+        });
+      }
     } catch (e) { console.error(e); }
   }
 
@@ -98,7 +110,8 @@ export default function WidgetSettingsPage() {
           whatsapp_number: settings.whatsapp_number,
           max_messages_per_session: settings.max_messages_per_session,
           max_sessions_per_day: settings.max_sessions_per_day,
-          whitelisted_domains: settings.whitelisted_domains
+          whitelisted_domains: settings.whitelisted_domains,
+          is_active: settings.is_active
         }),
       });
       if (res.ok) {
@@ -125,7 +138,7 @@ export default function WidgetSettingsPage() {
         intents: business.intents
       });
       success("Business profile updated!");
-    } catch (e) {
+    } catch {
       error("Failed to update business profile");
     } finally {
       setBusinessUpdating(false);
@@ -144,7 +157,7 @@ export default function WidgetSettingsPage() {
         setBusiness({ ...business, intents: res.data.intents });
         success("Intents generated!");
       }
-    } catch (e) { error("Generaton failed"); } finally { setGeneratingIntents(false); }
+    } catch { error("Generaton failed"); } finally { setGeneratingIntents(false); }
   }
 
   const copyEmbedCode = () => {
@@ -173,7 +186,7 @@ export default function WidgetSettingsPage() {
   return (
     <div className="max-w-[1600px] mx-auto h-[calc(100vh-140px)] flex flex-col">
       <div className="mb-6 flex-shrink-0">
-        <h1 className="text-2xl font-space font-bold text-[var(--brand-primary)]">Widget Customization</h1>
+        <h1 className="text-2xl font-display font-bold text-[var(--brand-primary)]">Widget Customization</h1>
         <p className="text-[var(--text-secondary)] mt-1">Customize your chat widget&apos;s appearance, behavior, and business knowledge.</p>
       </div>
 
@@ -207,7 +220,7 @@ export default function WidgetSettingsPage() {
               <div className="space-y-6 animate-in fade-in duration-300">
                 <div className="flex justify-between items-start mb-6">
                   <div>
-                    <h2 className="text-lg font-space font-bold text-[var(--text-primary)]">Business Context</h2>
+                    <h2 className="text-lg font-display font-bold text-[var(--text-primary)]">Business Context</h2>
                     <p className="text-sm text-[var(--text-secondary)] mt-1">Define how the AI understands your business to answer customer queries.</p>
                   </div>
                   <Button
@@ -266,7 +279,7 @@ export default function WidgetSettingsPage() {
               <div className="space-y-8 animate-in fade-in duration-300">
                 <div className="flex justify-between items-start mb-6">
                   <div>
-                    <h2 className="text-lg font-space font-bold text-[var(--text-primary)]">Appearance & Behavior</h2>
+                    <h2 className="text-lg font-display font-bold text-[var(--text-primary)]">Appearance & Behavior</h2>
                     <p className="text-sm text-[var(--text-secondary)] mt-1">Customize the look and feel of the chat widget.</p>
                   </div>
                   <Button
@@ -279,6 +292,24 @@ export default function WidgetSettingsPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="md:col-span-2 bg-[var(--bg-secondary)] p-6 rounded-[var(--radius-md)] border border-[var(--border-subtle)] flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-bold text-[var(--text-primary)]">Widget Status</h3>
+                      <p className="text-sm text-[var(--text-secondary)] mt-1">
+                        {settings?.is_active ? 'Widget is currently active and visible on your site.' : 'Widget is disabled and hidden from your site.'}
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={settings?.is_active ?? true}
+                        onChange={(e) => settings && setSettings({ ...settings, is_active: e.target.checked })}
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--brand-primary)]"></div>
+                    </label>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Primary Brand Color</label>
                     <div className="flex gap-3 items-center">
@@ -352,59 +383,140 @@ export default function WidgetSettingsPage() {
                 </div>
 
                 <div className="border-t border-[var(--border-subtle)] pt-8 space-y-6">
+                  <h3 className="text-sm font-bold text-[var(--brand-primary)] uppercase tracking-wider">WhatsApp Integration</h3>
+                  <div className="space-y-4">
+                    <label className="flex items-center gap-3 p-4 bg-[var(--bg-secondary)] rounded-[var(--radius-md)] border border-[var(--border-subtle)] cursor-pointer hover:border-[var(--brand-primary)] transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={settings?.whatsapp_enabled ?? false}
+                        onChange={(e) => settings && setSettings({ ...settings, whatsapp_enabled: e.target.checked })}
+                        className="h-4 w-4 text-[var(--brand-primary)] border-[var(--border-strong)] rounded focus:ring-[var(--brand-primary)]"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-4 h-4 text-green-600" />
+                          <span className="block text-sm font-medium text-[var(--text-primary)]">Enable WhatsApp Integration</span>
+                        </div>
+                        <span className="block text-xs text-[var(--text-secondary)] mt-0.5">Allow customers to chat with you via WhatsApp.</span>
+                      </div>
+                    </label>
+
+                    {settings?.whatsapp_enabled && (
+                      <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                        <Input
+                          label="WhatsApp Number"
+                          placeholder="e.g. 15551234567"
+                          value={settings?.whatsapp_number || ""}
+                          onChange={(e) => {
+                            if (!settings) return;
+                            // Only allow numbers
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            setSettings({ ...settings, whatsapp_number: val });
+                          }}
+                          className="font-mono"
+                        />
+                        <p className="text-xs text-[var(--text-tertiary)] mt-1.5 flex items-center gap-1">
+                          <span className="text-[var(--brand-primary)]">*</span> Enter numbers only, including country code (no + or spaces).
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="border-t border-[var(--border-subtle)] pt-8 space-y-6">
                   <h3 className="text-sm font-bold text-[var(--brand-primary)] uppercase tracking-wider">Limits & Security</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Input
-                      label="Max Messages / Session"
-                      type="number"
-                      value={settings?.max_messages_per_session || 50}
-                      onChange={(e) => settings && setSettings({ ...settings, max_messages_per_session: parseInt(e.target.value) })}
-                    />
-                    <Input
-                      label="Max Sessions / Day"
-                      type="number"
-                      value={settings?.max_sessions_per_day || 5}
-                      onChange={(e) => settings && setSettings({ ...settings, max_sessions_per_day: parseInt(e.target.value) })}
-                    />
+                    <div>
+                      <Input
+                        label="Max Messages / Session"
+                        type="number"
+                        value={settings?.max_messages_per_session || 50}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value) || 0;
+                          const limit = limits?.allocated_messages_per_session || 50;
+                          if (settings) setSettings({ ...settings, max_messages_per_session: Math.min(val, limit) });
+                        }}
+                      />
+                      {limits?.allocated_messages_per_session !== undefined && (
+                        <p className="text-xs text-[var(--text-tertiary)] mt-1 ml-1 flex justify-between">
+                          <span>Current value</span>
+                          <span>Plan maximum: {limits.allocated_messages_per_session}</span>
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <Input
+                        label="Max Sessions / Day"
+                        type="number"
+                        value={settings?.max_sessions_per_day || 5}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value) || 0;
+                          const limit = limits?.allocated_daily_sessions || 5;
+                          if (settings) setSettings({ ...settings, max_sessions_per_day: Math.min(val, limit) });
+                        }}
+                      />
+                      {limits?.allocated_daily_sessions !== undefined && (
+                        <p className="text-xs text-[var(--text-tertiary)] mt-1 ml-1 flex justify-between">
+                          <span>Current value</span>
+                          <span>Plan maximum: {limits.allocated_daily_sessions}</span>
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Whitelisted Domains</label>
                   <div className="space-y-3">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="https://example.com"
-                        value={newDomain}
-                        onChange={(e) => setNewDomain(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            if (newDomain && settings) {
-                              const current = settings.whitelisted_domains || [];
-                              if (!current.includes(newDomain)) {
-                                setSettings({ ...settings, whitelisted_domains: [...current, newDomain] });
-                                setNewDomain('');
-                              }
-                            }
-                          }
-                        }}
-                      />
-                      <Button
-                        variant="secondary"
-                        onClick={() => {
-                          if (newDomain && settings) {
-                            const current = settings.whitelisted_domains || [];
-                            if (!current.includes(newDomain)) {
-                              setSettings({ ...settings, whitelisted_domains: [...current, newDomain] });
-                              setNewDomain('');
-                            }
-                          }
-                        }}
-                        disabled={!newDomain}
-                      >
-                        <Plus className="w-4 h-4" />
-                      </Button>
-                    </div>
+                    {(() => {
+                      const currentCount = settings?.whitelisted_domains?.length || 0;
+                      const maxAllowed = limits?.allocated_whitelisted_domains || 1;
+                      const isLimitReached = currentCount >= maxAllowed;
+
+                      return (
+                        <div className="w-full">
+                          <div className="flex gap-2">
+                            <Input
+                              placeholder="https://example.com"
+                              value={newDomain}
+                              disabled={isLimitReached}
+                              onChange={(e) => setNewDomain(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !isLimitReached) {
+                                  e.preventDefault();
+                                  if (newDomain && settings) {
+                                    const current = settings.whitelisted_domains || [];
+                                    if (!current.includes(newDomain)) {
+                                      setSettings({ ...settings, whitelisted_domains: [...current, newDomain] });
+                                      setNewDomain('');
+                                    }
+                                  }
+                                }
+                              }}
+                            />
+                            <Button
+                              variant="secondary"
+                              onClick={() => {
+                                if (newDomain && settings && !isLimitReached) {
+                                  const current = settings.whitelisted_domains || [];
+                                  if (!current.includes(newDomain)) {
+                                    setSettings({ ...settings, whitelisted_domains: [...current, newDomain] });
+                                    setNewDomain('');
+                                  }
+                                }
+                              }}
+                              disabled={!newDomain || isLimitReached}
+                            >
+                              <Plus className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          {isLimitReached ? (
+                            <p className="text-xs text-[var(--error)] mt-1.5 ml-1">Plan limit reached ({maxAllowed} domains max). Upgrade to add more.</p>
+                          ) : (
+                            <p className="text-xs text-[var(--text-tertiary)] mt-1.5 ml-1">{currentCount} of {maxAllowed} domains used</p>
+                          )}
+                        </div>
+                      );
+                    })()}
                     <div className="flex flex-wrap gap-2">
                       {(settings?.whitelisted_domains || []).map((domain) => (
                         <div
@@ -438,7 +550,7 @@ export default function WidgetSettingsPage() {
               <div className="space-y-6 animate-in fade-in duration-300">
                 <div className="flex justify-between items-start mb-6">
                   <div>
-                    <h2 className="text-lg font-space font-bold text-[var(--text-primary)]">Installation</h2>
+                    <h2 className="text-lg font-display font-bold text-[var(--text-primary)]">Installation</h2>
                     <p className="text-sm text-[var(--text-secondary)] mt-1">Add the widget to your website.</p>
                   </div>
                 </div>
@@ -495,53 +607,110 @@ export default function WidgetSettingsPage() {
               {/* Mock Widget */}
               <div className="relative flex flex-col items-end space-y-4 max-h-full w-full pointer-events-none">
 
-                {/* Chat Window */}
-                <div className="w-[360px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-500 transform origin-bottom-right ring-1 ring-black/5 shrink-0 max-h-[calc(100%-80px)]">
-                  {/* Header */}
-                  <div className="h-14 flex items-center px-5 justify-between text-white shadow-sm z-10 shrink-0" style={{ backgroundColor: settings?.primary_color || '#0E3F34' }}>
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <div className="w-2 h-2 rounded-full bg-green-400 border border-white/20" />
-                        <div className="absolute inset-0 w-2 h-2 rounded-full bg-green-400 animate-ping opacity-75" />
+                {/* Chat Window or Actions View */}
+                {settings?.whatsapp_enabled ? (
+                  // ACTIONS VIEW PREVIEW
+                  <div className="w-[360px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-500 transform origin-bottom-right ring-1 ring-black/5 shrink-0 max-h-[calc(100%-80px)]">
+                    {/* Header */}
+                    <div className="h-14 flex items-center px-5 justify-between text-white shadow-sm z-10 shrink-0 mb-0" style={{ backgroundColor: settings?.primary_color || '#0E3F34' }}>
+                      <div className="flex items-center gap-3">
+                        <span className="font-display font-bold tracking-tight text-md">👋 Welcome</span>
                       </div>
-                      <span className="font-space font-bold tracking-tight text-md">Support</span>
                     </div>
-                  </div>
 
-                  {/* Messages */}
-                  <div className="flex-1 bg-[#F9FAFB] p-5 flex flex-col gap-3 overflow-y-auto min-h-0">
-                    {/* Welcome Message */}
-                    {settings?.welcome_message && (
-                      <div className="bg-white p-3.5 rounded-2xl rounded-bl-none shadow-sm text-[13px] border border-gray-100 self-start max-w-[85%] text-gray-700 leading-relaxed animate-in fade-in slide-in-from-left-2 duration-300">
-                        {settings.welcome_message}
+                    {/* Content */}
+                    <div className="flex-1 p-6 flex flex-col justify-center bg-white">
+                      <div className="text-center space-y-2 mb-6">
+                        <div className="inline-flex items-center justify-center w-14 h-14 rounded-full text-white shadow-lg mb-2" style={{ backgroundColor: settings?.primary_color || '#0E3F34' }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          {business?.logo_url ? <img src={business.logo_url} className="w-8 h-8 object-contain" alt="" /> : <MessageSquare className="w-6 h-6" />}
+                        </div>
+                        <h2 className="text-xl font-bold text-gray-900 leading-tight">How would you like to connect?</h2>
                       </div>
-                    )}
 
-                    {/* User Message */}
-                    <div className="p-3.5 rounded-2xl rounded-br-none shadow-sm text-[13px] text-white self-end max-w-[85%] leading-relaxed animate-in fade-in slide-in-from-right-2 duration-300 delay-150" style={{ backgroundColor: settings?.primary_color || '#0E3F34' }}>
-                      I have a question about pricing.
-                    </div>
+                      <div className="space-y-3">
+                        <div className="w-full bg-[var(--primary-color)] text-white p-3.5 rounded-xl shadow-md flex items-center justify-between opacity-90" style={{ backgroundColor: settings?.primary_color || '#0E3F34' }}>
+                          <div className="flex items-center gap-3">
+                            <div className="bg-white/20 p-1.5 rounded-lg">
+                              <MessageSquare className="w-5 h-5" />
+                            </div>
+                            <div className="text-left">
+                              <div className="font-bold text-sm">Chat with AI</div>
+                              <div className="text-[10px] text-white/80">Instant responses</div>
+                            </div>
+                          </div>
+                          <Send className="w-4 h-4" />
+                        </div>
 
-                    {/* AI Message */}
-                    <div className="bg-white p-3.5 rounded-2xl rounded-bl-none shadow-sm text-[13px] border border-gray-100 self-start max-w-[85%] text-gray-700 leading-relaxed animate-in fade-in slide-in-from-left-2 duration-300 delay-300">
-                      {settings?.initial_ai_message || "How can I help you today?"}
+                        <div className="w-full bg-[#25D366] text-white p-3.5 rounded-xl shadow-md flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-white/20 p-1.5 rounded-lg">
+                              <Phone className="w-5 h-5" />
+                            </div>
+                            <div className="text-left">
+                              <div className="font-bold text-sm">WhatsApp</div>
+                              <div className="text-[10px] text-white/80">Drop a message</div>
+                            </div>
+                          </div>
+                          <Send className="w-4 h-4 -rotate-45" />
+                        </div>
+                      </div>
+
+                      <div className="mt-6 text-center">
+                        <span className="text-gray-400 text-xs border-b border-dotted border-gray-400">Continue to form</span>
+                      </div>
                     </div>
                   </div>
+                ) : (
+                  // CHAT VIEW PREVIEW
+                  <div className="w-[360px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-500 transform origin-bottom-right ring-1 ring-black/5 shrink-0 max-h-[calc(100%-80px)]">
+                    {/* Header */}
+                    <div className="h-14 flex items-center px-5 justify-between text-white shadow-sm z-10 shrink-0" style={{ backgroundColor: settings?.primary_color || '#0E3F34' }}>
+                      <div className="flex items-center gap-3">
+                        <div className="relative">
+                          <div className="w-2 h-2 rounded-full bg-green-400 border border-white/20" />
+                          <div className="absolute inset-0 w-2 h-2 rounded-full bg-green-400 animate-ping opacity-75" />
+                        </div>
+                        <span className="font-display font-bold tracking-tight text-md">Support</span>
+                      </div>
+                    </div>
 
-                  {/* Footer */}
-                  <div className="p-3 bg-white border-t border-gray-100 shrink-0">
-                    <div className="h-10 bg-gray-50 rounded-full w-full border border-gray-200 flex items-center px-4 text-gray-400 text-sm">
-                      Type a message...
+                    {/* Messages */}
+                    <div className="flex-1 bg-[#F9FAFB] p-5 flex flex-col gap-3 overflow-y-auto min-h-0">
+                      {/* Welcome Message */}
+                      {settings?.welcome_message && (
+                        <div className="bg-white p-3.5 rounded-2xl rounded-bl-none shadow-sm text-[13px] border border-gray-100 self-start max-w-[85%] text-gray-700 leading-relaxed animate-in fade-in slide-in-from-left-2 duration-300">
+                          {settings.welcome_message}
+                        </div>
+                      )}
+
+                      {/* User Message */}
+                      <div className="p-3.5 rounded-2xl rounded-br-none shadow-sm text-[13px] text-white self-end max-w-[85%] leading-relaxed animate-in fade-in slide-in-from-right-2 duration-300 delay-150" style={{ backgroundColor: settings?.primary_color || '#0E3F34' }}>
+                        I have a question about pricing.
+                      </div>
+
+                      {/* AI Message */}
+                      <div className="bg-white p-3.5 rounded-2xl rounded-bl-none shadow-sm text-[13px] border border-gray-100 self-start max-w-[85%] text-gray-700 leading-relaxed animate-in fade-in slide-in-from-left-2 duration-300 delay-300">
+                        {settings?.initial_ai_message || "How can I help you today?"}
+                      </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="p-3 bg-white border-t border-gray-100 shrink-0">
+                      <div className="h-10 bg-gray-50 rounded-full w-full border border-gray-200 flex items-center px-4 text-gray-400 text-sm">
+                        Type a message...
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* Launcher */}
                 <div className="w-14 h-14 rounded-full shadow-xl flex items-center justify-center text-white cursor-pointer hover:scale-105 transition-transform active:scale-95 ring-4 ring-white/30 shrink-0" style={{ backgroundColor: settings?.primary_color || '#0E3F34' }}>
                   {settings?.icon_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img src={settings.icon_url} className="w-7 h-7 object-contain" alt="Widget Icon" />
                   ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                    <MessageSquare strokeWidth={2} className="w-7 h-7" />
                   )}
                 </div>
 

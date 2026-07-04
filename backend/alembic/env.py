@@ -1,53 +1,77 @@
 from logging.config import fileConfig
+import os
+from dotenv import load_dotenv
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+load_dotenv()
 
+
+from sqlalchemy import engine_from_config, pool
 from alembic import context
 
 from app.db.base import Base
-from app.models.user import User # Import models to register them
-from app.models.document import Document
-from app.models.business import Business  # Import Business model
-from app.models.widget import WidgetSettings, GuestUser, GuestMessage
-from app.models.chat_session import ChatSession
-from app.models.analytics import AnalyticsDailySummary
+# Import all models so they are registered with Base.metadata
+from app.models.user import User  # noqa: F401
+from app.models.business import Business  # noqa: F401
+from app.models.product import Product  # noqa: F401
+from app.models.plan import Plan  # noqa: F401
+from app.models.payment import PaymentTransaction  # noqa: F401
+from app.models.chat_session import ChatSession  # noqa: F401
+from app.models.widget import WidgetSettings, GuestUser, GuestMessage  # noqa: F401
+from app.models.escalation import Escalation  # noqa: F401
+from app.models.document import Document  # noqa: F401
+from app.models.analytics import AnalyticsDailySummary  # noqa: F401
+from app.models.order import Order, OrderItem  # noqa: F401
+from app.models.whatsapp_broadcast import (  # noqa: F401
+    WhatsAppContact,
+    WhatsAppContactList,
+    WhatsAppContactListMember,
+    WhatsAppTemplate,
+    WhatsAppCampaign,
+    WhatsAppCampaignMessage,
+)
 
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
+# Alembic Config object
 config = context.config
 
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
+# === Dynamically build DATABASE_URL from individual env vars ===
+POSTGRES_USER = os.getenv("POSTGRES_USER")
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
+POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")  # fallback for local runs
+POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
+POSTGRES_DB = os.getenv("POSTGRES_DB")
+
+if os.getenv("DATABASE_URL"):
+    config.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL"))
+elif all([POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB]):
+    database_url = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+    config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
+
+# Logging setup
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
+# Google ADK tables managed externally — exclude from autogenerate so Alembic
+# doesn't generate drop statements for them.
+ADK_TABLES = {"sessions", "app_states", "events", "user_states"}
+
+
+def include_object(object, name, type_, reflected, compare_to):
+    if type_ == "table" and name in ADK_TABLES:
+        return False
+    return True
 
 
 def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode.
-
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
-
-    Calls to context.execute() here emit the given string to the
-    script output.
-
-    """
+    """Run migrations in 'offline' mode."""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -55,12 +79,7 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode.
-
-    In this scenario we need to create an Engine
-    and associate a connection with the context.
-
-    """
+    """Run migrations in 'online' mode."""
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
@@ -69,9 +88,10 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, 
+            connection=connection,
             target_metadata=target_metadata,
-            render_as_batch=True
+            render_as_batch=True,  # Important for SQLite → PostgreSQL migrations if ever needed
+            include_object=include_object,
         )
 
         with context.begin_transaction():

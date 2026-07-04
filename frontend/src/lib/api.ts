@@ -17,7 +17,14 @@ import type {
   Session,
   SessionDetail,
   Guest,
-  GuestSession
+  GuestSession,
+  Escalation,
+  EscalationDetail,
+  Product,
+  CreateProductData,
+  UpdateProductData,
+  Order,
+  OrdersPage,
 } from './types';
 
 import { BACKEND_URL } from '../config';
@@ -248,15 +255,23 @@ export const getSession = async (sessionId: string): Promise<SessionDetail> => {
 };
 
 // Widget/Guest endpoints for 3-pane view
-export const getGuests = async (): Promise<Guest[]> => {
-  const response = await api.get('/widgets/guests');
-  // Handle both wrapped and unwrapped for robustness during migration
-  const data = response.data.data || response.data;
-  return Array.isArray(data) ? data : [];
+export const getGuests = async (
+  params: { q?: string; limit?: number; offset?: number } = {},
+): Promise<Paginated<Guest>> => {
+  const response = await api.get('/widgets/guests', { params });
+  return response.data.data;
 };
 
-export const getGuestSessions = async (guestId: string): Promise<GuestSession[]> => {
-  const response = await api.get(`/widgets/sessions/${guestId}/history`);
+export const getGuest = async (guestId: string): Promise<Guest> => {
+  const response = await api.get(`/widgets/guests/${guestId}`);
+  return response.data.data;
+};
+
+export const getGuestSessions = async (
+  guestId: string,
+  params: { limit?: number; offset?: number } = {},
+): Promise<Paginated<GuestSession>> => {
+  const response = await api.get(`/widgets/sessions/${guestId}/history`, { params });
   return response.data.data;
 };
 
@@ -265,6 +280,404 @@ export const analyzeSession = async (sessionId: string): Promise<GuestSession> =
   return response.data.data || response.data;
 };
 
+export const toggleLeadStatus = async (guestId: string, isLead: boolean): Promise<Guest> => {
+  const response = await api.put(`/widgets/guests/${guestId}/lead`, { is_lead: isLead });
+  return response.data.data;
+};
+
+// Escalation endpoints
+export const getEscalations = async (
+  businessId: string,
+  params: { status?: string; limit?: number; offset?: number } = {},
+): Promise<Paginated<Escalation>> => {
+  const response = await api.get('/escalations', {
+    params: { business_id: businessId, ...params },
+  });
+  return response.data.data;
+};
+
+export const getEscalationDetails = async (escalationId: string): Promise<EscalationDetail> => {
+  const response = await api.get(`/escalations/${escalationId}`);
+  return response.data.data;
+};
+
+export const resolveEscalation = async (escalationId: string): Promise<{ status: string }> => {
+  const response = await api.post(`/escalations/${escalationId}/resolve`);
+  return response.data.data;
+};
+
+// Subscription endpoints
+export const initializeSubscription = async (planId: number, provider: string = 'paystack'): Promise<ApiResponse<{ authorization_url: string; access_code: string; reference: string }>> => {
+  const response = await api.post('/subscription/initialize', { plan_id: planId, provider });
+  return response.data;
+};
+
+export const cancelSubscription = async (provider: string = 'paystack'): Promise<ApiResponse<null>> => {
+  const response = await api.post('/subscription/cancel', { provider });
+  return response.data;
+};
+
+export const upgradeSubscription = async (newPlanId: number, provider: string = 'paystack'): Promise<ApiResponse<unknown>> => {
+  const response = await api.post('/subscription/upgrade', { new_plan_id: newPlanId, provider });
+  return response.data;
+};
+
+export const enableSubscription = async (provider: string = 'paystack'): Promise<ApiResponse<{ authorization_url?: string; access_code?: string; reference?: string } | null>> => {
+  const response = await api.post('/subscription/enable', { provider });
+  return response.data;
+};
+
+export const verifySubscriptionTransaction = async (reference: string, provider: string = 'paystack'): Promise<ApiResponse<unknown>> => {
+  const response = await api.post('/subscription/verify', { reference, provider });
+  return response.data;
+};
+
+export const getPublicPlans = async (): Promise<ApiResponse<unknown>> => {
+  const response = await api.get('/public/plans');
+  return response.data;
+};
+
+// ---------------- WhatsApp Broadcast ----------------
+
+export interface WhatsAppTemplate {
+  id: string;
+  business_id: string;
+  meta_template_id: string | null;
+  name: string;
+  category: string;
+  language: string;
+  header: Record<string, unknown> | null;
+  body_text: string;
+  footer: string | null;
+  buttons: unknown[] | null;
+  variables: string[] | null;
+  status: string;
+  rejection_reason: string | null;
+  source: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WhatsAppContact {
+  id: string;
+  business_id: string;
+  phone_e164: string;
+  name: string | null;
+  tags: string[] | null;
+  source: string;
+  opted_in: boolean;
+  last_contacted_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WhatsAppContactList {
+  id: string;
+  business_id: string;
+  name: string;
+  description: string | null;
+  member_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WhatsAppCampaign {
+  id: string;
+  business_id: string;
+  name: string;
+  template_id: string;
+  audience_type: string;
+  audience_ref: Record<string, unknown> | null;
+  variable_mapping: Record<string, unknown> | null;
+  status: string;
+  scheduled_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  total_recipients: number;
+  sent_count: number;
+  delivered_count: number;
+  read_count: number;
+  failed_count: number;
+  created_by_user_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WhatsAppCampaignMessage {
+  id: string;
+  campaign_id: string;
+  contact_phone: string;
+  variables_snapshot: Record<string, string> | null;
+  meta_message_id: string | null;
+  status: string;
+  error_code: string | null;
+  error_message: string | null;
+  sent_at: string | null;
+  delivered_at: string | null;
+  read_at: string | null;
+}
+
+export interface Paginated<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+// Templates
+
+export const listWhatsAppTemplates = async (): Promise<WhatsAppTemplate[]> => {
+  const res = await api.get('/whatsapp/templates');
+  return res.data.data || [];
+};
+
+export const createWhatsAppTemplate = async (payload: {
+  name: string;
+  category: string;
+  language: string;
+  body_text: string;
+  header?: Record<string, unknown> | null;
+  footer?: string | null;
+  buttons?: unknown[] | null;
+}): Promise<WhatsAppTemplate> => {
+  const res = await api.post('/whatsapp/templates', payload);
+  return res.data.data;
+};
+
+export const updateWhatsAppTemplate = async (
+  id: string,
+  payload: {
+    name?: string;
+    category?: string;
+    language?: string;
+    body_text?: string;
+    header?: Record<string, unknown> | null;
+    footer?: string | null;
+    buttons?: unknown[] | null;
+  }
+): Promise<WhatsAppTemplate> => {
+  const res = await api.patch(`/whatsapp/templates/${id}`, payload);
+  return res.data.data;
+};
+
+export const submitWhatsAppTemplate = async (id: string): Promise<WhatsAppTemplate> => {
+  const res = await api.post(`/whatsapp/templates/${id}/submit`);
+  return res.data.data;
+};
+
+export const importWhatsAppTemplates = async (): Promise<WhatsAppTemplate[]> => {
+  const res = await api.post('/whatsapp/templates/import');
+  return res.data.data || [];
+};
+
+export const deleteWhatsAppTemplate = async (id: string): Promise<void> => {
+  await api.delete(`/whatsapp/templates/${id}`);
+};
+
+// Contacts
+
+export const listWhatsAppContacts = async (
+  params: { q?: string; limit?: number; offset?: number } = {},
+): Promise<Paginated<WhatsAppContact>> => {
+  const res = await api.get('/whatsapp/contacts', { params });
+  return res.data.data;
+};
+
+export const createWhatsAppContact = async (payload: {
+  phone: string;
+  name?: string;
+  tags?: string[];
+  opted_in?: boolean;
+}): Promise<WhatsAppContact> => {
+  const res = await api.post('/whatsapp/contacts', payload);
+  return res.data.data;
+};
+
+export const updateWhatsAppContact = async (
+  id: string,
+  payload: { name?: string; tags?: string[]; opted_in?: boolean },
+): Promise<WhatsAppContact> => {
+  const res = await api.patch(`/whatsapp/contacts/${id}`, payload);
+  return res.data.data;
+};
+
+export const deleteWhatsAppContact = async (id: string): Promise<void> => {
+  await api.delete(`/whatsapp/contacts/${id}`);
+};
+
+export const uploadWhatsAppContactsCsv = async (
+  file: File,
+): Promise<{ imported: number; skipped: number; errors: string[] }> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await api.post('/whatsapp/contacts/csv', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return res.data.data;
+};
+
+export const importWhatsAppGuests = async (
+  payload: { min_sessions?: number; last_seen_after?: string } = {},
+): Promise<{ imported: number }> => {
+  const res = await api.post('/whatsapp/contacts/import-guests', payload);
+  return res.data.data;
+};
+
+// Contact Lists
+
+export const listWhatsAppContactLists = async (): Promise<WhatsAppContactList[]> => {
+  const res = await api.get('/whatsapp/contact-lists');
+  return res.data.data || [];
+};
+
+export const createWhatsAppContactList = async (payload: {
+  name: string;
+  description?: string;
+}): Promise<WhatsAppContactList> => {
+  const res = await api.post('/whatsapp/contact-lists', payload);
+  return res.data.data;
+};
+
+export const updateWhatsAppContactList = async (
+  id: string,
+  payload: { name?: string; description?: string },
+): Promise<WhatsAppContactList> => {
+  const res = await api.patch(`/whatsapp/contact-lists/${id}`, payload);
+  return res.data.data;
+};
+
+export const deleteWhatsAppContactList = async (id: string): Promise<void> => {
+  await api.delete(`/whatsapp/contact-lists/${id}`);
+};
+
+export const addWhatsAppContactListMembers = async (
+  listId: string,
+  contactIds: string[],
+): Promise<WhatsAppContactList> => {
+  const res = await api.post(`/whatsapp/contact-lists/${listId}/members`, {
+    contact_ids: contactIds,
+  });
+  return res.data.data;
+};
+
+export const removeWhatsAppContactListMembers = async (
+  listId: string,
+  contactIds: string[],
+): Promise<WhatsAppContactList> => {
+  const res = await api.delete(`/whatsapp/contact-lists/${listId}/members`, {
+    data: { contact_ids: contactIds },
+  });
+  return res.data.data;
+};
+
+// Campaigns
+
+export const listWhatsAppCampaigns = async (
+  params: { status?: string; limit?: number; offset?: number } = {},
+): Promise<Paginated<WhatsAppCampaign>> => {
+  const res = await api.get('/whatsapp/campaigns', { params });
+  return res.data.data;
+};
+
+export const createWhatsAppCampaign = async (payload: {
+  name: string;
+  template_id: string;
+  audience_type: string;
+  audience_ref: Record<string, unknown>;
+  variable_mapping: Record<string, unknown>;
+  scheduled_at?: string | null;
+  send_now?: boolean;
+}): Promise<WhatsAppCampaign> => {
+  const res = await api.post('/whatsapp/campaigns', payload);
+  return res.data.data;
+};
+
+export const getWhatsAppCampaign = async (id: string): Promise<WhatsAppCampaign> => {
+  const res = await api.get(`/whatsapp/campaigns/${id}`);
+  return res.data.data;
+};
+
+export const listWhatsAppCampaignMessages = async (
+  id: string,
+  params: { status?: string; limit?: number; offset?: number } = {},
+): Promise<Paginated<WhatsAppCampaignMessage>> => {
+  const res = await api.get(`/whatsapp/campaigns/${id}/messages`, { params });
+  return res.data.data;
+};
+
+export const sendWhatsAppCampaign = async (
+  id: string,
+  scheduledAt?: string | null,
+): Promise<WhatsAppCampaign> => {
+  const res = await api.post(`/whatsapp/campaigns/${id}/send`, {
+    scheduled_at: scheduledAt ?? null,
+  });
+  return res.data.data;
+};
+
+export const cancelWhatsAppCampaign = async (id: string): Promise<WhatsAppCampaign> => {
+  const res = await api.post(`/whatsapp/campaigns/${id}/cancel`);
+  return res.data.data;
+};
+
+// ---------------- Product Catalogue ----------------
+
+export const listProducts = async (
+  params: { q?: string; category?: string; limit?: number; offset?: number } = {},
+): Promise<Product[] | Paginated<Product>> => {
+  const res = await api.get('/products', { params });
+  return res.data.data;
+};
+
+export const getProduct = async (id: string): Promise<Product> => {
+  const res = await api.get(`/products/${id}`);
+  return res.data.data;
+};
+
+export const createProduct = async (data: CreateProductData): Promise<Product> => {
+  const res = await api.post('/products', data);
+  return res.data.data;
+};
+
+export const updateProduct = async (id: string, data: UpdateProductData): Promise<Product> => {
+  const res = await api.put(`/products/${id}`, data);
+  return res.data.data;
+};
+
+export const deleteProduct = async (id: string): Promise<void> => {
+  await api.delete(`/products/${id}`);
+};
+
+export const bulkUploadProducts = async (
+  file: File,
+): Promise<{ imported: number; updated: number; errors: string[] }> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await api.post('/products/bulk', formData, {
+    headers: { 'Content-Type': undefined },
+  });
+  return res.data.data;
+};
+
+// ---------------- Orders ----------------
+
+export const listOrders = async (params: {
+  page?: number;
+  page_size?: number;
+  status?: string;
+} = {}): Promise<OrdersPage> => {
+  const res = await api.get('/orders', { params });
+  return res.data.data;
+};
+
+export const getOrder = async (id: string): Promise<Order> => {
+  const res = await api.get(`/orders/${id}`);
+  return res.data.data;
+};
+
+export const updateOrderStatus = async (id: string, status: string): Promise<Order> => {
+  const res = await api.patch(`/orders/${id}/status`, { status });
+  return res.data.data;
+};
 
 export default api;
-

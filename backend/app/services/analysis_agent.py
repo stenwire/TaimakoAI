@@ -1,40 +1,53 @@
-import os
 import json
 from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 from sqlalchemy.orm import Session
-from app.models.widget import GuestMessage, GuestUser
+from app.models.widget import GuestMessage
 from app.models.chat_session import ChatSession
 
-# Using hypothetical google.generativeai for the agent as per project patterns
-import google.generativeai as genai
-
-# For simplicity, assuming environment key is set
-genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
+# Use specific client for multi-tenant API key support
+from google import genai
+from app.core.config import settings
 
 INTENT_ENUM = ["Support", "Sales", "Feedback", "Bug Report", "General"]
 
-async def analyze_session(db: Session, session_id: str, intents: Optional[List[str]] = None) -> Tuple[str, str]:
+async def analyze_session(db: Session, session_id: str, intents: Optional[List[str]] = None, api_key: str = None) -> Tuple[str, str]:
     """
     Analyzes a chat session to generate a summary and determine intent.
     Returns (summary, intent).
     """
+    print(f"\n=== Analysis Agent: Starting analysis for session {session_id} ===")
+    
+    if not api_key:
+        # Fail fast if no key provided
+        print("Analysis Agent: No API Key provided")
+        return "Analysis unavailable (Missing Key)", "General"
+
     session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
     if not session:
-        raise ValueError("Session not found")
+        print(f"Analysis Agent: Session {session_id} not found in database — skipping analysis")
+        return "No session record", "General"
         
     messages = db.query(GuestMessage).filter(GuestMessage.session_id == session_id).order_by(GuestMessage.created_at).all()
     
+    print(f"Analysis Agent: Found {len(messages)} messages in session")
+    
     if not messages:
+        print("Analysis Agent: No messages to analyze")
         return "No messages in session", "General"
         
     conversation_text = ""
     for msg in messages:
         role = "User" if msg.sender == "guest" else "Agent"
         conversation_text += f"{role}: {msg.message_text}\n"
+    
+    # Show conversation preview for debugging
+    preview = conversation_text[:200] + "..." if len(conversation_text) > 200 else conversation_text
+    print(f"Analysis Agent: Conversation preview:\n{preview}")
         
     # Use provided intents or fallback to default
     intent_list = intents if intents and len(intents) > 0 else INTENT_ENUM
+    print(f"Analysis Agent: Using intent categories: {intent_list}")
         
     # Construct Prompt
     prompt = f"""
@@ -59,11 +72,17 @@ async def analyze_session(db: Session, session_id: str, intents: Optional[List[s
     """
     
     try:
-        model = genai.GenerativeModel("gemini-2.0-flash") # Or pro
-        response = model.generate_content(prompt)
+        print("Analysis Agent: Calling Gemini 2.0 Flash for analysis...")
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model=settings.GEMINI_MODEL, 
+            contents=prompt
+        )
         
-        # Simple parsing logic (assuming well-behaved model or using response_schema in future)
+        # Simple parsing logic
         content = response.text
+        print(f"Analysis Agent: Raw LLM response: {content[:150]}...")
+        
         # Strip code blocks if present
         if "```json" in content:
             content = content.replace("```json", "").replace("```", "")
@@ -75,17 +94,24 @@ async def analyze_session(db: Session, session_id: str, intents: Optional[List[s
         summary = data.get("summary", "Unable to generate summary")
         intent = data.get("intent", "Unable to get Intent")
         
+        print(f"Analysis Agent: Parsed summary: '{summary}'")
+        print(f"Analysis Agent: Parsed intent: '{intent}'")
+        
         # specific validation
         if intent not in intent_list:
+            print(f"Analysis Agent: Intent '{intent}' not in allowed list, defaulting to 'General'")
             if "General" in intent_list:
                 intent = "General"
             else:
-                intent = intent_list[-1] # Fallback to last item or just keep raw if model hallucinates slightly? Safe to map to first/last.
-            
+                intent = intent_list[-1] 
+        
+        print(f"=== Analysis Agent: Complete - Summary length: {len(summary)} chars, Intent: {intent} ===\n")
         return summary, intent
         
     except Exception as e:
-        print(f"Error in analysis agent: {e}")
+        print(f"Analysis Agent: Error during analysis: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
         return session.summary or "Error generating summary", session.top_intent or "General"
 
 async def persist_analysis(db: Session, session_id: str, summary: str, intent: str):
@@ -97,16 +123,12 @@ async def persist_analysis(db: Session, session_id: str, summary: str, intent: s
         db.commit()
         db.refresh(session)
         return session
-    if session:
-        session.summary = summary
-        session.top_intent = intent
-        session.summary_generated_at = datetime.now(timezone.utc)
-        db.commit()
-        db.refresh(session)
-        return session
     return None
 
-async def generate_business_intents(business_description: str) -> List[str]:
+async def generate_business_intents(business_description: str, api_key: str = None) -> List[str]:
+    if not api_key:
+        return []
+
     prompt = f"""
     You are a Business Consultant. Based on the following business description, generate exactly 5 intent categories that customers of this business might have.
     
@@ -117,8 +139,11 @@ async def generate_business_intents(business_description: str) -> List[str]:
     """
     
     try:
-        model = genai.GenerativeModel("gemini-2.0-flash")
-        response = model.generate_content(prompt)
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model=settings.GEMINI_MODEL,
+            contents=prompt
+        )
         text = response.text
         if "```json" in text:
             text = text.replace("```json", "").replace("```", "")
@@ -133,7 +158,10 @@ async def generate_business_intents(business_description: str) -> List[str]:
         print(f"Error generating intents: {e}")
         return []
 
-async def generate_followup_content(messages: List[GuestMessage], follow_up_type: str, extra_info: str) -> str:
+async def generate_followup_content(messages: List[GuestMessage], follow_up_type: str, extra_info: str, api_key: str = None) -> str:
+    if not api_key:
+        return "Error: No API Key configured."
+
     conversation_text = ""
     for msg in messages:
         role = "User" if msg.sender == "guest" else "Agent"
@@ -157,9 +185,13 @@ async def generate_followup_content(messages: List[GuestMessage], follow_up_type
     """
     
     try:
-        model = genai.GenerativeModel("gemini-2.0-flash")
-        response = model.generate_content(prompt)
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model=settings.GEMINI_MODEL, 
+            contents=prompt
+        )
         return response.text
     except Exception as e:
         print(f"Error generating follow up: {e}")
         return "Error generating follow up."
+

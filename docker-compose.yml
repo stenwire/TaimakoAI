@@ -1,19 +1,92 @@
 services:
-  backend:
-    build: ./backend
+  postgres:
+    image: postgres:16-alpine
+    container_name: taimako_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "8000:8000"
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    build: ./backend
+    container_name: taimako_migrate
+    command: uv run alembic upgrade head
     volumes:
       - ./backend:/app
+      - /app/.venv
     environment:
       - PYTHONUNBUFFERED=1
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend
+    container_name: taimako_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  whatsapp-worker:
+    build: ./backend
+    container_name: taimako_whatsapp_worker
+    command: uv run python -m app.workers.whatsapp_campaign_worker
+    volumes:
+      - ./backend:/app
+      - /app/.venv
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
 
   frontend:
-    build: ./frontend
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frontend
+      args:
+        NEXT_PUBLIC_ENVIRONMENT: ${NEXT_PUBLIC_ENVIRONMENT:-production}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
+        NEXT_PUBLIC_BACKEND_URL_PROD: ${NEXT_PUBLIC_BACKEND_URL_PROD:-}
+        NEXT_PUBLIC_FRONTEND_URL_PROD: ${NEXT_PUBLIC_FRONTEND_URL_PROD:-}
+        NEXT_PUBLIC_BACKEND_URL_STAGING: ${NEXT_PUBLIC_BACKEND_URL_STAGING:-}
+        NEXT_PUBLIC_FRONTEND_URL_STAGING: ${NEXT_PUBLIC_FRONTEND_URL_STAGING:-}
+        NEXT_PUBLIC_BACKEND_URL_DEV: ${NEXT_PUBLIC_BACKEND_URL_DEV:-}
+        NEXT_PUBLIC_FRONTEND_URL_DEV: ${NEXT_PUBLIC_FRONTEND_URL_DEV:-}
+    container_name: taimako_frontend
+    restart: unless-stopped
     ports:
       - "3000:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    stdin_open: true
-    tty: true
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

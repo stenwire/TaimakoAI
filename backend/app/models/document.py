@@ -1,13 +1,13 @@
 import uuid
-from sqlalchemy import Column, String, DateTime, ForeignKey, Enum
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, DateTime, ForeignKey
 from datetime import datetime, timezone
 from app.db.base import Base
+from app.models.mixins import SerializerMixin
 
 def generate_uuid():
     return str(uuid.uuid4())
 
-class Document(Base):
+class Document(Base, SerializerMixin):
     __tablename__ = "documents"
 
     id = Column(String, primary_key=True, default=generate_uuid)
@@ -17,3 +17,4 @@ class Document(Base):
     status = Column(String, default="pending") # pending, processed, error
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     error_message = Column(String, nullable=True)
+

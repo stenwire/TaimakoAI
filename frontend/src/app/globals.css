@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800&display=swap');
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
@@ -6,12 +7,14 @@
    Attio Design System - CSS Variables
    =================================== */
 
-:root {
-  /* Typography */
+@theme {
+  /* Typography — registered as Tailwind utilities: font-inter, font-display, font-mono */
   --font-inter: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-space: 'Space Grotesk', system-ui, sans-serif;
+  --font-display: 'Cabinet Grotesk', 'Inter', -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
 
+:root {
   /* Brand Colors */
   --brand-primary: #0E3F34;
   /* Deep Ember Green */
@@ -104,13 +107,15 @@ body {
    =================================== */
 
 .text-h1 {
+  font-family: var(--font-display);
   font-size: 24px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.2;
 }
 
 .text-h2 {
+  font-family: var(--font-display);
   font-size: 20px;
   font-weight: 500;
   letter-spacing: -0.01em;
@@ -337,5 +342,62 @@ a[aria-disabled="true"] {
     bottom: 0;
     width: 40px;
     background: linear-gradient(to right, transparent, var(--bg-primary));
+  }
+}
+
+/* ===================================
+   Loader Component
+   =================================== */
+
+.loader {
+  height: 60px;
+  aspect-ratio: 1;
+  border: 3px solid var(--brand-primary);
+  position: relative;
+}
+
+.loader:before,
+.loader:after {
+  content: "";
+  position: absolute;
+  width: 20%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--brand-secondary);
+  animation:
+    l8-0 .57s infinite alternate linear -.13s,
+    l8-1 .35s infinite alternate linear -.23s;
+}
+
+.loader:after {
+  background: var(--brand-accent);
+  animation:
+    l8-0 .29s infinite alternate linear -.11s,
+    l8-1 .51s infinite alternate linear -.34s;
+}
+
+@keyframes l8-0 {
+
+  0%,
+  5% {
+    bottom: 0%
+  }
+
+  95%,
+  to {
+    bottom: 80%
+  }
+}
+
+@keyframes l8-1 {
+
+  0%,
+  5% {
+    left: 0%
+  }
+
+  95%,
+  to {
+    left: 80%
   }
 }
