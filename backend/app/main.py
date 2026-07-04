@@ -91,10 +91,10 @@ app.include_router(whatsapp_campaigns_router, prefix="/whatsapp", tags=["whatsap
 app.include_router(orders_router)
 
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 async def root():
     return success_response(message="Agentic RAG API is running")
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 async def health_check():
     return {"status": "healthy"}
