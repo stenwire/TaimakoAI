@@ -94,8 +94,8 @@ def test_escalate_to_human_tool(mock_db_session, mock_email_factory):
 def test_escalation_api():
     # Only if we can spin up a real DB or mock everything. 
     # Validating the router exists and endpoint signature is correct.
-    client = TestClient(app)
-    # The endpoint needs a real DB session. 
+    TestClient(app)
+    # The endpoint needs a real DB session.
     # Since I cannot easily setup a full integration test environment in this turn without checking concurrency,
     # I will rely on the unit test above for logic.
     pass

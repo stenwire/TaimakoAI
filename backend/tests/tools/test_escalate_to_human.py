@@ -102,7 +102,7 @@ class TestEscalateToHuman:
                 instance.id = "esc-789"
             mock_db_session.refresh.side_effect = refresh_side_effect
             
-            result = escalate_to_human(
+            escalate_to_human(
                 reason="User frustrated",
                 user_message="I need help!",
                 tool_context=mock_tool_context

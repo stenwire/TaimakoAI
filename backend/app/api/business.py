@@ -149,8 +149,8 @@ async def validate_api_key(
         # New SDK supports `client.models.list()`?
         # Or we can just try generating "test".
         
-        response = client.models.generate_content(
-            model='gemini-2.0-flash', 
+        client.models.generate_content(
+            model='gemini-2.0-flash',
             contents='Test'
         )
         # If no exception, we are good?

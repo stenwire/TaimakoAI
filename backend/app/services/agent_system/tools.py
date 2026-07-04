@@ -3,7 +3,7 @@ from google.adk.tools.tool_context import ToolContext
 from app.services.agent_system.tool_schemas import (
     GetContextInput, ContextOutput,
     SayHelloInput, GreetingOutput,
-    SayGoodbyeInput, FarewellOutput
+    FarewellOutput
 )
 from app.db.session import SessionLocal
 from app.models.business import Business
@@ -108,9 +108,6 @@ def say_goodbye() -> str:
     Returns:
         str: A polite farewell message.
     """
-    # Validate input (empty schema for this tool)
-    validated_input = SayGoodbyeInput()
-    
     # Create structured output
     output = FarewellOutput(message="Goodbye! Have a great day.")
     return output.message

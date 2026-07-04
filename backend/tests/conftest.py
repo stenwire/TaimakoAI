@@ -10,14 +10,14 @@ sys.modules['chromadb'] = MagicMock()
 sys.modules['chromadb.config'] = MagicMock()
 sys.modules['google.generativeai'] = MagicMock()
 
-from app.db.session import get_db
-from app.db.base import Base
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-from fastapi.testclient import TestClient
-from app.main import app
-from app.services.rag_service import rag_service
+from app.db.session import get_db  # noqa: E402
+from app.db.base import Base  # noqa: E402
+from sqlalchemy import create_engine  # noqa: E402
+from sqlalchemy.orm import sessionmaker  # noqa: E402
+from sqlalchemy.pool import StaticPool  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+from app.main import app  # noqa: E402
+from app.services.rag_service import rag_service  # noqa: E402
 
 @pytest.fixture(scope="function")
 def db_session():
