@@ -54,19 +54,32 @@ class LocalConfig(BaseConfig):
     ]
     CORS_ALLOW_ORIGIN_REGEX: str = ".*"
 
+class StagingConfig(BaseConfig):
+    FRONTEND_URI: str = "https://taimakoai.onrender.com"
+    FRONTEND_REDIRECT_URI: str = "https://taimakoai.onrender.com/auth/callback"
+
+    CORS_ORIGINS: List[str] = [
+        "https://taimakoai.onrender.com",
+    ]
+
+    ALLOWED_HOSTS: List[str] = [
+        "taimako.onrender.com",
+        "taimakoai.onrender.com",
+    ]
+
 class ProductionConfig(BaseConfig):
     FRONTEND_URI: str = os.getenv("FRONTEND_LIVE_URI", "https://taimako.dubem.xyz")
     FRONTEND_REDIRECT_URI: str = f"{os.getenv('FRONTEND_LIVE_URI', 'https://taimako.dubem.xyz')}/auth/callback"
-    
+
     CORS_ORIGINS: List[str] = [
-        "https://taimako.dubem.xyz", 
-        "https://www.taimako.dubem.xyz"
+        "https://taimako.dubem.xyz",
+        "https://www.taimako.dubem.xyz",
     ]
-    
+
     ALLOWED_HOSTS: List[str] = [
-        "taimako.dubem.xyz", 
+        "taimako.dubem.xyz",
         "api.taimako.dubem.xyz",
-        "*.taimako.dubem.xyz"
+        "*.taimako.dubem.xyz",
     ]
     # USE_HTTPS_REDIRECT: bool = True # Uncomment if handling SSL termination directly
 
@@ -76,8 +89,7 @@ def get_settings():
     if env == "production":
         return ProductionConfig()
     elif env == "staging":
-        # Treating staging similar to prod for now, or can be its own class
-        return ProductionConfig()
+        return StagingConfig()
     return LocalConfig()
 
 settings = get_settings()
