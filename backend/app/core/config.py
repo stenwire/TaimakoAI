@@ -96,6 +96,8 @@ class StagingConfig(BaseConfig):
     ALLOWED_HOSTS: List[str] = [
         "taimako.onrender.com",
         "taimakoai.onrender.com",
+        "localhost",
+        "127.0.0.1",
     ]
 
 class ProductionConfig(BaseConfig):
