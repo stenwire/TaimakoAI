@@ -35,8 +35,8 @@ describe('config', () => {
     process.env.NEXT_PUBLIC_ENVIRONMENT = 'staging';
 
     const config = await import('@/config');
-    expect(config.BACKEND_URL).toBe('https://api.staging.taimako.ai');
-    expect(config.FRONTEND_URL).toBe('https://app.staging.taimako.ai');
+    expect(config.BACKEND_URL).toBe('https://taimako.onrender.com');
+    expect(config.FRONTEND_URL).toBe('https://taimakoai.onrender.com');
   });
 
   it('returns production URLs for production environment', async () => {
