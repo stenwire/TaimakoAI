@@ -4,12 +4,14 @@ from app.db.session import get_db
 from app.auth.router import get_current_user
 from app.models.user import User
 from app.models.business import Business
+from app.models.plan import Plan
 from app.models.widget import WidgetSettings
 from app.schemas.business import BusinessCreate, BusinessUpdate, BusinessResponse
 from app.core.response_wrapper import success_response
 from app.services.analysis_agent import generate_business_intents
-from app.core.security_utils import encrypt_string, decrypt_string
+from app.core.config import settings
 
+from app.core.subscription import SubscriptionTier
 
 router = APIRouter()
 
@@ -33,9 +35,10 @@ async def create_business(
         website=business_data.website,
         custom_agent_instruction=business_data.custom_agent_instruction,
         logo_url=business_data.logo_url,
-        gemini_api_key=encrypt_string(business_data.gemini_api_key) if business_data.gemini_api_key else None,
         is_escalation_enabled=business_data.is_escalation_enabled,
-        escalation_emails=business_data.escalation_emails
+        escalation_emails=business_data.escalation_emails,
+        # Subscription Defaults
+        subscription_tier=SubscriptionTier.SPARK.value
     )
     db.add(business)
     db.commit()
@@ -50,8 +53,8 @@ async def create_business(
 
     
     response = BusinessResponse.model_validate(business)
-    response.is_api_key_set = bool(business.gemini_api_key)
-    
+    _enrich_plan_fields(response, business, db)
+
     return success_response(
         message="Business profile created successfully",
         data=response
@@ -66,9 +69,9 @@ async def get_business(
     business = db.query(Business).filter(Business.user_id == current_user.id).first()
     if not business:
         return success_response(data=None)
-    
+
     response = BusinessResponse.model_validate(business)
-    response.is_api_key_set = bool(business.gemini_api_key)
+    _enrich_plan_fields(response, business, db)
     return success_response(data=response)
 
 @router.put("/business", response_model=None)
@@ -95,9 +98,6 @@ async def update_business(
         business.intents = business_data.intents
     if business_data.logo_url is not None:
         business.logo_url = business_data.logo_url
-    if business_data.gemini_api_key is not None and business_data.gemini_api_key != "":
-        # Only update API key if a non-empty value is provided
-        business.gemini_api_key = encrypt_string(business_data.gemini_api_key)
     if business_data.is_escalation_enabled is not None:
         business.is_escalation_enabled = business_data.is_escalation_enabled
     if business_data.escalation_emails is not None:
@@ -116,12 +116,31 @@ async def update_business(
     db.refresh(business)
     
     response = BusinessResponse.model_validate(business)
-    response.is_api_key_set = bool(business.gemini_api_key)
+    _enrich_plan_fields(response, business, db)
 
     return success_response(
         message="Business profile updated successfully",
         data=response
     )
+
+def _enrich_plan_fields(response: BusinessResponse, business: Business, db: Session):
+    """Look up the Plan by subscription_tier and populate plan fields on the response."""
+    plan = db.query(Plan).filter(Plan.name.ilike(business.subscription_tier)).first()
+    if plan:
+        response.plan_name = plan.name
+        response.plan_code = plan.plan_code
+        response.plan_price = plan.price
+        response.plan_currency = plan.currency
+        response.plan_interval = plan.interval
+        features = plan.features
+        if isinstance(features, str):
+            import ast
+            try:
+                features = ast.literal_eval(features)
+            except Exception:
+                features = {}
+        response.plan_features = features
+
 
 @router.post("/business/validate-key", response_model=None)
 async def validate_api_key(
@@ -132,36 +151,19 @@ async def validate_api_key(
     api_key = key_data.get("api_key")
     if not api_key:
         raise HTTPException(status_code=400, detail="API Key is required")
-        
+
     try:
         from google import genai
-        # Initialize client with the key
         client = genai.Client(api_key=api_key)
-        # Attempt a simple lightweight call. Validating 'models.list' or similar is usually cheapest/fastest.
-        # Or just sending "Hello"?
-        # Checking list of models is a good connectivity test.
-        # However, listing models might not verify if the key has access to generate content?
-        # Let's try to list models.
-        # Note: genai v2 SDK usage might differ slightly. Assuming standard google-genai usage.
-        # If the environment is using `google.generativeai` (old sdk) or `google-genai` (new SDK).
-        # Based on imports in agent_service.py: `from google.genai import types` -> It's the new SDK.
-        
-        # New SDK supports `client.models.list()`?
-        # Or we can just try generating "test".
-        
         client.models.generate_content(
             model='gemini-2.0-flash',
             contents='Test'
         )
-        # If no exception, we are good?
-        
+
     except Exception as e:
         print(f"Key Validation Failed: {e}")
-        # Return 200 with success=False to let frontend handle message? 
-        # Or 400? 400 is better for 'Invalid Request/Input'.
         raise HTTPException(status_code=400, detail=f"Invalid API Key: {str(e)}")
 
-    return success_response(message="API Key is valid")
 
 @router.post("/business/generate-intents", response_model=None)
 async def generate_intents(
@@ -172,9 +174,5 @@ async def generate_intents(
     if not business or not business.description:
         raise HTTPException(status_code=400, detail="Business description is required to generate intents.")
         
-    api_key = None
-    if business.gemini_api_key:
-        api_key = decrypt_string(business.gemini_api_key)
-        
-    intents = await generate_business_intents(business.description, api_key=api_key)
+    intents = await generate_business_intents(business.description, api_key=settings.GOOGLE_API_KEY)
     return success_response(data={"intents": intents})

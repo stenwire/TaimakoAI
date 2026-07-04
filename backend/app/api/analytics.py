@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from app.services.analysis_agent import generate_followup_content
 from app.models.widget import GuestMessage
 from app.core.response_wrapper import success_response
-from app.core.security_utils import decrypt_string
+from app.core.config import settings as app_settings
 
 router = APIRouter()
 
@@ -45,8 +45,7 @@ def get_analytics_overview(
     )
     
     total_sessions = query.count()
-    
-    # Guests
+
     # Better: Count distinct Guest IDs in sessions query
     total_guests = query.with_entities(ChatSession.guest_id).distinct().count()
 
@@ -54,7 +53,7 @@ def get_analytics_overview(
     leads_captured = db.query(GuestUser).join(ChatSession).filter(
         GuestUser.widget_id == widget.id,
         ChatSession.created_at >= start_date,
-        GuestUser.is_lead
+        GuestUser.is_lead.is_(True)
     ).distinct().count()
     
     # Avg Duration
@@ -69,7 +68,7 @@ def get_analytics_overview(
     returning_guests_count = db.query(GuestUser).join(ChatSession).filter(
         GuestUser.widget_id == widget.id,
         ChatSession.created_at >= start_date,
-        GuestUser.is_returning
+        GuestUser.is_returning.is_(True)
     ).distinct().count()
     
     returning_percentage = 0
@@ -191,24 +190,19 @@ async def generate_followup(
     widget = db.query(WidgetSettings).filter(WidgetSettings.user_id == current_user.id).first()
     if not widget:
         raise HTTPException(status_code=404, detail="Widget not found")
-        
+
     session = db.query(ChatSession).join(GuestUser).filter(
         ChatSession.id == request.session_id,
         GuestUser.widget_id == widget.id
     ).first()
-    
+
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
-        
+
     messages = db.query(GuestMessage).filter(GuestMessage.session_id == request.session_id).order_by(GuestMessage.created_at).all()
-    
-    # Get API key
-    api_key = None
-    if current_user.business and current_user.business.gemini_api_key:
-        api_key = decrypt_string(current_user.business.gemini_api_key)
-    
-    content = await generate_followup_content(messages, request.type, request.extra_info, api_key=api_key)
-    
+
+    content = await generate_followup_content(messages, request.type, request.extra_info, api_key=app_settings.GOOGLE_API_KEY)
+
     return success_response(data={"content": content})
 
 @router.get("/sessions")

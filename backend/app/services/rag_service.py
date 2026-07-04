@@ -8,9 +8,8 @@ from app.services.vector_db import vector_db
 from app.utils.text_splitter import recursive_character_text_splitter
 from app.schemas.document import IngestResponse
 from app.models.document import Document
-from app.models.business import Business
 from app.services.file_storage import file_storage
-from app.core.security_utils import decrypt_string
+from app.core.config import settings
 from sqlalchemy.orm import Session
 
 class RAGService:
@@ -26,7 +25,7 @@ class RAGService:
         try:
             genai.configure(api_key=api_key)
             result = genai.embed_content(
-                model="models/text-embedding-004",
+                model=settings.GEMINI_EMBEDDING_MODEL,
                 content=text,
                 task_type="retrieval_document"
             )
@@ -43,7 +42,7 @@ class RAGService:
         try:
             genai.configure(api_key=api_key)
             result = genai.embed_content(
-                model="models/text-embedding-004",
+                model=settings.GEMINI_EMBEDDING_MODEL,
                 content=text,
                 task_type="retrieval_query"
             )
@@ -72,18 +71,11 @@ class RAGService:
     def process_documents(self, user_id: str, db: Session) -> List[IngestResponse]:
         results = []
         
-        # Fetch business to get API Key
-        business = db.query(Business).filter(Business.user_id == user_id).first()
-        api_key = None
-        if business and business.gemini_api_key:
-             api_key = decrypt_string(business.gemini_api_key)
-             
+        # Use system-level API key
+        api_key = settings.GOOGLE_API_KEY
         if not api_key:
-            # Cannot process without API Key
-            print(f"Cannot process documents for user {user_id}: No API Key found.")
-            # We fail all pending docs for this user to avoid getting stuck
-            # Or just return error
-            return [IngestResponse(filename="Error", chunks_created=0, status="Error: Business API Key not configured.")]
+            print(f"Cannot process documents for user {user_id}: No system API Key configured.")
+            return [IngestResponse(filename="Error", chunks_created=0, status="Error: AI service not configured.")]
 
         # Fetch pending documents for user
         documents = db.query(Document).filter(
@@ -153,13 +145,9 @@ class RAGService:
         ]
 
     def query(self, text: str, user_id: str, api_key: Optional[str] = None, db: Session = None) -> List[str]:
-        # If API key is not provided (e.g. legacy call? unlikely), try to fetch from DB
         if not api_key:
-            if db:
-                business = db.query(Business).filter(Business.user_id == user_id).first()
-                if business and business.gemini_api_key:
-                    api_key = decrypt_string(business.gemini_api_key)
-        
+            api_key = settings.GOOGLE_API_KEY
+
         if not api_key:
             print(f"Query failed: No API Key available for user {user_id}")
             return []

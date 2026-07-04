@@ -19,13 +19,13 @@ const Tabs: React.FC<TabsProps> = ({ tabs, defaultTab, className }) => {
 
   return (
     <div className={cn("w-full", className)}>
-      <div className="flex space-x-1 bg-[var(--bg-tertiary)] p-1 rounded-[var(--radius-md)] mb-6 w-fit">
+      <div className="flex space-x-1 bg-[var(--bg-tertiary)] p-1 rounded-[var(--radius-md)] mb-6 w-full lg:w-fit overflow-x-auto no-scrollbar">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              "relative px-4 py-2 text-sm font-medium rounded-md transition-colors",
+              "relative px-4 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap flex-shrink-0",
               activeTab === tab.id
                 ? "text-[var(--text-primary)]"
                 : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"

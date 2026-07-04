@@ -3,6 +3,7 @@ from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Boolean, Inte
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from app.db.base import Base
+from app.models.mixins import SerializerMixin
 import enum
 
 def generate_uuid():
@@ -13,7 +14,11 @@ class SessionOrigin(str, enum.Enum):
     AUTO_START = "auto-start"
     RESUMED = "resumed"
 
-class ChatSession(Base):
+class SessionChannel(str, enum.Enum):
+    WIDGET = "widget"
+    WHATSAPP = "whatsapp"
+
+class ChatSession(Base, SerializerMixin):
     __tablename__ = "chat_sessions"
 
     id = Column(String, primary_key=True, default=generate_uuid)
@@ -25,6 +30,7 @@ class ChatSession(Base):
     summary_generated_at = Column(DateTime, nullable=True)
     top_intent = Column(String, nullable=True)
     sentiment_score = Column(Float, nullable=True)
+    channel = Column(String, default=SessionChannel.WIDGET.value)
     is_active = Column(Boolean, default=True)
 
     # Analytics - Context
@@ -49,3 +55,4 @@ class ChatSession(Base):
     # Relationships
     guest = relationship("GuestUser", back_populates="sessions")
     messages = relationship("GuestMessage", back_populates="session")
+

@@ -7,6 +7,7 @@ from app.models.chat_session import ChatSession
 
 # Use specific client for multi-tenant API key support
 from google import genai
+from app.core.config import settings
 
 INTENT_ENUM = ["Support", "Sales", "Feedback", "Bug Report", "General"]
 
@@ -24,8 +25,8 @@ async def analyze_session(db: Session, session_id: str, intents: Optional[List[s
 
     session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
     if not session:
-        print(f"Analysis Agent: Session {session_id} not found in database")
-        raise ValueError("Session not found")
+        print(f"Analysis Agent: Session {session_id} not found in database — skipping analysis")
+        return "No session record", "General"
         
     messages = db.query(GuestMessage).filter(GuestMessage.session_id == session_id).order_by(GuestMessage.created_at).all()
     
@@ -74,7 +75,7 @@ async def analyze_session(db: Session, session_id: str, intents: Optional[List[s
         print("Analysis Agent: Calling Gemini 2.0 Flash for analysis...")
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model="gemini-2.0-flash", 
+            model=settings.GEMINI_MODEL, 
             contents=prompt
         )
         
@@ -140,7 +141,7 @@ async def generate_business_intents(business_description: str, api_key: str = No
     try:
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model=settings.GEMINI_MODEL,
             contents=prompt
         )
         text = response.text
@@ -186,7 +187,7 @@ async def generate_followup_content(messages: List[GuestMessage], follow_up_type
     try:
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model="gemini-2.0-flash", 
+            model=settings.GEMINI_MODEL, 
             contents=prompt
         )
         return response.text

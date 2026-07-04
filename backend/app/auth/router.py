@@ -15,6 +15,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 security = HTTPBearer()
 
+# --- Dependency: Get Current User ---
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)) -> User:
     token = credentials.credentials
     payload = verify_token(token)

@@ -6,7 +6,6 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Textarea from '@/components/ui/Textarea';
 import Select from '@/components/ui/Select';
-import Card from '@/components/ui/Card';
 import { getAccessToken, getBusinessProfile, updateBusinessProfile, generateIntents } from '@/lib/api';
 import { useToast } from '@/contexts/ToastContext';
 import { BusinessProfile } from '@/lib/types';
@@ -36,7 +35,7 @@ type Tab = 'business' | 'appearance' | 'installation';
 export default function WidgetSettingsPage() {
   const [settings, setSettings] = useState<WidgetSettings | null>(null);
   const { success, error } = useToast();
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [business, setBusiness] = useState<BusinessProfile | null>(null);
   const [generatingIntents, setGeneratingIntents] = useState(false);
@@ -45,6 +44,11 @@ export default function WidgetSettingsPage() {
 
   const [copied, setCopied] = useState(false);
   const [newDomain, setNewDomain] = useState('');
+  const [limits, setLimits] = useState<{
+    allocated_messages_per_session?: number;
+    allocated_daily_sessions?: number;
+    allocated_whitelisted_domains?: number;
+  } | null>(null);
 
   useEffect(() => {
     fetchSettings();
@@ -73,7 +77,14 @@ export default function WidgetSettingsPage() {
   const fetchBusiness = async () => {
     try {
       const res = await getBusinessProfile();
-      if (res.status === 'success' && res.data) setBusiness(res.data);
+      if (res.status === 'success' && res.data) {
+        setBusiness(res.data);
+        setLimits({
+          allocated_messages_per_session: (res.data as Record<string, unknown>).allocated_messages_per_session,
+          allocated_daily_sessions: (res.data as Record<string, unknown>).allocated_daily_sessions,
+          allocated_whitelisted_domains: (res.data as Record<string, unknown>).allocated_whitelisted_domains,
+        });
+      }
     } catch (e) { console.error(e); }
   }
 
@@ -127,7 +138,7 @@ export default function WidgetSettingsPage() {
         intents: business.intents
       });
       success("Business profile updated!");
-    } catch (e) {
+    } catch {
       error("Failed to update business profile");
     } finally {
       setBusinessUpdating(false);
@@ -146,7 +157,7 @@ export default function WidgetSettingsPage() {
         setBusiness({ ...business, intents: res.data.intents });
         success("Intents generated!");
       }
-    } catch (e) { error("Generaton failed"); } finally { setGeneratingIntents(false); }
+    } catch { error("Generaton failed"); } finally { setGeneratingIntents(false); }
   }
 
   const copyEmbedCode = () => {
@@ -175,7 +186,7 @@ export default function WidgetSettingsPage() {
   return (
     <div className="max-w-[1600px] mx-auto h-[calc(100vh-140px)] flex flex-col">
       <div className="mb-6 flex-shrink-0">
-        <h1 className="text-2xl font-space font-bold text-[var(--brand-primary)]">Widget Customization</h1>
+        <h1 className="text-2xl font-display font-bold text-[var(--brand-primary)]">Widget Customization</h1>
         <p className="text-[var(--text-secondary)] mt-1">Customize your chat widget&apos;s appearance, behavior, and business knowledge.</p>
       </div>
 
@@ -209,7 +220,7 @@ export default function WidgetSettingsPage() {
               <div className="space-y-6 animate-in fade-in duration-300">
                 <div className="flex justify-between items-start mb-6">
                   <div>
-                    <h2 className="text-lg font-space font-bold text-[var(--text-primary)]">Business Context</h2>
+                    <h2 className="text-lg font-display font-bold text-[var(--text-primary)]">Business Context</h2>
                     <p className="text-sm text-[var(--text-secondary)] mt-1">Define how the AI understands your business to answer customer queries.</p>
                   </div>
                   <Button
@@ -268,7 +279,7 @@ export default function WidgetSettingsPage() {
               <div className="space-y-8 animate-in fade-in duration-300">
                 <div className="flex justify-between items-start mb-6">
                   <div>
-                    <h2 className="text-lg font-space font-bold text-[var(--text-primary)]">Appearance & Behavior</h2>
+                    <h2 className="text-lg font-display font-bold text-[var(--text-primary)]">Appearance & Behavior</h2>
                     <p className="text-sm text-[var(--text-secondary)] mt-1">Customize the look and feel of the chat widget.</p>
                   </div>
                   <Button
@@ -415,57 +426,97 @@ export default function WidgetSettingsPage() {
                 <div className="border-t border-[var(--border-subtle)] pt-8 space-y-6">
                   <h3 className="text-sm font-bold text-[var(--brand-primary)] uppercase tracking-wider">Limits & Security</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Input
-                      label="Max Messages / Session"
-                      type="number"
-                      value={settings?.max_messages_per_session || 50}
-                      onChange={(e) => settings && setSettings({ ...settings, max_messages_per_session: parseInt(e.target.value) })}
-                    />
-                    <Input
-                      label="Max Sessions / Day"
-                      type="number"
-                      value={settings?.max_sessions_per_day || 5}
-                      onChange={(e) => settings && setSettings({ ...settings, max_sessions_per_day: parseInt(e.target.value) })}
-                    />
+                    <div>
+                      <Input
+                        label="Max Messages / Session"
+                        type="number"
+                        value={settings?.max_messages_per_session || 50}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value) || 0;
+                          const limit = limits?.allocated_messages_per_session || 50;
+                          if (settings) setSettings({ ...settings, max_messages_per_session: Math.min(val, limit) });
+                        }}
+                      />
+                      {limits?.allocated_messages_per_session !== undefined && (
+                        <p className="text-xs text-[var(--text-tertiary)] mt-1 ml-1 flex justify-between">
+                          <span>Current value</span>
+                          <span>Plan maximum: {limits.allocated_messages_per_session}</span>
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <Input
+                        label="Max Sessions / Day"
+                        type="number"
+                        value={settings?.max_sessions_per_day || 5}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value) || 0;
+                          const limit = limits?.allocated_daily_sessions || 5;
+                          if (settings) setSettings({ ...settings, max_sessions_per_day: Math.min(val, limit) });
+                        }}
+                      />
+                      {limits?.allocated_daily_sessions !== undefined && (
+                        <p className="text-xs text-[var(--text-tertiary)] mt-1 ml-1 flex justify-between">
+                          <span>Current value</span>
+                          <span>Plan maximum: {limits.allocated_daily_sessions}</span>
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Whitelisted Domains</label>
                   <div className="space-y-3">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="https://example.com"
-                        value={newDomain}
-                        onChange={(e) => setNewDomain(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            if (newDomain && settings) {
-                              const current = settings.whitelisted_domains || [];
-                              if (!current.includes(newDomain)) {
-                                setSettings({ ...settings, whitelisted_domains: [...current, newDomain] });
-                                setNewDomain('');
-                              }
-                            }
-                          }
-                        }}
-                      />
-                      <Button
-                        variant="secondary"
-                        onClick={() => {
-                          if (newDomain && settings) {
-                            const current = settings.whitelisted_domains || [];
-                            if (!current.includes(newDomain)) {
-                              setSettings({ ...settings, whitelisted_domains: [...current, newDomain] });
-                              setNewDomain('');
-                            }
-                          }
-                        }}
-                        disabled={!newDomain}
-                      >
-                        <Plus className="w-4 h-4" />
-                      </Button>
-                    </div>
+                    {(() => {
+                      const currentCount = settings?.whitelisted_domains?.length || 0;
+                      const maxAllowed = limits?.allocated_whitelisted_domains || 1;
+                      const isLimitReached = currentCount >= maxAllowed;
+
+                      return (
+                        <div className="w-full">
+                          <div className="flex gap-2">
+                            <Input
+                              placeholder="https://example.com"
+                              value={newDomain}
+                              disabled={isLimitReached}
+                              onChange={(e) => setNewDomain(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !isLimitReached) {
+                                  e.preventDefault();
+                                  if (newDomain && settings) {
+                                    const current = settings.whitelisted_domains || [];
+                                    if (!current.includes(newDomain)) {
+                                      setSettings({ ...settings, whitelisted_domains: [...current, newDomain] });
+                                      setNewDomain('');
+                                    }
+                                  }
+                                }
+                              }}
+                            />
+                            <Button
+                              variant="secondary"
+                              onClick={() => {
+                                if (newDomain && settings && !isLimitReached) {
+                                  const current = settings.whitelisted_domains || [];
+                                  if (!current.includes(newDomain)) {
+                                    setSettings({ ...settings, whitelisted_domains: [...current, newDomain] });
+                                    setNewDomain('');
+                                  }
+                                }
+                              }}
+                              disabled={!newDomain || isLimitReached}
+                            >
+                              <Plus className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          {isLimitReached ? (
+                            <p className="text-xs text-[var(--error)] mt-1.5 ml-1">Plan limit reached ({maxAllowed} domains max). Upgrade to add more.</p>
+                          ) : (
+                            <p className="text-xs text-[var(--text-tertiary)] mt-1.5 ml-1">{currentCount} of {maxAllowed} domains used</p>
+                          )}
+                        </div>
+                      );
+                    })()}
                     <div className="flex flex-wrap gap-2">
                       {(settings?.whitelisted_domains || []).map((domain) => (
                         <div
@@ -499,7 +550,7 @@ export default function WidgetSettingsPage() {
               <div className="space-y-6 animate-in fade-in duration-300">
                 <div className="flex justify-between items-start mb-6">
                   <div>
-                    <h2 className="text-lg font-space font-bold text-[var(--text-primary)]">Installation</h2>
+                    <h2 className="text-lg font-display font-bold text-[var(--text-primary)]">Installation</h2>
                     <p className="text-sm text-[var(--text-secondary)] mt-1">Add the widget to your website.</p>
                   </div>
                 </div>
@@ -563,7 +614,7 @@ export default function WidgetSettingsPage() {
                     {/* Header */}
                     <div className="h-14 flex items-center px-5 justify-between text-white shadow-sm z-10 shrink-0 mb-0" style={{ backgroundColor: settings?.primary_color || '#0E3F34' }}>
                       <div className="flex items-center gap-3">
-                        <span className="font-space font-bold tracking-tight text-md">👋 Welcome</span>
+                        <span className="font-display font-bold tracking-tight text-md">👋 Welcome</span>
                       </div>
                     </div>
 
@@ -571,6 +622,7 @@ export default function WidgetSettingsPage() {
                     <div className="flex-1 p-6 flex flex-col justify-center bg-white">
                       <div className="text-center space-y-2 mb-6">
                         <div className="inline-flex items-center justify-center w-14 h-14 rounded-full text-white shadow-lg mb-2" style={{ backgroundColor: settings?.primary_color || '#0E3F34' }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           {business?.logo_url ? <img src={business.logo_url} className="w-8 h-8 object-contain" alt="" /> : <MessageSquare className="w-6 h-6" />}
                         </div>
                         <h2 className="text-xl font-bold text-gray-900 leading-tight">How would you like to connect?</h2>
@@ -619,7 +671,7 @@ export default function WidgetSettingsPage() {
                           <div className="w-2 h-2 rounded-full bg-green-400 border border-white/20" />
                           <div className="absolute inset-0 w-2 h-2 rounded-full bg-green-400 animate-ping opacity-75" />
                         </div>
-                        <span className="font-space font-bold tracking-tight text-md">Support</span>
+                        <span className="font-display font-bold tracking-tight text-md">Support</span>
                       </div>
                     </div>
 
@@ -655,6 +707,7 @@ export default function WidgetSettingsPage() {
                 {/* Launcher */}
                 <div className="w-14 h-14 rounded-full shadow-xl flex items-center justify-center text-white cursor-pointer hover:scale-105 transition-transform active:scale-95 ring-4 ring-white/30 shrink-0" style={{ backgroundColor: settings?.primary_color || '#0E3F34' }}>
                   {settings?.icon_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img src={settings.icon_url} className="w-7 h-7 object-contain" alt="Widget Icon" />
                   ) : (
                     <MessageSquare strokeWidth={2} className="w-7 h-7" />

@@ -1,17 +1,15 @@
 from google.adk.agents import Agent
 from app.services.agent_system.tools import (
-    get_context, say_hello, say_goodbye, 
+    get_context, say_hello, say_goodbye,
     analyze_sentiment, escalate_to_human
 )
 from app.services.agent_system.callbacks import block_unsafe_content, validate_tool_args
-
-# --- Model Constants ---
-MODEL_GEMINI_2_0_FLASH = "gemini-2.0-flash"
+from app.core.config import settings
 
 # Sub-Agent: Greeting
 greeting_agent = Agent(
     name="greeting_agent",
-    model=MODEL_GEMINI_2_0_FLASH,
+    model=settings.GEMINI_MODEL,
     description="Handles simple greetings.",
     instruction="You are a friendly greeting agent. Use 'say_hello' to greet the user.",
     tools=[say_hello]
@@ -20,7 +18,7 @@ greeting_agent = Agent(
 # Sub-Agent: Farewell
 farewell_agent = Agent(
     name="farewell_agent",
-    model=MODEL_GEMINI_2_0_FLASH,
+    model=settings.GEMINI_MODEL,
     description="Handles simple farewells.",
     instruction="You are a polite farewell agent. Use 'say_goodbye' to say goodbye.",
     tools=[say_goodbye]
@@ -29,7 +27,7 @@ farewell_agent = Agent(
 # Sub-Agent: Escalation
 escalation_agent = Agent(
     name="escalation_agent",
-    model=MODEL_GEMINI_2_0_FLASH,
+    model=settings.GEMINI_MODEL,
     description="Handles escalation to human agents and sentiment analysis.",
     instruction="You are an escalation specialist. "
                 "1. If the user is expressing frustration or anger, first use 'analyze_sentiment' to confirm. "
@@ -42,7 +40,7 @@ escalation_agent = Agent(
 rag_agent = Agent(
     name="rag_agent",
     # Using LiteLlm wrapper for multi-model support (even if using Gemini here)
-    model=MODEL_GEMINI_2_0_FLASH, 
+    model=settings.GEMINI_MODEL, 
     description="Main agent. Provides context for questions, delegates greetings/farewells.",
     instruction="You are a helpful customer support assistant. "
                 "For greetings, delegate to 'greeting_agent'. "

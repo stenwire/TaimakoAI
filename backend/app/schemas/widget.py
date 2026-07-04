@@ -63,12 +63,22 @@ class WidgetConfigResponse(BaseModel):
     send_initial_message_automatically: Optional[bool] = True
     whatsapp_enabled: Optional[bool] = False
     whatsapp_number: Optional[str] = None
+    whatsapp_phone_number_id: Optional[str] = None
+    whatsapp_business_account_id: Optional[str] = None
+    whatsapp_api_configured: Optional[bool] = False
+    whatsapp_send_rate_per_second: Optional[int] = None
     max_messages_per_session: Optional[int] = 50
     max_sessions_per_day: Optional[int] = 5
     whitelisted_domains: Optional[List[str]] = None
     logo_url: Optional[str] = None
     is_active: Optional[bool] = True
-    
+
+    @classmethod
+    def model_validate(cls, obj, **kwargs):
+        if hasattr(obj, 'whatsapp_access_token'):
+            obj.__dict__['whatsapp_api_configured'] = bool(obj.whatsapp_access_token)
+        return super().model_validate(obj, **kwargs)
+
     class Config:
         from_attributes = True
 
@@ -97,6 +107,7 @@ class SessionHistoryResponse(BaseModel):
     created_at: datetime
     last_message_at: datetime
     origin: str
+    channel: Optional[str] = "widget"
     summary: Optional[str] = None
     summary_generated_at: Optional[datetime] = None
     top_intent: Optional[str] = None

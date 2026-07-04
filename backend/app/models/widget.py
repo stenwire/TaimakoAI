@@ -3,12 +3,13 @@ from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Boolean, Inte
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from app.db.base import Base
+from app.models.mixins import SerializerMixin
 # Note: ChatSession is imported via string reference in relationships to avoid circular imports
 
 def generate_uuid():
     return str(uuid.uuid4())
 
-class WidgetSettings(Base):
+class WidgetSettings(Base, SerializerMixin):
     __tablename__ = "widget_settings"
 
     id = Column(String, primary_key=True, default=generate_uuid)
@@ -23,6 +24,10 @@ class WidgetSettings(Base):
     send_initial_message_automatically = Column(Boolean, default=True)
     whatsapp_enabled = Column(Boolean, default=False)
     whatsapp_number = Column(String, nullable=True)
+    whatsapp_phone_number_id = Column(String, nullable=True)
+    whatsapp_business_account_id = Column(String, nullable=True)
+    whatsapp_access_token = Column(String, nullable=True)
+    whatsapp_send_rate_per_second = Column(Integer, nullable=True)
     
     # Feature Flags
     is_active = Column(Boolean, default=True)  # Master toggle to enable/disable widget
@@ -42,7 +47,7 @@ class WidgetSettings(Base):
     user = relationship("User", backref="widgets")
     guests = relationship("GuestUser", back_populates="widget")
 
-class GuestUser(Base):
+class GuestUser(Base, SerializerMixin):
     __tablename__ = "guest_users"
 
     id = Column(String, primary_key=True, default=generate_uuid)
@@ -64,7 +69,7 @@ class GuestUser(Base):
     messages = relationship("GuestMessage", back_populates="guest")
     sessions = relationship("ChatSession", back_populates="guest")
 
-class GuestMessage(Base):
+class GuestMessage(Base, SerializerMixin):
     __tablename__ = "guest_messages"
 
     id = Column(String, primary_key=True, default=generate_uuid)
@@ -78,3 +83,4 @@ class GuestMessage(Base):
     # Relationships
     guest = relationship("GuestUser", back_populates="messages")
     session = relationship("ChatSession", back_populates="messages")
+

@@ -1,71 +1,167 @@
 from typing import Optional, Dict, Any
 import re
+import unicodedata
 import asyncio
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
 from google.adk.tools.base_tool import BaseTool
 from google.adk.tools.tool_context import ToolContext
-from google.genai import types 
+from google.genai import types
 
-# Jailbreak patterns to detect
+
+# ---------------------------------------------------------------------------
+# Text normalisation — defeats Unicode homoglyphs, leetspeak, zero-width chars
+# ---------------------------------------------------------------------------
+# Common leetspeak / homoglyph substitutions
+_LEET_MAP = str.maketrans({
+    "0": "o", "1": "i", "3": "e", "4": "a", "5": "s",
+    "7": "t", "@": "a", "$": "s", "!": "i",
+})
+
+# Zero-width and invisible Unicode characters to strip
+_INVISIBLE_RE = re.compile(
+    r"[\u200b\u200c\u200d\u200e\u200f\ufeff\u00ad\u034f\u2060\u2061\u2062\u2063\u2064]"
+)
+
+
+def _normalize(text: str) -> str:
+    """Normalize text to defeat common obfuscation tricks."""
+    # Strip zero-width / invisible chars
+    text = _INVISIBLE_RE.sub("", text)
+    # Unicode → closest ASCII (accented chars, Cyrillic look-alikes, etc.)
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+    # Collapse repeated punctuation / whitespace used as separators
+    text = re.sub(r"[\s\-_.*|/\\]+", " ", text)
+    # Leetspeak
+    text = text.translate(_LEET_MAP)
+    return text.lower().strip()
+
+
+# ---------------------------------------------------------------------------
+# Jailbreak / prompt-injection detection patterns
+# ---------------------------------------------------------------------------
 JAILBREAK_PATTERNS = [
-    r"ignore\s+(all\s+)?(previous|prior|above)\s+instructions?",
-    r"disregard\s+(all\s+)?(previous|prior|above)\s+instructions?",
-    r"forget\s+(all\s+)?(previous|prior|above)\s+instructions?",
-    r"you\s+are\s+now\s+(a|an|being)",
-    r"new\s+instructions?",
-    r"system\s+prompt",
-    r"reveal\s+your\s+(instructions?|prompt|system)",
-    r"show\s+(me\s+)?your\s+(instructions?|prompt|system)",
-    r"what\s+(are|is)\s+your\s+(instructions?|prompt|system)",
-    r"list\s+(all\s+)?(available\s+)?tools?",
-    r"show\s+(me\s+)?(all\s+)?tools?",
-    r"what\s+tools\s+do\s+you\s+have",
-    r"bypass\s+restrictions?",
-    r"override\s+your\s+(instructions?|rules?|settings?)",
-    r"pretend\s+(you|to)\s+(are|be)",
+    # --- Instruction override / manipulation ---
+    r"ignore\s+(all\s+)?(previous|prior|above|earlier|initial|original|system)\s+(instructions?|prompts?|rules?|directions?)",
+    r"disregard\s+(all\s+)?(previous|prior|above|earlier|initial|original|system)\s+(instructions?|prompts?|rules?|directions?)",
+    r"forget\s+(all\s+)?(previous|prior|above|earlier|initial|original|system)\s+(instructions?|prompts?|rules?|directions?)",
+    r"override\s+(all\s+)?(previous|prior|your|system)?\s*(instructions?|rules?|settings?|prompts?|restrictions?)",
+    r"bypass\s+(your\s+)?(restrictions?|rules?|safety|filters?|limitations?|guidelines?)",
+    r"new\s+(set\s+of\s+)?instructions?\s*(:|are|follow)",
+    r"from\s+now\s+on\s+(you|your|ignore|disregard|forget)",
+    r"stop\s+being\s+(a|an)?\s*(assistant|ai|bot|helpful)",
+    r"do\s+not\s+follow\s+(your|any|the)\s+(original|initial|system|previous)\s+(instructions?|rules?|prompts?)",
+
+    # --- Identity manipulation / role hijacking ---
+    r"you\s+are\s+now\s+(a|an|being|no\s+longer)",
+    r"pretend\s+(you\s+)?(are|to\s+be|you're)",
     r"roleplay\s+as",
-    r"act\s+as\s+if",
+    r"act\s+as\s+(if|though|a|an)",
+    r"imagine\s+you\s+are\s+(a|an|no\s+longer)",
+    r"assume\s+the\s+role\s+of",
+    r"switch\s+to\s+.{0,20}\s+mode",
+    r"enter\s+.{0,20}\s+mode",
+    r"activate\s+.{0,20}\s+mode",
+    r"enable\s+(developer|debug|admin|god|unrestricted|jailbreak|sudo)\s+mode",
+
+    # --- System prompt / instruction extraction ---
+    r"(reveal|show|display|print|output|repeat|recite|tell\s+me|give\s+me|share)\s+(me\s+)?(your|the|all)?\s*(system\s+)?(instructions?|prompts?|rules?|guidelines?|configuration|directives?)",
+    r"what\s+(are|is|were)\s+your\s+(system\s+)?(instructions?|prompts?|rules?|guidelines?|directives?|initial\s+prompt)",
+    r"(copy|paste|echo|write\s+out)\s+(your|the)\s+(system\s+)?(prompt|instructions?)",
+    r"system\s*prompt",
+    r"initial\s*prompt",
+
+    # --- Tool / architecture probing ---
+    r"(list|show|reveal|what)\s+(me\s+)?(all\s+)?(available\s+)?(tools?|functions?|capabilities|apis?|endpoints?|plugins?)",
+    r"what\s+tools\s+do\s+you\s+(have|use|access)",
+    r"what\s+(model|llm|ai)\s+are\s+you",
+    r"are\s+you\s+(gpt|gemini|claude|llama|openai|google|anthropic)",
+    r"what\s+agents?\s+do\s+you\s+(have|use)",
+
+    # --- Well-known jailbreak names / frameworks ---
+    r"\b(DAN|STAN|DUDE|AIM|KEVIN|JAILBREAK|do\s+anything\s+now)\b",
+    r"developer\s+mode\s+(enabled|output|on)",
+    r"\[?\s*jailbreak(ed)?\s*\]?",
+
+    # --- Delimiter / context injection ---
+    r"<\s*/?\s*(system|instruction|prompt|context|rules?)\s*>",
+    r"\[\s*(system|instruction|prompt|INST)\s*\]",
+    r"```\s*(system|instruction|prompt)",
+    r"(BEGIN|START|END)\s+(SYSTEM|INSTRUCTION|PROMPT)",
+    r"###\s*(system|instruction|new\s+instructions?)",
+
+    # --- Encoded / obfuscated payload markers ---
+    r"base64\s*:",
+    r"decode\s+this",
+    r"(rot13|hex|binary)\s+(decode|encoded?|this)",
+    r"translate\s+from\s+(base64|hex|binary|rot13)",
+
+    # --- Multi-turn / indirect extraction ---
+    r"(first|start|begin)\s+(word|letter|character|sentence)\s+of\s+(your|the|each)\s+(instructions?|prompt|rules?|system)",
+    r"(spell|read)\s+(out|back)\s+(your|the)\s+(instructions?|prompt|rules?)",
+    r"summarize\s+(your|the)\s+(system\s+)?(instructions?|prompt|rules?|guidelines?)",
+    r"if\s+your\s+(instructions?|prompt|rules?)\s+(say|contain|include|mention)",
+    r"(what|how)\s+(would|do)\s+your\s+(instructions?|rules?|prompt)\s+(say|respond|tell)",
 ]
+
+# Compile once for performance
+_COMPILED_PATTERNS = [re.compile(p) for p in JAILBREAK_PATTERNS]
+
+# Suspicious content thresholds
+_MAX_MESSAGE_LENGTH = 4000  # Extremely long messages are often injection payloads
+
+
+def _safe_response() -> LlmResponse:
+    """Return a generic safe deflection response."""
+    return LlmResponse(
+        content=types.Content(
+            role="model",
+            parts=[types.Part(
+                text="I'm here to help with your questions about our services. How can I assist you today?"
+            )],
+        )
+    )
+
 
 def block_unsafe_content(
     callback_context: CallbackContext, llm_request: LlmRequest
 ) -> Optional[LlmResponse]:
-    """Blocks requests containing unsafe content or jailbreak attempts."""
+    """Blocks requests containing unsafe content or jailbreak attempts.
+
+    Defence layers:
+    1. Length cap — reject suspiciously long messages (common injection vector)
+    2. Text normalisation — defeats Unicode homoglyphs, leetspeak, zero-width chars
+    3. Pattern matching — broad set of jailbreak / prompt-injection signatures
+    """
     agent_name = callback_context.agent_name
     print(f"--- Callback: block_unsafe_content running for agent: {agent_name} ---")
 
+    # Extract last user message
     last_user_message_text = ""
     if llm_request.contents:
         for content in reversed(llm_request.contents):
-            if content.role == 'user' and content.parts:
+            if content.role == "user" and content.parts:
                 if content.parts[0].text:
                     last_user_message_text = content.parts[0].text
                     break
 
-    # Check for legacy BLOCK keyword
-    if "BLOCK" in last_user_message_text.upper():
-        print("--- Callback: Found 'BLOCK'. Blocking LLM call! ---")
-        return LlmResponse(
-            content=types.Content(
-                role="model",
-                parts=[types.Part(text="I cannot process this request because it contains unsafe content.")],
-            )
-        )
-    
-    # Check for jailbreak patterns
-    lower_message = last_user_message_text.lower()
-    for pattern in JAILBREAK_PATTERNS:
-        if re.search(pattern, lower_message):
-            print(f"--- Callback: Detected potential jailbreak attempt: '{pattern}' ---")
-            return LlmResponse(
-                content=types.Content(
-                    role="model",
-                    parts=[types.Part(text="I'm here to help with your questions about our services. How can I assist you today?")],
-                )
-            )
-    
+    if not last_user_message_text:
+        return None
+
+    # Layer 1: Length check
+    if len(last_user_message_text) > _MAX_MESSAGE_LENGTH:
+        print(f"--- Callback: Message too long ({len(last_user_message_text)} chars). Blocking. ---")
+        return _safe_response()
+
+    # Layer 2: Normalize then match
+    normalized = _normalize(last_user_message_text)
+
+    for compiled in _COMPILED_PATTERNS:
+        if compiled.search(normalized):
+            print(f"--- Callback: Jailbreak pattern detected: '{compiled.pattern}' ---")
+            return _safe_response()
+
     return None
 
 def validate_tool_args(
@@ -86,9 +182,9 @@ def validate_tool_args(
 # Patterns to remove from responses
 INTERNAL_DETAIL_PATTERNS = [
     # Sub-agent mentions
-    (r'\b(greeting_agent|farewell_agent|rag_agent|chief_agent)\b', ''),
+    (r'\b(greeting_agent|farewell_agent|rag_agent|chief_agent|escalation_agent)\b', ''),
     # Delegation language
-    (r'(transfer|delegate|forward)\s+(you\s+)?to\s+(the\s+)?(greeting|farewell|rag|chief)[\s_]agent', 'help you'),
+    (r'(transfer|delegate|forward)\s+(you\s+)?to\s+(the\s+)?(greeting|farewell|rag|chief|escalation)[\s_]agent', 'help you'),
     (r'I\s+can\s+(transfer|delegate|forward)\s+you\s+to', 'I can help you with'),
     # Knowledge base mentions
     (r'my\s+knowledge\s+base\s+(includes?|contains?|has)', 'I can help with'),
@@ -97,26 +193,62 @@ INTERNAL_DETAIL_PATTERNS = [
     # Tool mentions
     (r"using\s+the\s+'get_context'\s+tool", 'by checking our resources'),
     (r"I'll\s+use\s+the\s+'?get_context'?\s+tool", "I'll look that up for you"),
-    (r'\b(say_hello|say_goodbye|get_context)\b', ''),
+    (r'\b(say_hello|say_goodbye|get_context|analyze_sentiment|escalate_to_human)\b', ''),
     # Generic system exposure
     (r'specialized\s+agents?', 'our support team'),
     (r'sub[\s-]agents?', 'our team'),
+    # System prompt / instruction leaks
+    (r'my\s+(system\s+)?(prompt|instructions?)\s+(say|are|include|contain|tell)', 'I'),
+    (r'(system|initial)\s+prompt', ''),
+    (r'I\s+was\s+(programmed|instructed|configured|told)\s+to', 'I'),
+    (r'my\s+(programming|configuration|instructions?)\s+(is|are|includes?)', 'I can help with'),
+    (r'(gemini|google\s+adk|litellm|langchain)', ''),
+]
+
+# Hard-block patterns: if the model output matches these, replace the entire response
+_LEAK_PATTERNS = [
+    re.compile(r"CRITICAL OPERATING RULES", re.IGNORECASE),
+    re.compile(r"STRICT SCOPE BOUNDARIES", re.IGNORECASE),
+    re.compile(r"PROMPT INJECTION DEFENCE", re.IGNORECASE),
+    re.compile(r"SECURITY RULES:\s*\n\s*-\s*NEVER", re.IGNORECASE),
+    re.compile(r"CONTEXT-ONLY RESPONSES:\s*\n", re.IGNORECASE),
+    re.compile(r"before_model_callback|after_model_callback|before_tool_callback", re.IGNORECASE),
+    re.compile(r"block_unsafe_content|sanitize_model_response", re.IGNORECASE),
 ]
 
 def sanitize_model_response(
     callback_context: CallbackContext, llm_response: LlmResponse
 ) -> Optional[LlmResponse]:
-    """Sanitizes model responses to remove mentions of internal system details."""
+    """Sanitizes model responses to remove mentions of internal system details.
+
+    Two passes:
+    1. Hard-block: if the response contains verbatim instruction leaks, replace entirely.
+    2. Soft-scrub: regex-replace internal detail mentions with neutral language.
+    """
     if not llm_response or not llm_response.content or not llm_response.content.parts:
         return None
-    
+
     # Get the text and validate it's a string
     original_text = llm_response.content.parts[0].text
     if not original_text or not isinstance(original_text, str):
         return None
-    
+
+    # Pass 1: hard-block — if the model leaked system instructions, nuke the whole response
+    for leak_re in _LEAK_PATTERNS:
+        if leak_re.search(original_text):
+            print(f"--- Callback: HARD BLOCK — leaked system details detected ('{leak_re.pattern}') ---")
+            return LlmResponse(
+                content=types.Content(
+                    role="model",
+                    parts=[types.Part(
+                        text="I'm here to help with your questions about our services. How can I assist you today?"
+                    )]
+                )
+            )
+
+    # Pass 2: soft-scrub — remove incidental internal mentions
     sanitized_text = original_text
-    
+
     # Apply all sanitization patterns
     for pattern, replacement in INTERNAL_DETAIL_PATTERNS:
         try:
@@ -124,10 +256,10 @@ def sanitize_model_response(
         except (TypeError, re.error) as e:
             print(f"--- Callback: Error in sanitization pattern '{pattern}': {e} ---")
             continue
-    
-    # Clean up extra spaces
-    sanitized_text = re.sub(r'\s+', ' ', sanitized_text).strip()
-    
+
+    # Clean up extra spaces (only horizontal whitespace)
+    sanitized_text = re.sub(r'[ \t]+', ' ', sanitized_text).strip()
+
     # Only return modified response if changes were made
     if sanitized_text != original_text:
         print("--- Callback: sanitize_model_response modified response ---")
@@ -137,7 +269,7 @@ def sanitize_model_response(
                 parts=[types.Part(text=sanitized_text)]
             )
         )
-    
+
     return None
 
 async def _run_analysis_in_background(session_id: str, api_key: Optional[str], intents: Optional[list]):

@@ -3,11 +3,12 @@ from sqlalchemy import Column, String, Boolean, DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from app.db.base import Base
+from app.models.mixins import SerializerMixin
 
 def generate_uuid():
     return str(uuid.uuid4())
 
-class User(Base):
+class User(Base, SerializerMixin):
     __tablename__ = "users"
 
     id = Column(String, primary_key=True, default=generate_uuid)
@@ -16,9 +17,11 @@ class User(Base):
     name = Column(String, nullable=True)
     picture = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
+    is_admin = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     hashed_password = Column(String, nullable=True)
-    
+
     # Relationship
     business = relationship("Business", back_populates="user", uselist=False)
+

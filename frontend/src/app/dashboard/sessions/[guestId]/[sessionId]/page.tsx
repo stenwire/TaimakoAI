@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
-  ArrowLeft, Sparkles, Wand2, Calendar, Users, Send, Bot, User as UserIcon
+  ArrowLeft, Sparkles, Wand2, Calendar, Users, Bot, User as UserIcon
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Button from '@/components/ui/Button';
@@ -17,7 +17,6 @@ export default function SessionDetailPage() {
   const router = useRouter();
   const params = useParams();
   const sessionId = params.sessionId as string;
-  const guestId = params.guestId as string;
 
   const [session, setSession] = useState<SessionDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,7 +77,7 @@ export default function SessionDetailPage() {
             <ArrowLeft className="w-5 h-5 text-[var(--text-secondary)]" />
           </Button>
           <div>
-            <h1 className="text-2xl font-space font-bold text-[var(--brand-primary)] flex items-center gap-2">
+            <h1 className="text-2xl font-display font-bold text-[var(--brand-primary)] flex items-center gap-2">
               Session Detail
               {session.sentiment_score !== null && (
                 <span className={cn(

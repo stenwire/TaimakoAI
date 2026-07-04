@@ -1,17 +1,34 @@
 from logging.config import fileConfig
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 
 from app.db.base import Base
+# Import all models so they are registered with Base.metadata
 from app.models.user import User  # noqa: F401
-from app.models.document import Document  # noqa: F401
 from app.models.business import Business  # noqa: F401
-from app.models.widget import WidgetSettings, GuestUser, GuestMessage  # noqa: F401
+from app.models.product import Product  # noqa: F401
+from app.models.plan import Plan  # noqa: F401
+from app.models.payment import PaymentTransaction  # noqa: F401
 from app.models.chat_session import ChatSession  # noqa: F401
-from app.models.analytics import AnalyticsDailySummary  # noqa: F401
+from app.models.widget import WidgetSettings, GuestUser, GuestMessage  # noqa: F401
 from app.models.escalation import Escalation  # noqa: F401
+from app.models.document import Document  # noqa: F401
+from app.models.analytics import AnalyticsDailySummary  # noqa: F401
+from app.models.order import Order, OrderItem  # noqa: F401
+from app.models.whatsapp_broadcast import (  # noqa: F401
+    WhatsAppContact,
+    WhatsAppContactList,
+    WhatsAppContactListMember,
+    WhatsAppTemplate,
+    WhatsAppCampaign,
+    WhatsAppCampaignMessage,
+)
 
 # Alembic Config object
 config = context.config
@@ -27,13 +44,23 @@ if os.getenv("DATABASE_URL"):
     config.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL"))
 elif all([POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB]):
     database_url = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
-    config.set_main_option("sqlalchemy.url", database_url)
+    config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
 
 # Logging setup
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
+
+# Google ADK tables managed externally — exclude from autogenerate so Alembic
+# doesn't generate drop statements for them.
+ADK_TABLES = {"sessions", "app_states", "events", "user_states"}
+
+
+def include_object(object, name, type_, reflected, compare_to):
+    if type_ == "table" and name in ADK_TABLES:
+        return False
+    return True
 
 
 def run_migrations_offline() -> None:
@@ -44,6 +71,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -62,7 +90,8 @@ def run_migrations_online() -> None:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
-            render_as_batch=True  # Important for SQLite → PostgreSQL migrations if ever needed
+            render_as_batch=True,  # Important for SQLite → PostgreSQL migrations if ever needed
+            include_object=include_object,
         )
 
         with context.begin_transaction():

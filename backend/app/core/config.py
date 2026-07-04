@@ -17,10 +17,36 @@ class BaseConfig(BaseSettings):
     POSTGRES_PORT: str = os.getenv("POSTGRES_PORT", "")
     DATABASE_URL: Union[str, None] = None
 
+    # SMTP / Email
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", 587))
+    SMTP_USER: str = os.getenv("SMTP_USER", "")
+    SMTP_USE_TLS: bool = os.getenv("SMTP_USE_TLS", "true")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    EMAILS_FROM_EMAIL: str = os.getenv("EMAILS_FROM_EMAIL", "")
+    EMAILS_FROM_NAME: str = os.getenv("EMAILS_FROM_NAME", "Taimako AI")
+
     # Google OAuth
     GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
     GOOGLE_CLIENT_SECRET: str = os.getenv("GOOGLE_CLIENT_SECRET", "")
     GOOGLE_REDIRECT_URI: str = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/google/callback")
+    
+    # System AI Key
+    GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
+
+    # Gemini model configuration
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    GEMINI_EMBEDDING_MODEL: str = os.getenv("GEMINI_EMBEDDING_MODEL", "models/gemini-embedding-001")
+
+    # Paystack
+    PAYSTACK_WEBHOOK_SECRET: str = os.getenv("PAYSTACK_WEBHOOK_SECRET", "")
+
+    # WhatsApp Cloud API
+    WHATSAPP_VERIFY_TOKEN: str = os.getenv("WHATSAPP_VERIFY_TOKEN", "")
+    WHATSAPP_APP_SECRET: str = os.getenv("WHATSAPP_APP_SECRET", "")
+    WHATSAPP_CAMPAIGN_POLL_INTERVAL_SECONDS: int = int(os.getenv("WHATSAPP_CAMPAIGN_POLL_INTERVAL_SECONDS", "10"))
+    WHATSAPP_CAMPAIGN_SEND_RATE_PER_SECOND: int = int(os.getenv("WHATSAPP_CAMPAIGN_SEND_RATE_PER_SECOND", "20"))
+
     
     # JWT
     JWT_SECRET: str = os.getenv("JWT_SECRET", "supersecretkey") # Change in production!
@@ -35,7 +61,7 @@ class BaseConfig(BaseSettings):
     CORS_ALLOW_HEADERS: List[str] = ["*"]
     CORS_ALLOW_ORIGIN_REGEX: Union[str, None] = None
     
-    ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1"]
+    ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1", "*"]
     USE_HTTPS_REDIRECT: bool = False
     
     model_config = SettingsConfigDict(
@@ -46,6 +72,11 @@ class BaseConfig(BaseSettings):
 class LocalConfig(BaseConfig):
     FRONTEND_URI: str = os.getenv("FRONTEND_LOCAL_URI", "http://localhost:3000")
     FRONTEND_REDIRECT_URI: str = f"{os.getenv('FRONTEND_LOCAL_URI', 'http://localhost:3000')}/auth/callback"
+
+    # Paystack
+    PAYSTACK_SECRET_KEY: str = os.getenv("PAYSTACK_LOCAL_SECRET_KEY", "")
+    PAYSTACK_PUBLIC_KEY: str = os.getenv("PAYSTACK_LOCAL_PUBLIC_KEY", "")
+
     
     CORS_ORIGINS: List[str] = [
         "http://localhost:3000",
@@ -71,10 +102,15 @@ class ProductionConfig(BaseConfig):
     FRONTEND_URI: str = os.getenv("FRONTEND_LIVE_URI", "https://taimako.dubem.xyz")
     FRONTEND_REDIRECT_URI: str = f"{os.getenv('FRONTEND_LIVE_URI', 'https://taimako.dubem.xyz')}/auth/callback"
 
+    # Paystack
+    PAYSTACK_SECRET_KEY: str = os.getenv("PAYSTACK_LIVE_SECRET_KEY", "")
+    PAYSTACK_PUBLIC_KEY: str = os.getenv("PAYSTACK_LIVE_PUBLIC_KEY", "")
+
     CORS_ORIGINS: List[str] = [
         "https://taimako.dubem.xyz",
         "https://www.taimako.dubem.xyz",
     ]
+    CORS_ALLOW_ORIGIN_REGEX: str = r"https?://.*"
 
     ALLOWED_HOSTS: List[str] = [
         "taimako.dubem.xyz",

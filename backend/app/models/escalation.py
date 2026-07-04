@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import uuid
 import enum
 from app.db.base import Base
+from app.models.mixins import SerializerMixin
 
 class EscalationStatus(str, enum.Enum):
     PENDING = "pending"
@@ -13,7 +14,7 @@ class EscalationStatus(str, enum.Enum):
 def generate_uuid():
     return str(uuid.uuid4())
 
-class Escalation(Base):
+class Escalation(Base, SerializerMixin):
     __tablename__ = "escalations"
 
     id = Column(String, primary_key=True, default=generate_uuid)
@@ -30,3 +31,4 @@ class Escalation(Base):
     # Relationships
     business = relationship("Business", backref="escalations")
     session = relationship("ChatSession", backref="escalation")
+

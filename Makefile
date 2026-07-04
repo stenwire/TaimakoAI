@@ -12,7 +12,7 @@ POSTGRES_CONTAINER  ?= $(PROJECT_PREFIX)_postgres
 BACKEND_CONTAINER   ?= $(PROJECT_PREFIX)_backend
 FRONTEND_CONTAINER  ?= $(PROJECT_PREFIX)_frontend
 
-.PHONY: start start-d stop build logs migrate migrate-generate db-shell db-backup db-restore clean ps db-reset db-truncate logs-backend logs-frontend
+.PHONY: start start-d stop build logs migrate migrate-generate db-shell db-backup db-restore clean ps db-reset db-truncate logs-backend logs-frontend lint-be lint-be-fix lint-fe lint-fe-fix test-be test-be-unit test-be-api test-be-integration test-fe install-hooks setup create-admin
 
 # Start all services (foreground)
 start:
@@ -21,6 +21,22 @@ start:
 # Start in detached mode
 start-d:
 	docker-compose up -d
+
+# Run all backend tests
+test-be:
+	cd backend && uv run pytest tests/ -v
+
+# Run backend unit tests only
+test-be-unit:
+	cd backend && uv run pytest tests/unit/ -v
+
+# Run backend API tests only
+test-be-api:
+	cd backend && uv run pytest tests/api/ -v
+
+# Run backend integration tests only
+test-be-integration:
+	cd backend && uv run pytest tests/integration/ -v
 
 # Stop all services
 stop:
@@ -99,6 +115,52 @@ db-truncate:
 			END LOOP; \
 		END \$\$;"
 	@echo "All tables truncated (data cleared, structure preserved)."
+
+# Lint backend with ruff
+lint-be:
+	cd backend && uv run ruff check .
+
+# Lint and auto-fix backend with ruff
+lint-be-fix:
+	cd backend && uv run ruff check . --fix
+
+# Lint frontend with eslint
+lint-fe:
+	cd frontend && npm run lint
+
+# Lint and auto-fix frontend with eslint
+lint-fe-fix:
+	cd frontend && npx eslint --fix .
+
+# Run all frontend tests
+test-fe:
+	cd frontend && npm test
+
+# Install git pre-commit hook
+install-hooks:
+	@cp scripts/pre-commit .git/hooks/pre-commit
+	@chmod +x .git/hooks/pre-commit
+	@echo "Pre-commit hook installed."
+
+# One-command dev setup (dependencies + hooks)
+setup: install-hooks
+	@echo "Installing backend dependencies..."
+	cd backend && uv sync --dev
+	@echo "Installing frontend dependencies..."
+	cd frontend && npm ci
+	@echo "Setup complete."
+
+# Create or promote admin user
+# Promote existing user: make create-admin EMAIL=user@example.com
+# Create new admin:      make create-admin EMAIL=admin@example.com PASSWORD=securepass NAME="Admin"
+create-admin:
+	@if [ -z "$(EMAIL)" ]; then \
+		echo "Error: EMAIL is required."; \
+		echo "  Promote existing user: make create-admin EMAIL=user@example.com"; \
+		echo "  Create new admin:      make create-admin EMAIL=admin@example.com PASSWORD=securepass"; \
+		exit 1; \
+	fi
+	docker-compose exec backend uv run python -m scripts.create_admin --email $(EMAIL) $(if $(PASSWORD),--password $(PASSWORD)) $(if $(NAME),--name "$(NAME)")
 
 # Show running containers
 ps:

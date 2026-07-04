@@ -7,11 +7,13 @@ from typing import List
 from app.services.rag_service import rag_service
 from app.services.agent_service import run_conversation
 from app.schemas.chat import ChatRequest, ChatResponse
-from app.core.security_utils import decrypt_string
+from app.core.config import settings
 
 from app.core.response_wrapper import success_response
+from app.api.products import router as products_router
 
 router = APIRouter()
+router.include_router(products_router)
 
 
 @router.post("/documents/upload", response_model=None)
@@ -78,24 +80,14 @@ async def chat_with_agent(
             detail="Business profile not found. Please create a business profile before using the chat."
         )
     
-    # Decrypt the API key from business profile
-    decrypted_key = None
-    if business.gemini_api_key:
-        decrypted_key = decrypt_string(business.gemini_api_key)
-        if not decrypted_key:
-            # Key exists but failed to decrypt
-            print(f"Failed to decrypt API key for user {current_user.id}")
-            raise HTTPException(
-            status_code=400,
-            detail="API key is invalid or corrupted. Please re-enter your Google Gemini API key in Settings."
-            )
-    
+    # Use system-level API key
+    decrypted_key = settings.GOOGLE_API_KEY
     if not decrypted_key:
         raise HTTPException(
-            status_code=400,
-            detail="API key not configured. Please set your Google Gemini API key in Settings."
+            status_code=500,
+            detail="AI service is not configured. Please contact support."
         )
-    
+
     # Use user.id as session_id for chat history per user
     response_text = await run_conversation(
         message=request.message,

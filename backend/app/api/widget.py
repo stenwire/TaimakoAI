@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import uuid
@@ -8,6 +9,7 @@ import httpx
 from app.db.session import get_db
 from app.models.widget import WidgetSettings, GuestUser, GuestMessage
 from app.models.user import User
+from app.models.business import Business
 from app.models.chat_session import ChatSession
 from app.schemas.widget import (
     GuestStartRequest, GuestStartResponse,
@@ -19,12 +21,12 @@ from app.services.agent_service import run_conversation
 from app.auth.router import get_current_user
 from app.core.response_wrapper import success_response
 from app.services.analysis_agent import analyze_session, persist_analysis
-from app.core.security_utils import decrypt_string
 
 # Additional Schema for Updating Settings
 from pydantic import BaseModel
 
 from app.core.config import settings
+
 
 router = APIRouter()
 
@@ -39,6 +41,10 @@ class WidgetUpdate(BaseModel):
     send_initial_message_automatically: Optional[bool] = None
     whatsapp_enabled: Optional[bool] = None
     whatsapp_number: Optional[str] = None
+    whatsapp_phone_number_id: Optional[str] = None
+    whatsapp_business_account_id: Optional[str] = None
+    whatsapp_access_token: Optional[str] = None
+    whatsapp_send_rate_per_second: Optional[int] = None
     max_messages_per_session: Optional[int] = None
     max_sessions_per_day: Optional[int] = None
     max_sessions_per_day: Optional[int] = None
@@ -164,7 +170,28 @@ def update_my_widget_settings(
         
     if settings.whatsapp_number is not None:
         widget.whatsapp_number = settings.whatsapp_number
-        
+
+    if settings.whatsapp_phone_number_id is not None:
+        widget.whatsapp_phone_number_id = settings.whatsapp_phone_number_id or None
+
+    if settings.whatsapp_business_account_id is not None:
+        widget.whatsapp_business_account_id = settings.whatsapp_business_account_id or None
+
+    if settings.whatsapp_access_token is not None:
+        widget.whatsapp_access_token = settings.whatsapp_access_token or None
+
+    if settings.whatsapp_send_rate_per_second is not None:
+        rate = settings.whatsapp_send_rate_per_second
+        if rate == 0:
+            widget.whatsapp_send_rate_per_second = None
+        elif rate < 1 or rate > 80:
+            raise HTTPException(
+                status_code=400,
+                detail="Send rate must be between 1 and 80 messages/second.",
+            )
+        else:
+            widget.whatsapp_send_rate_per_second = rate
+
     if settings.max_messages_per_session is not None:
         widget.max_messages_per_session = settings.max_messages_per_session
         
@@ -172,6 +199,9 @@ def update_my_widget_settings(
         widget.max_sessions_per_day = settings.max_sessions_per_day
         
     if settings.whitelisted_domains is not None:
+        business = db.query(Business).filter(Business.user_id == current_user.id).first()
+        if business and len(settings.whitelisted_domains) > business.allocated_whitelisted_domains:
+            raise HTTPException(status_code=400, detail=f"Your plan allows a maximum of {business.allocated_whitelisted_domains} whitelisted domains.")
         widget.whitelisted_domains = settings.whitelisted_domains
         
     if settings.is_active is not None:
@@ -184,13 +214,67 @@ def update_my_widget_settings(
     return success_response(data=WidgetConfigResponse.model_validate(widget))
 
 @router.get("/guests", response_model=None)
-def get_my_widget_guests(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_my_widget_guests(
+    q: str | None = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     widget = db.query(WidgetSettings).filter(WidgetSettings.user_id == current_user.id).first()
     if not widget:
-        return success_response(data=[])
-    
-    guests = db.query(GuestUser).filter(GuestUser.widget_id == widget.id).order_by(GuestUser.created_at.desc()).all()
-    return success_response(data=[GuestUserResponse.model_validate(g) for g in guests])
+        return success_response(
+            data={"items": [], "total": 0, "limit": limit, "offset": offset}
+        )
+
+    query = db.query(GuestUser).filter(GuestUser.widget_id == widget.id)
+    if q:
+        like = f"%{q}%"
+        query = query.filter(
+            or_(
+                GuestUser.name.ilike(like),
+                GuestUser.email.ilike(like),
+                GuestUser.phone.ilike(like),
+            )
+        )
+
+    total = query.count()
+    guests = (
+        query.order_by(GuestUser.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+    return success_response(
+        data={
+            "items": [GuestUserResponse.model_validate(g) for g in guests],
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }
+    )
+
+
+@router.get("/guests/{guest_id}", response_model=None)
+def get_my_widget_guest(
+    guest_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    widget = db.query(WidgetSettings).filter(WidgetSettings.user_id == current_user.id).first()
+    if not widget:
+        raise HTTPException(status_code=404, detail="Widget not found")
+
+    guest = (
+        db.query(GuestUser)
+        .filter(GuestUser.id == guest_id, GuestUser.widget_id == widget.id)
+        .first()
+    )
+    if not guest:
+        raise HTTPException(status_code=404, detail="Guest not found")
+
+    return success_response(data=GuestUserResponse.model_validate(guest))
 
 class LeadStatusUpdate(BaseModel):
     is_lead: bool
@@ -408,9 +492,17 @@ async def init_guest_session(
             ChatSession.created_at >= today_start
         ).count()
         
-        limit = widget.max_sessions_per_day or 5
+        limit = 50 # Default fallback
+        user = db.query(User).filter(User.id == widget.user_id).first()
+        if user and user.business:
+            limit = user.business.allocated_daily_sessions
+        
+        # Optional: Also respect widget-specific setting if lower?
+        # if widget.max_sessions_per_day and widget.max_sessions_per_day < limit:
+        #     limit = widget.max_sessions_per_day
+            
         if sessions_today >= limit:
-             raise HTTPException(status_code=429, detail="Daily session limit reached")
+            raise HTTPException(status_code=429, detail="Daily session limit reached for this business.")
 
     session = ChatSession(
         guest_id=guest.id,
@@ -534,28 +626,46 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
 
     # 2. Get business context
     owner_user = db.query(User).filter(User.id == widget.user_id).first()
-    if not owner_user or not owner_user.business:
+    business = None
+    if owner_user and owner_user.business:
+        business = owner_user.business
+        business_name = business.business_name
+        instruction = business.custom_agent_instruction
+        intents = business.intents
+    else:
         business_name = "Taimako.AI"
         instruction = None
         intents = None
-    else:
-        business_name = owner_user.business.business_name
-        instruction = owner_user.business.custom_agent_instruction
-        intents = owner_user.business.intents
+        
+    # AI Responses Check
+    if business and (business.allocated_ai_responses - business.used_ai_responses) <= 0:
+        return WidgetChatResponse(
+            message=GuestMessageSchema.model_validate(guest_msg),
+            response=GuestMessageSchema(
+                id=str(uuid.uuid4()),
+                guest_id=guest.id,
+                session_id=session_id,
+                sender="ai",
+                message_text="Service unavailable: The business has insufficient AI credits.",
+                created_at=datetime.now(timezone.utc)
+            )
+        )
 
     # 3. Call AI
     # Check Message Limit
     if session_id:
         current_session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
         if current_session:
-             limit = widget.max_messages_per_session or 50
-             # user_messages is user only. total is user+ai. Requirement: "maximum messages per session per user" usually means user messages.
-             # or total? "Businesses should be able to se maximum messages per session per user"
-             # Let's limit USER messages.
-             if (current_session.user_messages or 0) >= limit:
-                 # We can silently ignore or return a system message.
-                 # Returning a system message as "AI" is easiest.
-                 return WidgetChatResponse(
+            limit = widget.max_messages_per_session or 50
+            if business and getattr(business, "allocated_messages_per_session", None):
+                limit = min(limit, business.allocated_messages_per_session)
+            # user_messages is user only. total is user+ai. Requirement: "maximum messages per session per user" usually means user messages.
+            # or total? "Businesses should be able to se maximum messages per session per user"
+            # Let's limit USER messages.
+            if (current_session.user_messages or 0) >= limit:
+                # We can silently ignore or return a system message.
+                # Returning a system message as "AI" is easiest.
+                return WidgetChatResponse(
                     message=GuestMessageSchema.model_validate(guest_msg),
                     response=GuestMessageSchema(
                         id=str(uuid.uuid4()),
@@ -565,28 +675,12 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
                         message_text="Session message limit reached. Please start a new session.",
                         created_at=datetime.now(timezone.utc)
                     )
-                 )
-
-    # Decrypt API Key
-    decrypted_key = None
-    if owner_user and owner_user.business and owner_user.business.gemini_api_key:
-        decrypted_key = decrypt_string(owner_user.business.gemini_api_key)
-        if not decrypted_key:
-            print(f"Failed to decrypt API key for business {widget.user_id}")
-            return WidgetChatResponse(
-                message=GuestMessageSchema.model_validate(guest_msg),
-                response=GuestMessageSchema(
-                    id=str(uuid.uuid4()),
-                    guest_id=guest.id,
-                    session_id=session_id,
-                    sender="ai",
-                    message_text="Service Unavailable: API Configuration Error (Key Corrupted). Please check business settings.",
-                    created_at=datetime.now(timezone.utc)
                 )
-            )
-    
+
+    # Use system-level API key
+    decrypted_key = settings.GOOGLE_API_KEY
     if not decrypted_key:
-        print(f"Missing API Key for business {widget.user_id}")
+        print(f"Missing API Key for business {widget.user_id} and System")
         return WidgetChatResponse(
             message=GuestMessageSchema.model_validate(guest_msg),
             response=GuestMessageSchema(
@@ -594,7 +688,7 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
                 guest_id=guest.id,
                 session_id=session_id,
                 sender="ai",
-                message_text="Service unavailable: The business has not configured the AI service correctly (Missing API Key).",
+                message_text="Service unavailable: AI Configuration Error.",
                 created_at=datetime.now(timezone.utc)
             )
         )
@@ -634,6 +728,12 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
         message_text=ai_response_text
     )
     db.add(ai_msg)
+    
+    # Increment used AI responses if success
+    if business:
+        business.used_ai_responses += 1
+        db.add(business) # Ensure update
+    
     db.commit()
     db.refresh(ai_msg)
 
@@ -659,30 +759,30 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
         now_aware = datetime.now(timezone.utc)
         
         if session.created_at:
-             created_at = session.created_at
-             if created_at.tzinfo is None:
-                 created_at = created_at.replace(tzinfo=timezone.utc)
-             
-             delta = now_aware - created_at
-             session.session_duration = int(delta.total_seconds())
+            created_at = session.created_at
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=timezone.utc)
+            
+            delta = now_aware - created_at
+            session.session_duration = int(delta.total_seconds())
         
         # First response time (if not set)
         if session.first_response_time is None:
-             # guest_msg.created_at and ai_msg.created_at might be naive or aware.
-             # They are freshly created so they might be naive if fetched back from SQLite immediately?
-             # Or they are the objects we just added? No, we queried messages or refreshed them.
-             
-             g_created = guest_msg.created_at
-             a_created = ai_msg.created_at
-             
-             if g_created and a_created:
-                 if g_created.tzinfo is None:
-                     g_created = g_created.replace(tzinfo=timezone.utc)
-                 if a_created.tzinfo is None:
-                     a_created = a_created.replace(tzinfo=timezone.utc)
-                     
-                 frt = a_created - g_created
-                 session.first_response_time = int(frt.total_seconds())
+            # guest_msg.created_at and ai_msg.created_at might be naive or aware.
+            # They are freshly created so they might be naive if fetched back from SQLite immediately?
+            # Or they are the objects we just added? No, we queried messages or refreshed them.
+            
+            g_created = guest_msg.created_at
+            a_created = ai_msg.created_at
+            
+            if g_created and a_created:
+                if g_created.tzinfo is None:
+                    g_created = g_created.replace(tzinfo=timezone.utc)
+                if a_created.tzinfo is None:
+                    a_created = a_created.replace(tzinfo=timezone.utc)
+                    
+                frt = a_created - g_created
+                session.first_response_time = int(frt.total_seconds())
 
         db.commit()
 
@@ -692,9 +792,28 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
     )
 
 @router.get("/sessions/{guest_id}/history", response_model=None)
-def get_guest_session_history(guest_id: str, db: Session = Depends(get_db)):
-    sessions = db.query(ChatSession).filter(ChatSession.guest_id == guest_id).order_by(ChatSession.created_at.desc()).all()
-    return success_response(data=[SessionHistoryResponse.model_validate(s) for s in sessions])
+def get_guest_session_history(
+    guest_id: str,
+    limit: int = Query(default=20, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+):
+    query = db.query(ChatSession).filter(ChatSession.guest_id == guest_id)
+    total = query.count()
+    sessions = (
+        query.order_by(ChatSession.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+    return success_response(
+        data={
+            "items": [SessionHistoryResponse.model_validate(s) for s in sessions],
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }
+    )
 
 @router.get("/session/{session_id}/messages", response_model=List[GuestMessageSchema])
 def get_session_messages(session_id: str, db: Session = Depends(get_db)):
@@ -754,7 +873,7 @@ async def analyze_chat_session(session_id: str, db: Session = Depends(get_db)):
 
     # Fetch intents and API key from business if available
     intents = None
-    decrypted_key = None
+    decrypted_key = settings.GOOGLE_API_KEY
     try:
         # ChatSession -> GuestUser -> WidgetSettings -> User -> Business
         guest = db.query(GuestUser).filter(GuestUser.id == session.guest_id).first()
@@ -765,10 +884,8 @@ async def analyze_chat_session(session_id: str, db: Session = Depends(get_db)):
                 if owner_user and owner_user.business:
                     if owner_user.business.intents:
                         intents = owner_user.business.intents
-                    if owner_user.business.gemini_api_key:
-                        decrypted_key = decrypt_string(owner_user.business.gemini_api_key)
     except Exception as e:
-        print(f"Error fetching intents/key: {e}")
+        print(f"Error fetching intents: {e}")
 
     # 2. Run analysis
     summary, intent = await analyze_session(db, session_id, intents=intents, api_key=decrypted_key)

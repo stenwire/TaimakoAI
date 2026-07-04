@@ -23,11 +23,11 @@ export default function Markdown({ content, variant = 'default', className }: Ma
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          p: ({ node, ...props }) => <p className="mb-1 last:mb-0" {...props} />,
-          ul: ({ node, ...props }) => <ul className="pl-4 mb-2 list-disc" {...props} />,
-          ol: ({ node, ...props }) => <ol className="pl-4 mb-2 list-decimal" {...props} />,
-          li: ({ node, ...props }) => <li className="mb-0.5" {...props} />,
-          a: ({ node, ...props }) => <a className="underline hover:text-blue-500 transition-colors" target="_blank" rel="noopener noreferrer" {...props} />,
+          p: ({ ...props }) => <p className="mb-1 last:mb-0" {...props} />,
+          ul: ({ ...props }) => <ul className="pl-4 mb-2 list-disc" {...props} />,
+          ol: ({ ...props }) => <ol className="pl-4 mb-2 list-decimal" {...props} />,
+          li: ({ ...props }) => <li className="mb-0.5" {...props} />,
+          a: ({ ...props }) => <a className="underline hover:text-blue-500 transition-colors" target="_blank" rel="noopener noreferrer" {...props} />,
         }}
       >
         {content}
