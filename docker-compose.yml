@@ -18,30 +18,39 @@ services:
       retries: 5
 
   backend:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend
     container_name: taimako_backend
+    restart: unless-stopped
     ports:
       - "8000:8000"
-    volumes:
-      - ./backend:/app
-      - /app/.venv
+    env_file: .env
     environment:
-      - PYTHONUNBUFFERED=1
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}
     depends_on:
       postgres:
         condition: service_healthy
 
   frontend:
-    build: ./frontend
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frontend
+      args:
+        NEXT_PUBLIC_ENVIRONMENT: ${NEXT_PUBLIC_ENVIRONMENT:-production}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
+        NEXT_PUBLIC_BACKEND_URL_PROD: ${NEXT_PUBLIC_BACKEND_URL_PROD:-}
+        NEXT_PUBLIC_FRONTEND_URL_PROD: ${NEXT_PUBLIC_FRONTEND_URL_PROD:-}
+        NEXT_PUBLIC_BACKEND_URL_STAGING: ${NEXT_PUBLIC_BACKEND_URL_STAGING:-}
+        NEXT_PUBLIC_FRONTEND_URL_STAGING: ${NEXT_PUBLIC_FRONTEND_URL_STAGING:-}
+        NEXT_PUBLIC_BACKEND_URL_DEV: ${NEXT_PUBLIC_BACKEND_URL_DEV:-}
+        NEXT_PUBLIC_FRONTEND_URL_DEV: ${NEXT_PUBLIC_FRONTEND_URL_DEV:-}
     container_name: taimako_frontend
+    restart: unless-stopped
     ports:
       - "3000:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    stdin_open: true
-    tty: true
     depends_on:
       - backend
 

@@ -1,0 +1,52 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-9.0.1, pluggy-1.6.0
+rootdir: /Users/vencomacbook/Desktop/sten/TaimakoAI/backend
+configfile: pyproject.toml
+plugins: anyio-4.11.0, Faker-38.2.0
+collected 2 items
+
+tests/test_escalation_unit.py ..                                         [100%]
+
+=============================== warnings summary ===============================
+app/db/base.py:3
+  /Users/vencomacbook/Desktop/sten/TaimakoAI/backend/app/db/base.py:3: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+app/schemas/user.py:23
+  /Users/vencomacbook/Desktop/sten/TaimakoAI/backend/app/schemas/user.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class UserResponse(UserBase):
+
+.venv/lib/python3.13/site-packages/google/cloud/aiplatform/models.py:52
+  /Users/vencomacbook/Desktop/sten/TaimakoAI/backend/.venv/lib/python3.13/site-packages/google/cloud/aiplatform/models.py:52: FutureWarning: Support for google-cloud-storage < 3.0.0 will be removed in a future version of google-cloud-aiplatform. Please upgrade to google-cloud-storage >= 3.0.0.
+    from google.cloud.aiplatform.utils import gcs_utils
+
+.venv/lib/python3.13/site-packages/litellm/types/llms/anthropic.py:531
+  /Users/vencomacbook/Desktop/sten/TaimakoAI/backend/.venv/lib/python3.13/site-packages/litellm/types/llms/anthropic.py:531: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class AnthropicResponseContentBlockToolUse(BaseModel):
+
+.venv/lib/python3.13/site-packages/litellm/types/rag.py:181
+  /Users/vencomacbook/Desktop/sten/TaimakoAI/backend/.venv/lib/python3.13/site-packages/litellm/types/rag.py:181: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class RAGIngestRequest(BaseModel):
+
+app/services/agent_system/tool_schemas.py:7
+  /Users/vencomacbook/Desktop/sten/TaimakoAI/backend/app/services/agent_system/tool_schemas.py:7: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class GetContextInput(BaseModel):
+
+app/services/agent_system/tool_schemas.py:24
+  /Users/vencomacbook/Desktop/sten/TaimakoAI/backend/app/services/agent_system/tool_schemas.py:24: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SayHelloInput(BaseModel):
+
+app/services/agent_system/tool_schemas.py:47
+  /Users/vencomacbook/Desktop/sten/TaimakoAI/backend/app/services/agent_system/tool_schemas.py:47: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ContextOutput(BaseModel):
+
+app/services/agent_system/tool_schemas.py:67
+  /Users/vencomacbook/Desktop/sten/TaimakoAI/backend/app/services/agent_system/tool_schemas.py:67: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class GreetingOutput(BaseModel):
+
+app/services/agent_system/tool_schemas.py:82
+  /Users/vencomacbook/Desktop/sten/TaimakoAI/backend/app/services/agent_system/tool_schemas.py:82: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class FarewellOutput(BaseModel):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 2 passed, 10 warnings in 0.07s ========================
