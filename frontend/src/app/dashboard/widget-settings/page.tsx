@@ -79,10 +79,11 @@ export default function WidgetSettingsPage() {
       const res = await getBusinessProfile();
       if (res.status === 'success' && res.data) {
         setBusiness(res.data);
+        const d = res.data as unknown as Record<string, number | undefined>;
         setLimits({
-          allocated_messages_per_session: (res.data as Record<string, unknown>).allocated_messages_per_session,
-          allocated_daily_sessions: (res.data as Record<string, unknown>).allocated_daily_sessions,
-          allocated_whitelisted_domains: (res.data as Record<string, unknown>).allocated_whitelisted_domains,
+          allocated_messages_per_session: d.allocated_messages_per_session,
+          allocated_daily_sessions: d.allocated_daily_sessions,
+          allocated_whitelisted_domains: d.allocated_whitelisted_domains,
         });
       }
     } catch (e) { console.error(e); }
