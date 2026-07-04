@@ -1,14 +1,10 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from sqlalchemy.orm import Session
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.db.base import Base
-from app.db.session import get_db
 from app.models.business import Business
 from app.models.chat_session import ChatSession
-from app.models.widget import GuestUser
 from app.models.escalation import Escalation, EscalationStatus
 from app.services.agent_system.tools import escalate_to_human
 from google.adk.tools.tool_context import ToolContext

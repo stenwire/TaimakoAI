@@ -1,6 +1,6 @@
 import pytest
 import asyncio
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import Mock, patch
 from app.services.agent_system.callbacks import trigger_session_analysis, _run_analysis_in_background
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models.llm_response import LlmResponse
@@ -152,7 +152,6 @@ class TestAutomatedAnalysis:
     
     async def test_background_analysis_timeout(self):
         """Test that background analysis has timeout protection."""
-        from app.db.session import SessionLocal
         
         # Mock analyze_session to take too long
         async def slow_analysis(*args, **kwargs):

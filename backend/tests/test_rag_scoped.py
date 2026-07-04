@@ -2,7 +2,6 @@ import pytest
 from unittest.mock import MagicMock, patch
 from app.services.rag_service import rag_service
 from app.models.document import Document
-from app.models.user import User
 
 @pytest.fixture
 def mock_file_storage(monkeypatch):

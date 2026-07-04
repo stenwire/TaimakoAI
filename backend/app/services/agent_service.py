@@ -1,3 +1,15 @@
+import logging
+import warnings
+from typing import Optional
+
+from google.adk.runners import Runner
+from google.genai import types
+
+from app.services.agent_system.service import session_service, init_session
+from app.services.agent_system.agent_factory import AgentFactory
+
+warnings.filterwarnings("ignore")
+
 try:
     from app.services.rag_service import rag_service
 except ImportError:
@@ -11,20 +23,6 @@ except ImportError:
 APP_NAME = "agentic_rag_api"
 USER_ID = "test_user"
 SESSION_ID = "test_session"
-
-import os
-import asyncio
-from google.adk.runners import Runner
-from google.genai import types 
-import logging
-from typing import Optional
-
-# Import from new modular structure
-from app.services.agent_system.service import session_service, init_session
-from app.services.agent_system.agent_factory import AgentFactory
-
-import warnings
-warnings.filterwarnings("ignore")
 
 logging.basicConfig(level=logging.ERROR)
 

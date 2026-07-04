@@ -230,7 +230,6 @@ def escalate_to_human(reason: str, user_message: str, tool_context: ToolContext)
         print(f"Escalation: Widget found. User ID: {widget.user_id}")
         
         # Get business via user_id
-        from app.models.user import User
         business = db.query(Business).filter(Business.user_id == widget.user_id).first()
         
         if not business:

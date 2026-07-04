@@ -46,7 +46,7 @@ def block_unsafe_content(
 
     # Check for legacy BLOCK keyword
     if "BLOCK" in last_user_message_text.upper():
-        print(f"--- Callback: Found 'BLOCK'. Blocking LLM call! ---")
+        print("--- Callback: Found 'BLOCK'. Blocking LLM call! ---")
         return LlmResponse(
             content=types.Content(
                 role="model",
@@ -130,7 +130,7 @@ def sanitize_model_response(
     
     # Only return modified response if changes were made
     if sanitized_text != original_text:
-        print(f"--- Callback: sanitize_model_response modified response ---")
+        print("--- Callback: sanitize_model_response modified response ---")
         return LlmResponse(
             content=types.Content(
                 role="model",

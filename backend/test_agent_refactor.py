@@ -1,5 +1,4 @@
 import asyncio
-import os
 from app.services.agent_service import run_conversation, session_service, APP_NAME, USER_ID, SESSION_ID
 
 async def verify_refactor():

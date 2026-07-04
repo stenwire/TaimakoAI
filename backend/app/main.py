@@ -1,17 +1,19 @@
-import os
 from fastapi import FastAPI
 from fastapi.exceptions import HTTPException, RequestValidationError
 
 from app.api.routes import router as api_router
 from app.auth.router import router as auth_router
-from app.db.base import Base
-from app.db.session import engine
+from app.api.business import router as business_router
+from app.api.widget import router as widget_router
+from app.api.analytics import router as analytics_router
+from app.api.escalation import router as escalation_router
 from app.core.exception_handler import (
     http_exception_handler,
     validation_exception_handler,
     general_exception_handler
 )
 from app.core.middleware import register_middleware
+from app.core.response_wrapper import success_response
 
 # Create tables (if not using alembic, but we are. Keeping for dev convenience or removing if strictly alembic)
 # Base.metadata.create_all(bind=engine)
@@ -34,21 +36,10 @@ app.add_exception_handler(Exception, general_exception_handler)
 
 app.include_router(api_router)
 app.include_router(auth_router)
-
-# Import and include business router
-from app.api.business import router as business_router
 app.include_router(business_router)
-
-from app.api.widget import router as widget_router
 app.include_router(widget_router, prefix="/widgets", tags=["widgets"])
-
-from app.api.analytics import router as analytics_router
 app.include_router(analytics_router, prefix="/analytics", tags=["analytics"])
-
-from app.api.escalation import router as escalation_router
 app.include_router(escalation_router, prefix="/escalations", tags=["escalations"])
-
-from app.core.response_wrapper import success_response
 
 @app.get("/")
 async def root():

@@ -2,7 +2,6 @@
 Tests for the say_hello tool.
 Validates greeting functionality with various input scenarios.
 """
-import pytest
 from app.services.agent_system.tools import say_hello
 
 

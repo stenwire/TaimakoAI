@@ -6,9 +6,6 @@ import asyncio
 from app.services.agent_service import run_conversation
 from app.db.session import SessionLocal
 from app.models.chat_session import ChatSession
-from app.models.widget import GuestUser, WidgetSettings
-from app.models.user import User
-from app.models.business import Business
 import uuid
 import os
 
@@ -57,7 +54,7 @@ async def test_automated_analysis():
         session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
         
         if session:
-            print(f"✓ Session found in database")
+            print("✓ Session found in database")
             if session.summary:
                 print(f"✓ Summary: {session.summary}")
             else:

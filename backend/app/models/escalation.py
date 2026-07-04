@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Boolean, Enum
+from sqlalchemy import Column, String, Text, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 import uuid

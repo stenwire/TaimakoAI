@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from typing import List, Optional
+from typing import Optional
 from datetime import datetime, timedelta
 
 from app.db.session import get_db
@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from app.services.analysis_agent import generate_followup_content
 from app.models.widget import GuestMessage
 from app.core.response_wrapper import success_response
+from app.core.security_utils import decrypt_string
 
 router = APIRouter()
 
@@ -46,12 +47,6 @@ def get_analytics_overview(
     total_sessions = query.count()
     
     # Guests
-    guests_query = db.query(GuestUser).filter(
-        GuestUser.widget_id == widget.id,
-        GuestUser.created_at >= start_date # Logic for 'New Visitors' in period? Or Active?
-        # Standard: Total Unique Visitors in period (based on session activity or creation?)
-        # Let's use Active Visitors (had a session in period)
-    )
     # Better: Count distinct Guest IDs in sessions query
     total_guests = query.with_entities(ChatSession.guest_id).distinct().count()
 
@@ -59,7 +54,7 @@ def get_analytics_overview(
     leads_captured = db.query(GuestUser).join(ChatSession).filter(
         GuestUser.widget_id == widget.id,
         ChatSession.created_at >= start_date,
-        GuestUser.is_lead == True
+        GuestUser.is_lead
     ).distinct().count()
     
     # Avg Duration
@@ -74,7 +69,7 @@ def get_analytics_overview(
     returning_guests_count = db.query(GuestUser).join(ChatSession).filter(
         GuestUser.widget_id == widget.id,
         ChatSession.created_at >= start_date,
-        GuestUser.is_returning == True
+        GuestUser.is_returning
     ).distinct().count()
     
     returning_percentage = 0
@@ -185,10 +180,6 @@ class FollowUpRequest(BaseModel):
     session_id: str
     type: str # "email" or "transcript"
     extra_info: Optional[str] = ""
-
-from app.core.security_utils import decrypt_string
-
-# ...
 
 @router.post("/followup", response_model=None)
 async def generate_followup(

@@ -1,5 +1,4 @@
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from app.core.security import create_access_token
 from app.models.user import User
 

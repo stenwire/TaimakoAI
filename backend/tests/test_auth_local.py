@@ -1,6 +1,3 @@
-from fastapi.testclient import TestClient
-from app.main import app
-from app.api.routes import router
 
 def test_signup_success(client):
     response = client.post("/auth/signup", json={

@@ -3,8 +3,6 @@ from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Boolean, Inte
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from app.db.base import Base
-from app.models.user import User
-from app.models.business import Business
 # Note: ChatSession is imported via string reference in relationships to avoid circular imports
 
 def generate_uuid():

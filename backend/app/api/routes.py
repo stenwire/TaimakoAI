@@ -6,10 +6,8 @@ from app.models.user import User
 from typing import List
 from app.services.rag_service import rag_service
 from app.services.agent_service import run_conversation
-from app.schemas.document import IngestResponse
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.core.security_utils import decrypt_string
-import asyncio
 
 from app.core.response_wrapper import success_response
 

@@ -1,4 +1,3 @@
-from unittest.mock import MagicMock
 
 def test_root(client):
     response = client.get("/")

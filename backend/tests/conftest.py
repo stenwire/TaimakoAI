@@ -15,8 +15,7 @@ from app.db.base import Base
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-from app.models.user import User # Import to register models
-from app.models.business import Business # Import to register models
+from fastapi.testclient import TestClient
 from app.main import app
 from app.services.rag_service import rag_service
 
