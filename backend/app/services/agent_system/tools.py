@@ -3,7 +3,7 @@ from google.adk.tools.tool_context import ToolContext
 from app.services.agent_system.tool_schemas import (
     GetContextInput, ContextOutput,
     SayHelloInput, GreetingOutput,
-    SayGoodbyeInput, FarewellOutput
+    FarewellOutput
 )
 from app.db.session import SessionLocal
 from app.models.business import Business
@@ -15,6 +15,8 @@ from app.services.agent_system.tool_schemas import (
     EscalateToHumanInput, EscalateToHumanOutput
 )
 import json
+from app.core.subscription import TIER_LIMITS
+
 
 try:
     from google import genai
@@ -108,9 +110,6 @@ def say_goodbye() -> str:
     Returns:
         str: A polite farewell message.
     """
-    # Validate input (empty schema for this tool)
-    validated_input = SayGoodbyeInput()
-    
     # Create structured output
     output = FarewellOutput(message="Goodbye! Have a great day.")
     return output.message
@@ -230,28 +229,48 @@ def escalate_to_human(reason: str, user_message: str, tool_context: ToolContext)
         print(f"Escalation: Widget found. User ID: {widget.user_id}")
         
         # Get business via user_id
-        from app.models.user import User
         business = db.query(Business).filter(Business.user_id == widget.user_id).first()
         
         if not business:
             print(f"Escalation Error: No business found for user {widget.user_id}")
             return "Error: Business not found."
         
+        import logging
+        logger = logging.getLogger(__name__)
+
         print(f"Escalation: Business found. Name: {business.business_name}, Escalation enabled: {business.is_escalation_enabled}")
 
-        # 3. Check if enabled
+        # 3. Check if enabled and within limits
         if not business.is_escalation_enabled:
             return "I apologize, but human escalation is currently not available for this service."
+            
+        # Check limits
+        tier = business.subscription_tier or "spark"
+        max_escalations = TIER_LIMITS.get(tier, {}).get("max_monthly_escalations", 5)
+        
+        if business.used_escalations >= max_escalations:
+            print(f"Escalation Limit Reached for business {business.id}")
+            return "I apologize, but we cannot process further escalations at this time due to high volume."
 
         # 4. Create Escalation
-        escalation = Escalation(
-            business_id=business.id,
-            session_id=session_id,
-            summary=f"Escalation Triggered: {validated_input.reason}\nUser Message: {validated_input.user_message}",
-            sentiment="Negative", # Default or should be passed.
-            status=EscalationStatus.PENDING.value
-        )
-        db.add(escalation)
+        existing_escalation = db.query(Escalation).filter(Escalation.session_id == session_id).first()
+        if existing_escalation:
+            escalation = existing_escalation
+            logger.info(f"Escalation for session {session_id} already exists. Returning existing one.")
+        else:
+            escalation = Escalation(
+                business_id=business.id,
+                session_id=session_id,
+                summary=f"Escalation Triggered: {validated_input.reason}\nUser Message: {validated_input.user_message}",
+                sentiment="Negative", # Default or should be passed.
+                status=EscalationStatus.PENDING.value
+            )
+            db.add(escalation)
+            
+            # Increment usage only on new creation
+            business.used_escalations += 1
+            db.add(business)
+            
         db.commit()
         db.refresh(escalation)
         
@@ -266,7 +285,27 @@ def escalate_to_human(reason: str, user_message: str, tool_context: ToolContext)
                 f"Reason: {validated_input.reason}\n"
                 f"User Message: {validated_input.user_message}\n"
             )
-            email_service.send_email(emails, subject, body)
+            from app.services.email_service import EmailSchema
+            import asyncio
+            import threading
+
+            schema = EmailSchema(
+                subject=subject,
+                recipients=emails,
+                body=body
+            )
+
+            def send_in_thread(coro):
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    loop.run_until_complete(coro)
+                except Exception as e:
+                    print(f"Error sending escalation email: {e}")
+                finally:
+                    loop.close()
+
+            threading.Thread(target=send_in_thread, args=(email_service.send_email(schema),)).start()
             
         output = EscalateToHumanOutput(
             escalation_id=escalation.id,

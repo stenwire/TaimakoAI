@@ -9,7 +9,7 @@ import { AnalyticsOverview, IntentStat, TrafficSource, LocationStat } from '@/li
 
 // --- Components ---
 
-const MetricCard = ({ title, value, delta, label, icon: Icon, delay }: { title: string, value: string, delta?: string, label: string, icon: React.ElementType, delay: number }) => (
+const MetricCard = ({ value, delta, label, icon: Icon, delay }: { title?: string, value: string, delta?: string, label: string, icon: React.ElementType, delay: number }) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
@@ -222,7 +222,7 @@ export default function DashboardOverview() {
         <div className="lg:col-span-6 bg-white p-6 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] shadow-[var(--shadow-sm)] flex flex-col">
           <h3 className="text-lg font-space font-semibold text-[var(--brand-primary)] mb-4">Traffic Sources</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
-            {sources.map((item, i) => (
+            {sources.map((item) => (
               <div key={item.source} className="p-4 bg-[var(--bg-tertiary)]/30 rounded-[var(--radius-md)] flex flex-col justify-center">
                 <div className={`w-2 h-2 rounded-full mb-3 bg-[var(--brand-primary)]`} />
                 <div className="text-[24px] font-space font-bold text-[var(--text-primary)]">{item.count}</div>

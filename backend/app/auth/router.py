@@ -1,7 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from fastapi.responses import RedirectResponse, JSONResponse
-from typing import Optional
+from fastapi.responses import RedirectResponse
 
 from app.db.session import get_db
 from app.models.user import User
@@ -13,18 +12,11 @@ from app.core.response_wrapper import success_response, error_response
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-# --- Dependency: Get Current User ---
-async def get_current_user(token: str = Depends(verify_token), db: Session = Depends(get_db)) -> User:
-    # Note: verify_token dependency above is a placeholder. 
-    # In FastAPI, we usually use OAuth2PasswordBearer to extract token.
-    # But for simplicity here, we'll extract manually or assume middleware.
-    # Let's fix this to be a proper dependency.
-    pass
-
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 security = HTTPBearer()
 
+# --- Dependency: Get Current User ---
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)) -> User:
     token = credentials.credentials
     payload = verify_token(token)

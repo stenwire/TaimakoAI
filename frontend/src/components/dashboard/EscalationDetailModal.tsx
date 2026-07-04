@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { MessageSquare, CheckCircle, User, Bot, Clock, AlertTriangle } from 'lucide-react';
+import { CheckCircle, User, Bot, Clock, AlertTriangle } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import { getEscalationDetails, resolveEscalation } from '@/lib/api';
-import type { EscalationDetail, EscalationMessage } from '@/lib/types';
+import type { EscalationDetail } from '@/lib/types';
 import SkeletonLoader from '@/components/ui/SkeletonLoader';
 
 interface EscalationDetailModalProps {

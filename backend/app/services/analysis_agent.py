@@ -1,9 +1,8 @@
-import os
 import json
 from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 from sqlalchemy.orm import Session
-from app.models.widget import GuestMessage, GuestUser
+from app.models.widget import GuestMessage
 from app.models.chat_session import ChatSession
 
 # Use specific client for multi-tenant API key support
@@ -72,7 +71,7 @@ async def analyze_session(db: Session, session_id: str, intents: Optional[List[s
     """
     
     try:
-        print(f"Analysis Agent: Calling Gemini 2.0 Flash for analysis...")
+        print("Analysis Agent: Calling Gemini 2.0 Flash for analysis...")
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
             model="gemini-2.0-flash", 

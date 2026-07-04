@@ -73,7 +73,7 @@ export default function DocumentsPage() {
       setSelectedFiles([]);
       await fetchDocuments();
       setTimeout(() => setMessage(null), 3000);
-    } catch (error) {
+    } catch {
       setMessage({ type: 'error', text: 'Failed to upload documents' });
     } finally {
       setUploading(false);
@@ -87,7 +87,7 @@ export default function DocumentsPage() {
       await processDocuments();
       setMessage({ type: 'success', text: 'Documents processed successfully, please refresh!' });
       setTimeout(() => setMessage(null), 3000);
-    } catch (error) {
+    } catch {
       setMessage({ type: 'error', text: 'Failed to process documents' });
     } finally {
       setProcessing(false);
@@ -105,7 +105,7 @@ export default function DocumentsPage() {
       setMessage({ type: 'success', text: 'Document deleted. Please run Process to update Knowledge Base.' });
       fetchDocuments();
       setTimeout(() => setMessage(null), 5000);
-    } catch (error) {
+    } catch {
       setMessage({ type: 'error', text: 'Failed to delete document' });
     } finally {
       setDeleteId(null);

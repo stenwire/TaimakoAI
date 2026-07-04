@@ -16,9 +16,25 @@ export interface BusinessProfile {
   custom_agent_instruction: string;
   intents?: string[];
   logo_url?: string;
-  is_api_key_set?: boolean;
+
   is_escalation_enabled?: boolean;
   escalation_emails?: string[];
+  subscription_tier?: string;
+  subscription_status?: string;
+  allocated_ai_responses?: number;
+  used_ai_responses?: number;
+  allocated_escalations?: number;
+  used_escalations?: number;
+  allocated_messages_per_session?: number;
+  allocated_daily_sessions?: number;
+  allocated_whitelisted_domains?: number;
+  last_payment_date?: string;
+  plan_name?: string;
+  plan_code?: string;
+  plan_price?: number;
+  plan_currency?: string;
+  plan_interval?: string;
+  plan_features?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
@@ -31,7 +47,6 @@ export interface CreateBusinessProfileData {
   custom_agent_instruction: string;
   intents?: string[];
   logo_url?: string;
-  gemini_api_key?: string;
   is_escalation_enabled?: boolean;
   escalation_emails?: string[];
 }
@@ -43,7 +58,6 @@ export interface UpdateBusinessProfileData {
   custom_agent_instruction?: string;
   intents?: string[];
   logo_url?: string;
-  gemini_api_key?: string;
   is_escalation_enabled?: boolean;
   escalation_emails?: string[];
 }
@@ -140,6 +154,9 @@ export interface WidgetSettings {
   send_initial_message_automatically?: boolean;
   whatsapp_enabled?: boolean;
   whatsapp_number?: string;
+  whatsapp_phone_number_id?: string;
+  whatsapp_business_account_id?: string;
+  whatsapp_api_configured?: boolean;
   max_messages_per_session?: number;
   max_sessions_per_day?: number;
   whitelisted_domains?: string[];
@@ -154,6 +171,9 @@ export interface UpdateWidgetSettings {
   send_initial_message_automatically?: boolean;
   whatsapp_enabled?: boolean;
   whatsapp_number?: string;
+  whatsapp_phone_number_id?: string;
+  whatsapp_business_account_id?: string;
+  whatsapp_access_token?: string;
   max_messages_per_session?: number;
   max_sessions_per_day?: number;
   whitelisted_domains?: string[];
@@ -234,6 +254,7 @@ export interface GuestSession {
   created_at: string;
   last_message_at: string;
   origin: string;
+  channel?: string | null;
   summary: string | null;
   top_intent: string | null;
   country?: string | null;

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from typing import List, Optional
+from typing import Optional
 from datetime import datetime, timedelta
 
 from app.db.session import get_db
@@ -45,13 +45,6 @@ def get_analytics_overview(
     
     total_sessions = query.count()
     
-    # Guests
-    guests_query = db.query(GuestUser).filter(
-        GuestUser.widget_id == widget.id,
-        GuestUser.created_at >= start_date # Logic for 'New Visitors' in period? Or Active?
-        # Standard: Total Unique Visitors in period (based on session activity or creation?)
-        # Let's use Active Visitors (had a session in period)
-    )
     # Better: Count distinct Guest IDs in sessions query
     total_guests = query.with_entities(ChatSession.guest_id).distinct().count()
 
@@ -59,7 +52,7 @@ def get_analytics_overview(
     leads_captured = db.query(GuestUser).join(ChatSession).filter(
         GuestUser.widget_id == widget.id,
         ChatSession.created_at >= start_date,
-        GuestUser.is_lead == True
+        GuestUser.is_lead.is_(True)
     ).distinct().count()
     
     # Avg Duration
@@ -74,7 +67,7 @@ def get_analytics_overview(
     returning_guests_count = db.query(GuestUser).join(ChatSession).filter(
         GuestUser.widget_id == widget.id,
         ChatSession.created_at >= start_date,
-        GuestUser.is_returning == True
+        GuestUser.is_returning.is_(True)
     ).distinct().count()
     
     returning_percentage = 0
@@ -186,9 +179,7 @@ class FollowUpRequest(BaseModel):
     type: str # "email" or "transcript"
     extra_info: Optional[str] = ""
 
-from app.core.security_utils import decrypt_string
-
-# ...
+from app.core.config import settings as app_settings
 
 @router.post("/followup", response_model=None)
 async def generate_followup(
@@ -200,24 +191,19 @@ async def generate_followup(
     widget = db.query(WidgetSettings).filter(WidgetSettings.user_id == current_user.id).first()
     if not widget:
         raise HTTPException(status_code=404, detail="Widget not found")
-        
+
     session = db.query(ChatSession).join(GuestUser).filter(
         ChatSession.id == request.session_id,
         GuestUser.widget_id == widget.id
     ).first()
-    
+
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
-        
+
     messages = db.query(GuestMessage).filter(GuestMessage.session_id == request.session_id).order_by(GuestMessage.created_at).all()
-    
-    # Get API key
-    api_key = None
-    if current_user.business and current_user.business.gemini_api_key:
-        api_key = decrypt_string(current_user.business.gemini_api_key)
-    
-    content = await generate_followup_content(messages, request.type, request.extra_info, api_key=api_key)
-    
+
+    content = await generate_followup_content(messages, request.type, request.extra_info, api_key=app_settings.GOOGLE_API_KEY)
+
     return success_response(data={"content": content})
 
 @router.get("/sessions")
