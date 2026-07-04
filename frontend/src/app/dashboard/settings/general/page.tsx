@@ -203,7 +203,7 @@ export default function BusinessProfilePage() {
           <div className="space-y-8">
             {/* Business Details Section */}
             <div className="space-y-4">
-              <h3 className="text-lg font-space font-semibold text-[var(--brand-primary)] border-b border-[var(--border-subtle)] pb-2">Business Details</h3>
+              <h3 className="text-lg font-display font-semibold text-[var(--brand-primary)] border-b border-[var(--border-subtle)] pb-2">Business Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
                   label="Business Name"
@@ -252,7 +252,7 @@ export default function BusinessProfilePage() {
                 className="w-full flex justify-between items-center text-left group border-b border-[var(--border-subtle)] pb-2"
                 type="button"
               >
-                <h3 className="text-lg font-space font-semibold text-[var(--brand-primary)] group-hover:text-[var(--brand-primary)]/80 transition-colors flex items-center gap-2">
+                <h3 className="text-lg font-display font-semibold text-[var(--brand-primary)] group-hover:text-[var(--brand-primary)]/80 transition-colors flex items-center gap-2">
                   Agent Configuration
                   {editing && (
                     <div className="flex gap-2 ml-4">

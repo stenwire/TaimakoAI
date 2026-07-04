@@ -66,6 +66,7 @@ class WidgetConfigResponse(BaseModel):
     whatsapp_phone_number_id: Optional[str] = None
     whatsapp_business_account_id: Optional[str] = None
     whatsapp_api_configured: Optional[bool] = False
+    whatsapp_send_rate_per_second: Optional[int] = None
     max_messages_per_session: Optional[int] = 50
     max_sessions_per_day: Optional[int] = 5
     whitelisted_domains: Optional[List[str]] = None

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Users, Flag, Plus, CheckCircle2, Search, MessageSquare, Clock, X, Mail } from 'lucide-react';
@@ -9,9 +9,12 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Tabs from '@/components/ui/Tabs';
 import SkeletonLoader from '@/components/ui/SkeletonLoader';
+import Pagination from '@/components/ui/Pagination';
 import { getBusinessProfile, getEscalations, updateBusinessProfile } from '@/lib/api';
 import { useToast } from '@/contexts/ToastContext';
 import type { Escalation } from '@/lib/types';
+
+const PAGE_SIZE = 20;
 
 
 
@@ -24,6 +27,9 @@ export default function HandoffPage() {
   const [escalations, setEscalations] = useState<Escalation[]>([]);
   const [loadingEscalations, setLoadingEscalations] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [businessId, setBusinessId] = useState<string | null>(null);
+  const [offset, setOffset] = useState(0);
+  const [total, setTotal] = useState(0);
 
   // Configuration State
 
@@ -35,25 +41,49 @@ export default function HandoffPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetchBusinessAndEscalations();
-  }, []);
-
-  const fetchBusinessAndEscalations = async () => {
-    try {
-      setLoadingEscalations(true);
-      const profileRes = await getBusinessProfile();
-      if (profileRes.data?.id) {
-
+    let cancelled = false;
+    (async () => {
+      try {
+        const profileRes = await getBusinessProfile();
+        if (cancelled || !profileRes.data?.id) return;
+        setBusinessId(profileRes.data.id);
         setIsEscalationEnabled(profileRes.data.is_escalation_enabled || false);
         setEscalationEmails(profileRes.data.escalation_emails || []);
-        const escRes = await getEscalations(profileRes.data.id);
-        setEscalations(escRes || []);
+      } catch (error) {
+        console.error("Failed to load business profile", error);
       }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const fetchEscalations = useCallback(async () => {
+    if (!businessId) return;
+    try {
+      setLoadingEscalations(true);
+      const params: { status?: string; limit: number; offset: number } = {
+        limit: PAGE_SIZE,
+        offset,
+      };
+      if (filterStatus !== 'all') params.status = filterStatus;
+      const page = await getEscalations(businessId, params);
+      setEscalations(page.items);
+      setTotal(page.total);
     } catch (error) {
-      console.error("Failed to load data", error);
+      console.error("Failed to load escalations", error);
     } finally {
       setLoadingEscalations(false);
     }
+  }, [businessId, filterStatus, offset]);
+
+  useEffect(() => {
+    fetchEscalations();
+  }, [fetchEscalations]);
+
+  const handleStatusChange = (next: string) => {
+    setFilterStatus(next);
+    setOffset(0);
   };
 
   const handleSaveConfig = async () => {
@@ -91,12 +121,6 @@ export default function HandoffPage() {
   // Rule management
 
 
-  // Filtered escalations
-  const filteredEscalations = escalations.filter(e => {
-    if (filterStatus === 'all') return true;
-    return e.status === filterStatus;
-  });
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'resolved': return 'text-green-600 bg-green-50 border-green-200';
@@ -124,14 +148,14 @@ export default function HandoffPage() {
         <select
           className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] px-3 py-2 text-sm focus:outline-none"
           value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
+          onChange={(e) => handleStatusChange(e.target.value)}
         >
           <option value="all">All Status</option>
           <option value="pending">Pending</option>
           <option value="in_progress">In Progress</option>
           <option value="resolved">Resolved</option>
         </select>
-        <Button variant="secondary" onClick={fetchBusinessAndEscalations}>
+        <Button variant="secondary" onClick={fetchEscalations}>
           Refresh
         </Button>
       </div>
@@ -142,7 +166,7 @@ export default function HandoffPage() {
           <SkeletonLoader variant="rectangle" className="h-24" />
           <SkeletonLoader variant="rectangle" className="h-24" />
         </div>
-      ) : filteredEscalations.length === 0 ? (
+      ) : escalations.length === 0 ? (
         <div className="text-center py-12 px-4 rounded-[var(--radius-lg)] border-2 border-dashed border-[var(--border-subtle)]">
           <div className="w-12 h-12 bg-[var(--bg-tertiary)] rounded-full flex items-center justify-center mx-auto mb-3">
             <CheckCircle2 className="w-6 h-6 text-[var(--text-tertiary)]" />
@@ -152,7 +176,7 @@ export default function HandoffPage() {
         </div>
       ) : (
         <div className="grid gap-4">
-          {filteredEscalations.map((esc) => (
+          {escalations.map((esc) => (
             <motion.div
               key={esc.id}
               initial={{ opacity: 0, y: 10 }}
@@ -181,6 +205,15 @@ export default function HandoffPage() {
           ))}
         </div>
       )}
+
+      {!loadingEscalations && (
+        <Pagination
+          total={total}
+          limit={PAGE_SIZE}
+          offset={offset}
+          onPageChange={setOffset}
+        />
+      )}
     </div>
   );
 
@@ -188,7 +221,7 @@ export default function HandoffPage() {
     <div className="space-y-6">
       {/* Escalation Settings (moved from Business Settings) */}
       <Card>
-        <h2 className="text-lg font-space font-semibold text-[var(--brand-primary)] border-b border-[var(--border-subtle)] pb-2 mb-4">
+        <h2 className="text-lg font-display font-semibold text-[var(--brand-primary)] border-b border-[var(--border-subtle)] pb-2 mb-4">
           Escalation Settings
         </h2>
         <div className="space-y-6">

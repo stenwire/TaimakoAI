@@ -63,6 +63,8 @@ class Business(Base, SerializerMixin):
     # Relationship
     user = relationship("User", back_populates="business")
     transactions = relationship("PaymentTransaction", back_populates="business", cascade="all, delete-orphan")
+    products = relationship("Product", back_populates="business", cascade="all, delete-orphan")
+    orders = relationship("Order", back_populates="business", cascade="all, delete-orphan")
 
     # metadata = Column(JSON, nullable=True)
 

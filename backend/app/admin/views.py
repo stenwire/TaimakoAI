@@ -2,6 +2,7 @@ from sqladmin import ModelView
 
 from app.models.user import User
 from app.models.business import Business
+from app.models.product import Product
 from app.models.plan import Plan
 from app.models.payment import PaymentTransaction
 from app.models.chat_session import ChatSession
@@ -333,6 +334,31 @@ class AnalyticsDailySummaryAdmin(ModelView, model=AnalyticsDailySummary):
         "new_guests": "New",
         "returning_guests": "Returning",
         "leads_captured": "Leads",
+    }
+
+    can_export = True
+
+# ─── Products ────────────────────────────────────────────────────────────────
+
+class ProductAdmin(ModelView, model=Product):
+    name = "Product"
+    name_plural = "Products"
+    icon = "fa-solid fa-cart-shopping"
+    category = "Catalogue"
+
+    column_list = [
+        Product.id, Product.business_id, Product.name,
+        Product.price, Product.currency, Product.sku,
+        Product.stock_quantity, Product.is_active,
+    ]
+    column_searchable_list = [Product.name, Product.sku, Product.category]
+    column_sortable_list = [Product.name, Product.price, Product.stock_quantity, Product.is_active]
+    column_default_sort = ("name", False)
+
+    column_labels = {
+        "business_id": "Business",
+        "stock_quantity": "Stock",
+        "is_active": "Active",
     }
 
     can_export = True

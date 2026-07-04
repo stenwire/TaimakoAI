@@ -7,6 +7,11 @@ from app.db.session import get_db
 from app.models.widget import WidgetSettings, GuestUser
 from app.models.chat_session import ChatSession, SessionChannel
 from app.models.user import User
+from app.models.whatsapp_broadcast import (
+    CampaignMessageStatus,
+    WhatsAppCampaign,
+    WhatsAppCampaignMessage,
+)
 from app.core.config import settings
 from app.services.whatsapp_service import send_whatsapp_message, verify_webhook_signature
 
@@ -54,9 +59,22 @@ async def whatsapp_incoming(request: Request):
         return Response(status_code=200)
 
     value = changes[0].get("value", {})
+
+    # Delivery / read status callbacks from outbound campaigns.
+    statuses = value.get("statuses")
+    if statuses:
+        db = next(get_db())
+        try:
+            _process_status_updates(db, statuses)
+        except Exception as e:
+            print(f"WhatsApp status update error: {e}")
+            traceback.print_exc()
+        finally:
+            db.close()
+        return Response(status_code=200)
+
     messages = value.get("messages")
     if not messages:
-        # Status update or other non-message webhook — ignore
         return Response(status_code=200)
 
     message = messages[0]
@@ -196,3 +214,77 @@ async def _process_whatsapp_message(
         from_phone,
         ai_text,
     )
+
+
+_STATUS_TO_ENUM = {
+    "sent": CampaignMessageStatus.SENT,
+    "delivered": CampaignMessageStatus.DELIVERED,
+    "read": CampaignMessageStatus.READ,
+    "failed": CampaignMessageStatus.FAILED,
+}
+
+# Rank used to prevent regressions when Meta delivers events out of order.
+_STATUS_RANK = {
+    CampaignMessageStatus.QUEUED.value: 0,
+    CampaignMessageStatus.SENT.value: 1,
+    CampaignMessageStatus.DELIVERED.value: 2,
+    CampaignMessageStatus.READ.value: 3,
+    CampaignMessageStatus.FAILED.value: 4,
+}
+
+
+def _process_status_updates(db: Session, statuses: list[dict]) -> None:
+    """Update campaign messages from Meta `statuses[]` webhook entries."""
+    for entry in statuses:
+        meta_id = entry.get("id")
+        raw_status = (entry.get("status") or "").lower()
+        if not meta_id or raw_status not in _STATUS_TO_ENUM:
+            continue
+
+        new_status = _STATUS_TO_ENUM[raw_status]
+        msg = (
+            db.query(WhatsAppCampaignMessage)
+            .filter(WhatsAppCampaignMessage.meta_message_id == meta_id)
+            .first()
+        )
+        if not msg:
+            continue
+
+        # Idempotency / out-of-order protection: only move forward.
+        current_rank = _STATUS_RANK.get(msg.status, 0)
+        new_rank = _STATUS_RANK[new_status.value]
+        if new_rank <= current_rank and new_status != CampaignMessageStatus.FAILED:
+            continue
+
+        previous_status = msg.status
+        msg.status = new_status.value
+        now = datetime.now(timezone.utc)
+
+        if new_status == CampaignMessageStatus.DELIVERED and not msg.delivered_at:
+            msg.delivered_at = now
+        elif new_status == CampaignMessageStatus.READ and not msg.read_at:
+            msg.read_at = now
+        elif new_status == CampaignMessageStatus.FAILED:
+            errors = entry.get("errors") or []
+            if errors:
+                err = errors[0]
+                msg.error_code = str(err.get("code", ""))[:100]
+                msg.error_message = str(err.get("title") or err.get("message") or "")[:500]
+
+        # Aggregate into campaign counts (only on first transition into each state).
+        campaign = (
+            db.query(WhatsAppCampaign)
+            .filter(WhatsAppCampaign.id == msg.campaign_id)
+            .first()
+        )
+        if campaign and previous_status != new_status.value:
+            if new_status == CampaignMessageStatus.DELIVERED:
+                campaign.delivered_count += 1
+            elif new_status == CampaignMessageStatus.READ:
+                campaign.read_count += 1
+            elif new_status == CampaignMessageStatus.FAILED:
+                campaign.failed_count += 1
+                if previous_status == CampaignMessageStatus.SENT.value:
+                    campaign.sent_count = max(0, campaign.sent_count - 1)
+
+        db.commit()

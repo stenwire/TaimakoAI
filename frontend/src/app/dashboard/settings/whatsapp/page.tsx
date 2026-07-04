@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { MessageSquare, Save, AlertCircle, CheckCircle, Copy, Check } from 'lucide-react';
+import { MessageSquare, Save, AlertCircle, CheckCircle } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -17,6 +17,7 @@ interface WhatsAppSettings {
   whatsapp_business_account_id: string;
   whatsapp_access_token: string;
   whatsapp_api_configured: boolean;
+  whatsapp_send_rate_per_second: string;
 }
 
 export default function WhatsAppSettingsPage() {
@@ -24,7 +25,6 @@ export default function WhatsAppSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [copied, setCopied] = useState(false);
 
   const [formData, setFormData] = useState<WhatsAppSettings>({
     whatsapp_enabled: false,
@@ -33,9 +33,8 @@ export default function WhatsAppSettingsPage() {
     whatsapp_business_account_id: '',
     whatsapp_access_token: '',
     whatsapp_api_configured: false,
+    whatsapp_send_rate_per_second: '',
   });
-
-  const webhookUrl = `${BACKEND_URL}/whatsapp/webhook`;
 
   useEffect(() => {
     fetchSettings();
@@ -57,6 +56,10 @@ export default function WhatsAppSettingsPage() {
           whatsapp_business_account_id: data.whatsapp_business_account_id || '',
           whatsapp_access_token: '',
           whatsapp_api_configured: data.whatsapp_api_configured || false,
+          whatsapp_send_rate_per_second:
+            data.whatsapp_send_rate_per_second != null
+              ? String(data.whatsapp_send_rate_per_second)
+              : '',
         });
       }
     } catch (err) {
@@ -85,6 +88,21 @@ export default function WhatsAppSettingsPage() {
         body.whatsapp_access_token = formData.whatsapp_access_token;
       }
 
+      // Send rate: blank → 0 (server clears column, falls back to default).
+      // Otherwise clamp [1, 80] before hitting the API.
+      const rawRate = formData.whatsapp_send_rate_per_second.trim();
+      if (rawRate === '') {
+        body.whatsapp_send_rate_per_second = 0;
+      } else {
+        const parsed = Number(rawRate);
+        if (!Number.isInteger(parsed) || parsed < 1 || parsed > 80) {
+          setError('Send rate must be a whole number between 1 and 80.');
+          setSaving(false);
+          return;
+        }
+        body.whatsapp_send_rate_per_second = parsed;
+      }
+
       const res = await fetch(`${BACKEND_URL}/widgets/my-settings`, {
         method: 'PUT',
         headers: {
@@ -101,6 +119,10 @@ export default function WhatsAppSettingsPage() {
           ...prev,
           whatsapp_api_configured: data.whatsapp_api_configured || false,
           whatsapp_access_token: '',
+          whatsapp_send_rate_per_second:
+            data.whatsapp_send_rate_per_second != null
+              ? String(data.whatsapp_send_rate_per_second)
+              : '',
         }));
         setSuccess('WhatsApp settings saved successfully!');
         setTimeout(() => setSuccess(''), 3000);
@@ -113,12 +135,6 @@ export default function WhatsAppSettingsPage() {
     } finally {
       setSaving(false);
     }
-  };
-
-  const copyWebhookUrl = () => {
-    navigator.clipboard.writeText(webhookUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   if (loading) {
@@ -183,7 +199,7 @@ export default function WhatsAppSettingsPage() {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-space font-semibold text-[var(--text-primary)]">
+                <h3 className="text-lg font-display font-semibold text-[var(--text-primary)]">
                   WhatsApp Channel
                 </h3>
                 <p className="text-sm text-[var(--text-secondary)] mt-1">
@@ -216,32 +232,24 @@ export default function WhatsAppSettingsPage() {
         </Card>
       </motion.div>
 
-      {/* Webhook URL */}
+      {/* Coming-soon banner for Embedded Signup */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.15 }}
       >
         <Card>
-          <div className="space-y-4">
-            <h3 className="text-lg font-space font-semibold text-[var(--brand-primary)] border-b border-[var(--border-subtle)] pb-2">
-              Webhook Configuration
+          <div className="space-y-2">
+            <h3 className="text-lg font-display font-semibold text-[var(--brand-primary)] border-b border-[var(--border-subtle)] pb-2">
+              One-click connect — coming soon
             </h3>
             <p className="text-sm text-[var(--text-secondary)]">
-              Use this URL in your{' '}
-              <span className="font-medium text-[var(--text-primary)]">
-                Meta Developer Dashboard
-              </span>{' '}
-              as the webhook callback URL.
+              We&apos;re rolling out one-click WhatsApp connection via Meta&apos;s
+              Embedded Signup. Once it&apos;s live, you&apos;ll link your WhatsApp
+              Business Account to Taimako with a single popup — no tokens,
+              no IDs, no copy-pasting. Until then, connect manually using the
+              steps below.
             </p>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-sm font-mono text-[var(--text-primary)] overflow-x-auto">
-                {webhookUrl}
-              </code>
-              <Button variant="secondary" onClick={copyWebhookUrl} className="flex-shrink-0">
-                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              </Button>
-            </div>
           </div>
         </Card>
       </motion.div>
@@ -254,7 +262,7 @@ export default function WhatsAppSettingsPage() {
       >
         <Card>
           <div className="space-y-4">
-            <h3 className="text-lg font-space font-semibold text-[var(--brand-primary)] border-b border-[var(--border-subtle)] pb-2">
+            <h3 className="text-lg font-display font-semibold text-[var(--brand-primary)] border-b border-[var(--border-subtle)] pb-2">
               WhatsApp API Credentials
             </h3>
 
@@ -304,6 +312,53 @@ export default function WhatsAppSettingsPage() {
         </Card>
       </motion.div>
 
+      {/* Broadcast Send Rate */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.22 }}
+      >
+        <Card>
+          <div className="space-y-4">
+            <h3 className="text-lg font-display font-semibold text-[var(--brand-primary)] border-b border-[var(--border-subtle)] pb-2">
+              Broadcast Send Rate
+            </h3>
+            <p className="text-sm text-[var(--text-secondary)]">
+              How many template messages/second the broadcast worker will send for
+              this business. Meta assigns different throughput tiers per WABA
+              (1K / 10K / 100K / unlimited per 24h); set this to match your tier.
+              Leave blank to use the Taimako default.
+            </p>
+            <Input
+              label="Messages per second"
+              type="number"
+              min={1}
+              max={80}
+              placeholder="e.g. 20 (leave blank for default)"
+              value={formData.whatsapp_send_rate_per_second}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  whatsapp_send_rate_per_second: e.target.value,
+                })
+              }
+            />
+            <p className="text-xs text-[var(--text-tertiary)]">
+              Allowed range: 1–80. Values above your Meta tier will still be
+              rate-limited by Meta.{' '}
+              <a
+                href="https://developers.facebook.com/docs/whatsapp/cloud-api/overview#messaging-limits"
+                target="_blank"
+                rel="noreferrer"
+                className="underline hover:text-[var(--brand-primary)]"
+              >
+                Meta messaging limits →
+              </a>
+            </p>
+          </div>
+        </Card>
+      </motion.div>
+
       {/* Setup Instructions */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -312,36 +367,70 @@ export default function WhatsAppSettingsPage() {
       >
         <Card>
           <div className="space-y-3">
-            <h3 className="text-lg font-space font-semibold text-[var(--brand-primary)] border-b border-[var(--border-subtle)] pb-2">
-              Setup Instructions
+            <h3 className="text-lg font-display font-semibold text-[var(--brand-primary)] border-b border-[var(--border-subtle)] pb-2">
+              How to connect manually
             </h3>
+            <p className="text-sm text-[var(--text-secondary)]">
+              These steps happen inside{' '}
+              <span className="font-medium text-[var(--text-primary)]">your own</span>{' '}
+              Meta Business Manager. Taimako doesn&apos;t need any backend access
+              from you.
+            </p>
             <ol className="list-decimal list-inside space-y-2 text-sm text-[var(--text-secondary)]">
               <li>
-                Go to the{' '}
-                <span className="font-medium text-[var(--text-primary)]">
-                  Meta Developer Dashboard
-                </span>{' '}
-                and create or select your app
+                Sign in to{' '}
+                <a
+                  href="https://business.facebook.com/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline hover:text-[var(--brand-primary)]"
+                >
+                  business.facebook.com
+                </a>{' '}
+                and create (or open) your{' '}
+                <strong>Business Portfolio</strong>.
               </li>
-              <li>Add the WhatsApp product to your app</li>
               <li>
-                Under <strong>WhatsApp &gt; Configuration</strong>, set the webhook callback URL to
-                the URL shown above
+                Add a <strong>WhatsApp Business Account (WABA)</strong> under
+                your portfolio. Register the phone number you want to use and
+                complete display-name approval.
               </li>
               <li>
-                Set the verify token to the value configured in your backend environment (
+                In <strong>Business Settings → Users → System Users</strong>,
+                create a system user and assign your WABA to it with{' '}
+                <strong>Full control</strong>.
+              </li>
+              <li>
+                Generate a <strong>permanent access token</strong> for that
+                system user with the{' '}
                 <code className="text-xs bg-[var(--bg-secondary)] px-1 py-0.5 rounded">
-                  WHATSAPP_VERIFY_TOKEN
-                </code>
-                )
+                  whatsapp_business_messaging
+                </code>{' '}
+                and{' '}
+                <code className="text-xs bg-[var(--bg-secondary)] px-1 py-0.5 rounded">
+                  whatsapp_business_management
+                </code>{' '}
+                scopes.
               </li>
-              <li>Subscribe to the <strong>messages</strong> webhook field</li>
               <li>
-                Copy your Phone Number ID, Business Account ID, and permanent access token into the
-                fields above
+                From the WABA overview, copy your <strong>Phone Number ID</strong>,{' '}
+                <strong>Business Account ID</strong>, and the token you just
+                generated — paste them into the fields above.
               </li>
-              <li>Enable the WhatsApp channel toggle and save</li>
+              <li>
+                Turn on the <strong>WhatsApp Channel</strong> toggle at the top
+                of this page and click <strong>Save</strong>. Your messages
+                will start flowing through Taimako within seconds.
+              </li>
             </ol>
+            <p className="text-xs text-[var(--text-tertiary)] pt-2">
+              Your messaging limits (e.g. 250/day → 1K → 10K → 100K → unlimited)
+              are set by Meta on <em>your</em> Business Portfolio, not on
+              Taimako. Verifying your business and keeping quality rating
+              high moves you up the tiers. Phone-number caps (2 by default,
+              up to 20 for verified portfolios) are also per-portfolio — raise
+              them via a Meta support ticket once you&apos;re verified.
+            </p>
           </div>
         </Card>
       </motion.div>

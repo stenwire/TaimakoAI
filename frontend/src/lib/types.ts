@@ -262,3 +262,84 @@ export interface GuestSession {
   device_type?: string | null;
   os?: string | null;
 }
+
+// Product types
+export interface Product {
+  id: string;
+  business_id: string;
+  name: string;
+  description?: string;
+  price: number;
+  currency: string;
+  sku: string;
+  stock_quantity: number;
+  category?: string;
+  image_urls?: string[];
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateProductData {
+  name: string;
+  description?: string;
+  price: number;
+  currency?: string;
+  sku: string;
+  stock_quantity?: number;
+  category?: string;
+  image_urls?: string[];
+  is_active?: boolean;
+}
+
+export interface UpdateProductData {
+  name?: string;
+  description?: string;
+  price?: number;
+  currency?: string;
+  sku?: string;
+  stock_quantity?: number;
+  category?: string;
+  image_urls?: string[];
+  is_active?: boolean;
+}
+
+// Order types
+export type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+
+export interface OrderItem {
+  id: string;
+  order_id: string;
+  product_id?: string;
+  product_name: string;
+  product_sku: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  currency: string;
+}
+
+export interface Order {
+  id: string;
+  business_id: string;
+  session_id?: string;
+  customer_name: string;
+  customer_email?: string;
+  customer_phone?: string;
+  customer_address?: string;
+  status: OrderStatus;
+  total_amount: number;
+  currency: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  items: OrderItem[];
+}
+
+export interface OrdersPage {
+  items: Order[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+}

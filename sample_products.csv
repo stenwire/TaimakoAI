@@ -1,0 +1,6 @@
+name,price,sku,description,category,stock_quantity,is_active
+Solar Panel 100W,120.50,SOL-100W,High efficiency polycrystalline solar panel,Solar,50,true
+Battery 12V 100Ah,250.00,BAT-12V100,Deep cycle gel battery,Batteries,20,true
+Charge Controller 30A,45.99,CTRL-30A,MPPT charge controller with LCD,Accessories,100,true
+Inverter 1000W Pure Sine,350.00,INV-1000W,Pure sine wave inverter for sensitive electronics,Inverters,10,true
+Mounting Z-Brackets (Set of 4),15.00,MNT-ZBRK,Aluminum Z-brackets for solar panel mounting,Accessories,200,true

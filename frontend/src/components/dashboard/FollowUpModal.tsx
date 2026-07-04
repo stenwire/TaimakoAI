@@ -61,7 +61,7 @@ export default function FollowUpModal({ isOpen, onClose, onSubmit, loading }: Fo
                   <div className="p-2 bg-[var(--brand-primary)]/10 rounded-lg">
                     <Wand2 className="w-5 h-5 text-[var(--brand-primary)]" />
                   </div>
-                  <h3 className="text-lg font-space font-bold text-[var(--text-primary)]">
+                  <h3 className="text-lg font-display font-bold text-[var(--text-primary)]">
                     {result ? 'Draft Generated' : 'Generate Follow-up'}
                   </h3>
                 </div>

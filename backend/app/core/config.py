@@ -34,12 +34,18 @@ class BaseConfig(BaseSettings):
     # System AI Key
     GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
 
+    # Gemini model configuration
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    GEMINI_EMBEDDING_MODEL: str = os.getenv("GEMINI_EMBEDDING_MODEL", "models/gemini-embedding-001")
+
     # Paystack
     PAYSTACK_WEBHOOK_SECRET: str = os.getenv("PAYSTACK_WEBHOOK_SECRET", "")
 
     # WhatsApp Cloud API
     WHATSAPP_VERIFY_TOKEN: str = os.getenv("WHATSAPP_VERIFY_TOKEN", "")
     WHATSAPP_APP_SECRET: str = os.getenv("WHATSAPP_APP_SECRET", "")
+    WHATSAPP_CAMPAIGN_POLL_INTERVAL_SECONDS: int = int(os.getenv("WHATSAPP_CAMPAIGN_POLL_INTERVAL_SECONDS", "10"))
+    WHATSAPP_CAMPAIGN_SEND_RATE_PER_SECOND: int = int(os.getenv("WHATSAPP_CAMPAIGN_SEND_RATE_PER_SECOND", "20"))
 
     
     # JWT

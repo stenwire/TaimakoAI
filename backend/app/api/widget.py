@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import uuid
@@ -42,6 +43,7 @@ class WidgetUpdate(BaseModel):
     whatsapp_phone_number_id: Optional[str] = None
     whatsapp_business_account_id: Optional[str] = None
     whatsapp_access_token: Optional[str] = None
+    whatsapp_send_rate_per_second: Optional[int] = None
     max_messages_per_session: Optional[int] = None
     max_sessions_per_day: Optional[int] = None
     max_sessions_per_day: Optional[int] = None
@@ -177,6 +179,18 @@ def update_my_widget_settings(
     if settings.whatsapp_access_token is not None:
         widget.whatsapp_access_token = settings.whatsapp_access_token or None
 
+    if settings.whatsapp_send_rate_per_second is not None:
+        rate = settings.whatsapp_send_rate_per_second
+        if rate == 0:
+            widget.whatsapp_send_rate_per_second = None
+        elif rate < 1 or rate > 80:
+            raise HTTPException(
+                status_code=400,
+                detail="Send rate must be between 1 and 80 messages/second.",
+            )
+        else:
+            widget.whatsapp_send_rate_per_second = rate
+
     if settings.max_messages_per_session is not None:
         widget.max_messages_per_session = settings.max_messages_per_session
         
@@ -199,13 +213,67 @@ def update_my_widget_settings(
     return success_response(data=WidgetConfigResponse.model_validate(widget))
 
 @router.get("/guests", response_model=None)
-def get_my_widget_guests(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_my_widget_guests(
+    q: str | None = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     widget = db.query(WidgetSettings).filter(WidgetSettings.user_id == current_user.id).first()
     if not widget:
-        return success_response(data=[])
-    
-    guests = db.query(GuestUser).filter(GuestUser.widget_id == widget.id).order_by(GuestUser.created_at.desc()).all()
-    return success_response(data=[GuestUserResponse.model_validate(g) for g in guests])
+        return success_response(
+            data={"items": [], "total": 0, "limit": limit, "offset": offset}
+        )
+
+    query = db.query(GuestUser).filter(GuestUser.widget_id == widget.id)
+    if q:
+        like = f"%{q}%"
+        query = query.filter(
+            or_(
+                GuestUser.name.ilike(like),
+                GuestUser.email.ilike(like),
+                GuestUser.phone.ilike(like),
+            )
+        )
+
+    total = query.count()
+    guests = (
+        query.order_by(GuestUser.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+    return success_response(
+        data={
+            "items": [GuestUserResponse.model_validate(g) for g in guests],
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }
+    )
+
+
+@router.get("/guests/{guest_id}", response_model=None)
+def get_my_widget_guest(
+    guest_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    widget = db.query(WidgetSettings).filter(WidgetSettings.user_id == current_user.id).first()
+    if not widget:
+        raise HTTPException(status_code=404, detail="Widget not found")
+
+    guest = (
+        db.query(GuestUser)
+        .filter(GuestUser.id == guest_id, GuestUser.widget_id == widget.id)
+        .first()
+    )
+    if not guest:
+        raise HTTPException(status_code=404, detail="Guest not found")
+
+    return success_response(data=GuestUserResponse.model_validate(guest))
 
 class LeadStatusUpdate(BaseModel):
     is_lead: bool
@@ -723,9 +791,28 @@ async def process_chat_message(db: Session, widget: WidgetSettings, guest: Guest
     )
 
 @router.get("/sessions/{guest_id}/history", response_model=None)
-def get_guest_session_history(guest_id: str, db: Session = Depends(get_db)):
-    sessions = db.query(ChatSession).filter(ChatSession.guest_id == guest_id).order_by(ChatSession.created_at.desc()).all()
-    return success_response(data=[SessionHistoryResponse.model_validate(s) for s in sessions])
+def get_guest_session_history(
+    guest_id: str,
+    limit: int = Query(default=20, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+):
+    query = db.query(ChatSession).filter(ChatSession.guest_id == guest_id)
+    total = query.count()
+    sessions = (
+        query.order_by(ChatSession.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+    return success_response(
+        data={
+            "items": [SessionHistoryResponse.model_validate(s) for s in sessions],
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }
+    )
 
 @router.get("/session/{session_id}/messages", response_model=List[GuestMessageSchema])
 def get_session_messages(session_id: str, db: Session = Depends(get_db)):

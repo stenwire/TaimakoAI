@@ -16,7 +16,7 @@ from app.admin.views import (
     UserAdmin, BusinessAdmin, PlanAdmin, PaymentTransactionAdmin,
     ChatSessionAdmin, GuestMessageAdmin, EscalationAdmin,
     WidgetSettingsAdmin, GuestUserAdmin, DocumentAdmin,
-    AnalyticsDailySummaryAdmin,
+    AnalyticsDailySummaryAdmin, ProductAdmin,
 )
 
 app = FastAPI(
@@ -51,6 +51,7 @@ admin.add_view(WidgetSettingsAdmin)
 admin.add_view(GuestUserAdmin)
 admin.add_view(DocumentAdmin)
 admin.add_view(AnalyticsDailySummaryAdmin)
+admin.add_view(ProductAdmin)
 
 # Register Middleware (CORS, Security, Rate Limiting)
 register_middleware(app)
@@ -85,6 +86,18 @@ app.include_router(plans_router, tags=["plans"])
 
 from app.api.whatsapp import router as whatsapp_router
 app.include_router(whatsapp_router, prefix="/whatsapp", tags=["whatsapp"])
+
+from app.api.whatsapp_templates import router as whatsapp_templates_router
+app.include_router(whatsapp_templates_router, prefix="/whatsapp", tags=["whatsapp"])
+
+from app.api.whatsapp_contacts import router as whatsapp_contacts_router
+app.include_router(whatsapp_contacts_router, prefix="/whatsapp", tags=["whatsapp"])
+
+from app.api.whatsapp_campaigns import router as whatsapp_campaigns_router
+app.include_router(whatsapp_campaigns_router, prefix="/whatsapp", tags=["whatsapp"])
+
+from app.api.orders import router as orders_router
+app.include_router(orders_router)
 
 from app.core.response_wrapper import success_response
 
